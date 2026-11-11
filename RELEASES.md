@@ -1,0 +1,9 @@
+# 發布紀錄
+
+每個 git 版本對應到 claude.ai artifact 的哪個版本。要退回某一版：`git checkout vX.Y.Z -- site`，再發布一次。
+
+Artifact：臨床輔助決策工具（`dd7bba5d-4f79-4d51-9ce8-bae6b37db5da`）
+
+| 版本 | Artifact 版本 | 發布時間 | Commit |
+|---|---|---|---|
+| v1.0.0 | 1794378960-ab83 | 2026-11-11 | 8b068e5 |
