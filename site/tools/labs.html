@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>檢驗正常值</title>
+<style>
+/* Layout: sticky header (搜尋＋分類跳轉) → 口訣 → 腎功能計算機 → 各分類清單（每列：項目／正常／值班警覺） */
+:root{
+  --bg:#f2f3f6; --surface:#fff; --fg:#1b2028; --muted:#5d6573; --line:#d8dce4;
+  --accent:#5b4699; --accent-soft:#ebe6f6;
+  --bad:#b3261e; --bad-soft:#fde8e6; --warn:#9a5b00; --warn-soft:#fff2d9; --ok:#1d7a3e; --ok-soft:#e3f3e8;
+  --mark:#ffe58a; --markfg:#1b2028;
+  --ff-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --ff-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111318; --surface:#1a1d24; --fg:#e4e6ec; --muted:#9aa1ae; --line:#2e333d;
+  --accent:#b4a2ec; --accent-soft:#2a2440;
+  --bad:#ff8a80; --bad-soft:#3a1d1b; --warn:#f2b45a; --warn-soft:#352812; --ok:#6fd38f; --ok-soft:#173023;
+  --mark:#7a6420; --markfg:#fff6d5; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111318; --surface:#1a1d24; --fg:#e4e6ec; --muted:#9aa1ae; --line:#2e333d;
+  --accent:#b4a2ec; --accent-soft:#2a2440;
+  --bad:#ff8a80; --bad-soft:#3a1d1b; --warn:#f2b45a; --warn-soft:#352812; --ok:#6fd38f; --ok-soft:#173023;
+  --mark:#7a6420; --markfg:#fff6d5; color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:110px}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--ff-body);font-size:15px;line-height:1.55}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.num,code{font-family:var(--ff-mono);font-size:.9em;font-variant-numeric:tabular-nums}
+
+header{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+header .wrap{padding-block:10px;display:flex;flex-direction:column;gap:8px}
+.row1{display:flex;gap:10px;align-items:center}
+.row1 h1{margin:0;font-size:1.05rem;white-space:nowrap}
+.row1 input{flex:1;min-width:0;font-size:16px;padding:7px 11px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg)}
+.row1 input:focus{outline:none;border-color:var(--accent)}
+.jump{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.jump::-webkit-scrollbar{display:none}
+.jump a{flex:none;text-decoration:none;font-size:.82rem;border:1px solid var(--line);border-radius:999px;padding:2px 10px;color:var(--muted);background:var(--bg)}
+.jump a:hover{color:var(--accent);border-color:var(--accent)}
+
+.disc{background:var(--warn-soft);font-size:.82rem}
+.disc .wrap{padding-block:6px}
+
+main{padding-block:14px 48px;display:flex;flex-direction:column;gap:14px}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.box h2{margin:0 0 10px;font-size:1rem;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.box h2 small{font-weight:400;color:var(--muted);font-size:.8rem}
+
+/* 一眼口訣：魚骨圖＋刻度條 */
+.mng{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:10px}
+.fig{margin:0;border:1px solid var(--line);border-radius:10px;padding:10px 12px 12px;background:var(--bg);display:flex;flex-direction:column;gap:8px;min-width:0}
+.fig figcaption{font-size:.78rem;letter-spacing:.08em;color:var(--muted)}
+.fig svg{width:100%;max-width:380px;height:auto;align-self:center;overflow:visible}
+.bone path{fill:none;stroke:var(--accent);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.fig text{text-anchor:middle;fill:var(--fg)}
+.lb text{font:500 12px var(--ff-body);fill:var(--muted)}
+.vl text{font:600 21px var(--ff-mono);fill:var(--fg)}
+.vs text{font:600 13px var(--ff-mono);fill:var(--fg)}
+.abg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.abg div{display:flex;flex-direction:column;align-items:center;padding:8px 2px;border-left:1px solid var(--line);min-width:0}
+.abg div:first-child{border-left:0}
+.abg b{font-size:.75rem;font-weight:500;color:var(--muted);white-space:nowrap}
+.abg span{font:600 1.3rem var(--ff-mono);font-variant-numeric:tabular-nums}
+.abg .lac{background:var(--accent-soft)}
+.fn{margin:0;font-size:.82rem;color:var(--muted)}
+.gauge{display:flex;height:46px;border-radius:8px;overflow:hidden;font:600 .9rem var(--ff-mono)}
+.zone{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15;min-width:0}
+.zone small{font:500 .7rem var(--ff-body);white-space:nowrap}
+.z1{background:var(--bad);color:var(--surface)}
+.z2{background:var(--warn-soft);color:var(--warn)}
+.z3{background:var(--ok-soft);color:var(--ok)}
+.ticks{position:relative;height:16px;font:500 .72rem var(--ff-mono);color:var(--muted)}
+.ticks span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.ticks span:first-child{transform:none}
+.ticks .norm{color:var(--ok);font-weight:600}
+.ticks .norm::before{content:"";position:absolute;left:50%;top:-6px;width:2px;height:6px;background:var(--ok)}
+.rule{display:flex;flex-wrap:wrap;gap:6px}
+.rule span{font-size:.84rem;border:1px solid var(--line);border-radius:999px;padding:3px 10px;background:var(--surface)}
+.rule b{color:var(--accent);margin-right:4px}
+.rule .x{border-color:var(--bad);color:var(--bad)}
+.rule .x b{color:var(--bad)}
+
+/* calculator */
+.calc{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.calc label{display:flex;flex-direction:column;gap:3px;font-size:.8rem;color:var(--muted)}
+.calc input,.calc select{font-size:16px;padding:6px 9px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);min-width:0}
+.res{margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.res .r{border-radius:10px;padding:9px 12px;background:var(--bg);border-left:4px solid var(--line)}
+.res .r b{display:block;font-size:.8rem;color:var(--muted);font-weight:500}
+.res .r .v{font-family:var(--ff-mono);font-size:1.25rem}
+.res .r .t{font-size:.85rem}
+.r.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.r.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.r.ok{border-left-color:var(--ok);background:var(--ok-soft)}
+.hint{font-size:.82rem;color:var(--muted);margin:10px 0 0}
+
+/* lab rows */
+.lab{display:grid;grid-template-columns:minmax(90px,150px) minmax(0,1fr) minmax(0,1.3fr);gap:2px 14px;padding:8px 0;border-top:1px solid var(--line)}
+.lab:first-of-type{border-top:0}
+.lab .n{font-weight:700}
+.lab .nv{font-family:var(--ff-mono);font-size:.9rem}
+.lab .al{font-size:.88rem;color:var(--muted)}
+.lab .al:not(:empty)::before{content:"⚠ ";color:var(--bad)}
+.colh{display:grid;grid-template-columns:minmax(90px,150px) minmax(0,1fr) minmax(0,1.3fr);gap:14px;font-size:.75rem;color:var(--muted);letter-spacing:.08em;padding-bottom:4px}
+.note{font-size:.86rem;margin:8px 0 0;padding:8px 10px;border-radius:8px;background:var(--accent-soft)}
+.note ul{margin:4px 0 0;padding-left:1.1em}
+mark{background:var(--mark);color:var(--markfg);border-radius:2px}
+.empty{color:var(--muted);text-align:center;padding:24px}
+@media (max-width:640px){
+  .colh{display:none}
+  .lab{grid-template-columns:minmax(0,1fr) auto;gap:0 10px}
+  .lab .al{grid-column:1/-1}
+  .lab .nv{text-align:right}
+}
+</style>
+<style id="hub-base">
+/* 臨床輔助決策工具 · 共用基底（每個工具都內嵌這一份）
+   字體：系統字（iPhone = 蘋方，Android = Noto CJK），不下載網路字型，開啟更快
+   色票：病房冷灰底 + 各工具辨識色；動畫：同一組曲線與時長 */
+:root{
+  --hub-bg:#EEF1F2; --hub-surface:#FFFFFF; --hub-surface2:#E6EAEC; --hub-ink:#152025; --hub-ink2:#4A575E; --hub-ink3:#6E7A81; --hub-line:#D3DADD;
+  --hub-bad:#B3261E; --hub-bad-soft:#FBE6E4; --hub-warn:#9A5B00; --hub-warn-soft:#FBEFD9; --hub-ok:#1D7A3E; --hub-ok-soft:#E1F2E6;
+  --hub-code:#C0262F; --hub-code-soft:#FBE4E5; --hub-pilot:#A35500; --hub-pilot-soft:#F6E7D2;
+  --hub-consult:#2C5C8C; --hub-consult-soft:#DFE8F2; --hub-meds:#0D6870; --hub-meds-soft:#DDEFF0;
+  --hub-labs:#5B4699; --hub-labs-soft:#EBE6F6; --hub-todo:#B4573A; --hub-todo-soft:#F5E3DA;
+  --hub-p1:#B3322B; --hub-p2:#C27416; --hub-p3:#4F6B8A; --hub-p4:#8A867B;
+  --hub-sans:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",system-ui,sans-serif;
+  --hub-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Roboto Mono",monospace;
+  --hub-ease:cubic-bezier(.2,.8,.2,1); --hub-dur:.18s;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --hub-bg:#0E1316; --hub-surface:#161D21; --hub-surface2:#1E272C; --hub-ink:#E4E9EB; --hub-ink2:#A2AEB4; --hub-ink3:#7E8B93; --hub-line:#2A353B;
+  --hub-bad:#FF7A70; --hub-bad-soft:#3A1B19; --hub-warn:#F0B04A; --hub-warn-soft:#352812; --hub-ok:#6CCF8E; --hub-ok-soft:#15301F;
+  --hub-code:#FF6B70; --hub-code-soft:#3A1A1D; --hub-pilot:#F0A23A; --hub-pilot-soft:#3A2911;
+  --hub-consult:#80B1E0; --hub-consult-soft:#162636; --hub-meds:#5CC2C8; --hub-meds-soft:#16302F;
+  --hub-labs:#B4A2EC; --hub-labs-soft:#2A2440; --hub-todo:#E08A68; --hub-todo-soft:#3A241B; --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#A6A297; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --hub-bg:#0E1316; --hub-surface:#161D21; --hub-surface2:#1E272C; --hub-ink:#E4E9EB; --hub-ink2:#A2AEB4; --hub-ink3:#7E8B93; --hub-line:#2A353B;
+  --hub-bad:#FF7A70; --hub-bad-soft:#3A1B19; --hub-warn:#F0B04A; --hub-warn-soft:#352812; --hub-ok:#6CCF8E; --hub-ok-soft:#15301F;
+  --hub-code:#FF6B70; --hub-code-soft:#3A1A1D; --hub-pilot:#F0A23A; --hub-pilot-soft:#3A2911;
+  --hub-consult:#80B1E0; --hub-consult-soft:#162636; --hub-meds:#5CC2C8; --hub-meds-soft:#16302F;
+  --hub-labs:#B4A2EC; --hub-labs-soft:#2A2440; --hub-todo:#E08A68; --hub-todo-soft:#3A241B; --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#A6A297; color-scheme:dark}
+
+/* 觸控：點擊不延遲、不閃灰框、iPhone 不自動放大字 */
+html{-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{-webkit-font-smoothing:antialiased;text-rendering:optimizeSpeed}
+::selection{background:color-mix(in srgb,var(--hub-accent,var(--hub-ink)) 22%,transparent)}
+/* iPhone 點進字小於 16px 的輸入框會自動放大、而且不會縮回來：觸控裝置上所有輸入框一律 ≥16px */
+@media (pointer:coarse){input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),textarea,select{font-size:max(16px,1em)!important}}
+/* 共用動畫：按下去微縮、顏色淡入淡出（低權重，工具自己的設定優先） */
+:where(button,.btn,.chip,.card,summary,[role="tab"],a){transition:background-color var(--hub-dur) var(--hub-ease),border-color var(--hub-dur) var(--hub-ease),color var(--hub-dur) var(--hub-ease),box-shadow var(--hub-dur) var(--hub-ease),opacity var(--hub-dur) var(--hub-ease),transform .12s var(--hub-ease)}
+:where(button,.btn,.chip,[role="tab"]):active:not(:disabled){transform:scale(.97)}
+@keyframes hub-in{from{opacity:0;transform:translateY(6px)}}
+@keyframes hub-pop{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
+.hub-toast{position:fixed;left:16px;right:16px;margin:0 auto;width:fit-content;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;max-width:min(520px,calc(100% - 32px));box-sizing:border-box;display:flex;gap:10px;align-items:center;background:var(--hub-ink);color:var(--hub-bg);font:500 14px/1.4 var(--hub-sans);padding:9px 14px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:hub-in .22s var(--hub-ease)}
+/* 待辦設定按鈕：跟待辦表的快速新增同一套（立即／緊急／待辦／有空，點緊急或待辦展開倒數） */
+.hp{display:flex;flex-direction:column;gap:8px;min-width:0}
+.hp-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.hp-pr{--pc:var(--hub-p3);display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:46px;padding:4px;border:1px solid color-mix(in srgb,var(--pc) 45%,var(--hub-line));border-radius:999px;background:transparent;color:var(--pc);font:500 15px/1.2 var(--hub-sans);cursor:pointer}
+.hp-pr[data-p="1"]{--pc:var(--hub-p1)}.hp-pr[data-p="2"]{--pc:var(--hub-p2)}.hp-pr[data-p="4"]{--pc:var(--hub-p4)}
+.hp-pr small{font-size:12px;font-variant-numeric:tabular-nums}
+.hp-pr small:empty{display:none}
+.hp-pr[aria-pressed="true"]{background:var(--pc);border-color:var(--pc);color:var(--hub-surface)}
+.hp-tm{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px}
+.hp-tm::-webkit-scrollbar{display:none}
+.hp-c{flex:none;min-height:40px;border:1px solid var(--hub-line);background:transparent;border-radius:999px;padding:6px 14px;font:15px/1 var(--hub-sans);color:var(--hub-ink);white-space:nowrap;cursor:pointer;font-variant-numeric:tabular-nums}
+.hp-c[aria-pressed="true"]{background:var(--hub-ink);border-color:var(--hub-ink);color:var(--hub-bg)}
+.hp input{flex:none;font:16px var(--hub-sans);min-height:40px;padding:5px 10px;border-radius:999px;border:1px solid var(--hub-line);background:var(--hub-bg);color:var(--hub-ink);width:80px;text-align:center}
+.hp-dt{display:flex;gap:6px}
+.hp-dt input[type="date"]{flex:1 1 9.5em;width:auto;max-width:12em}
+.hp-dt input[type="time"]{width:7em}
+/* 右滑加入待辦 */
+[data-swipe]{position:relative;touch-action:pan-y}
+[data-swipe].sw-drag{transition:none!important}
+[data-swipe].sw-back{transition:transform .22s var(--hub-ease)!important}
+[data-swipe]::before{content:"＋ 待辦";position:absolute;top:0;bottom:0;right:100%;width:var(--sw,0px);display:flex;align-items:center;justify-content:flex-end;padding-right:12px;box-sizing:border-box;background:var(--hub-todo);color:var(--hub-surface);font:700 14px/1 var(--hub-sans);white-space:nowrap;overflow:hidden;opacity:var(--swo,0);pointer-events:none}
+[data-swipe].sw-arm::before{content:"放開加入"}
+body.sw-on{-webkit-user-select:none;user-select:none}
+@keyframes hub-flash{from{background-color:var(--hub-todo-soft);box-shadow:inset 4px 0 0 var(--hub-todo)}}
+.sw-done{animation:hub-flash .9s var(--hub-ease)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+
+html:root:root{--bg:var(--hub-bg);--surface:var(--hub-surface);--line:var(--hub-line);--fg:var(--hub-ink);--muted:var(--hub-ink2);--accent:var(--hub-labs);--accent-soft:var(--hub-labs-soft);--ok:var(--hub-ok);--ok-soft:var(--hub-ok-soft);--warn:var(--hub-warn);--warn-soft:var(--hub-warn-soft);--bad:var(--hub-bad);--bad-soft:var(--hub-bad-soft);--hub-accent:var(--hub-labs);--ff-body:var(--hub-sans);--ff-mono:var(--hub-mono)}
+</style>
+
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="row1">
+      <h1>檢驗正常值</h1>
+      <input id="q" type="search" placeholder="搜尋" autocomplete="off">
+    </div>
+    <nav class="jump" id="jump" aria-label="分類"></nav>
+  </div>
+</header>
+<div class="disc"><div class="wrap">⚠ 各醫院參考範圍不同，以檢驗報告為準。這裡是常用近似值，方便值班時判斷「正常、異常、危險」。hs-troponin 依試劑不同，一定看報告的 cutoff。</div></div>
+
+<main class="wrap">
+  <section class="box" id="sec-mn">
+    <h2>一眼口訣 <small>病歷上的魚骨圖寫法，數字就是要記的正常值</small></h2>
+    <div class="mng">
+      <figure class="fig">
+        <figcaption>生化 Chem-7</figcaption>
+        <svg viewBox="0 0 320 128" role="img" aria-label="生化魚骨圖：Na 140、Cl 100、BUN 10–20、K 4、HCO3 24、Cr 約 1、Glucose 100">
+          <g class="bone"><path d="M8 64H244M88 18V110M168 18V110M244 64L272 22M244 64L272 106"/></g>
+          <g class="lb"><text x="48" y="28">Na</text><text x="128" y="28">Cl</text><text x="206" y="28">BUN</text>
+            <text x="48" y="122">K</text><text x="128" y="122">HCO₃⁻</text><text x="206" y="122">Cr</text><text x="296" y="52">Glu</text></g>
+          <g class="vl"><text x="48" y="54">140</text><text x="128" y="54">100</text><text x="206" y="54">10–20</text>
+            <text x="48" y="94">4</text><text x="128" y="94">24</text><text x="206" y="94">~1</text><text x="296" y="78">100</text></g>
+        </svg>
+      </figure>
+      <figure class="fig">
+        <figcaption>血球 CBC</figcaption>
+        <svg viewBox="0 0 340 130" role="img" aria-label="CBC 魚骨圖：WBC 4–10k、Hb 男大於 13.5 女大於 12、Hct 男 40–50 女 36–46、Plt 150–400k">
+          <g class="bone"><path d="M96 10L124 65L96 120M222 10L194 65L222 120M124 65H194"/></g>
+          <g class="lb"><text x="48" y="50">WBC</text><text x="288" y="50">Plt</text><text x="159" y="20">Hb</text><text x="159" y="124">Hct</text></g>
+          <g class="vl"><text x="48" y="76">4–10k</text><text x="288" y="76">150–400k</text></g>
+          <g class="vs"><text x="159" y="38">男 &gt;13.5</text><text x="159" y="55">女 &gt;12</text><text x="159" y="86">男 40–50</text><text x="159" y="103">女 36–46</text></g>
+        </svg>
+      </figure>
+      <figure class="fig">
+        <figcaption>血氣 ABG</figcaption>
+        <div class="abg">
+          <div><b>pH</b><span>7.40</span></div><div><b>PaCO₂</b><span>40</span></div><div><b>HCO₃⁻</b><span>24</span></div><div class="lac"><b>Lactate</b><span>&lt; 2</span></div>
+        </div>
+        <p class="fn">pH 往哪邊偏，就看 PaCO₂ 還是 HCO₃⁻ 跟著走</p>
+      </figure>
+      <figure class="fig">
+        <figcaption>腎功能 CrCl（mL/min）</figcaption>
+        <div class="gauge" aria-label="CrCl 低於 30 一定查藥物劑量，30 到 60 注意，正常約 100">
+          <div class="zone z1" style="flex:30">&lt;30<small>一定查劑量</small></div>
+          <div class="zone z2" style="flex:30">30–60<small>注意</small></div>
+          <div class="zone z3" style="flex:60">≥60<small>多數不用調</small></div>
+        </div>
+        <div class="ticks"><span style="left:0">0</span><span style="left:25%">30</span><span style="left:50%">60</span><span class="norm" style="left:83.3%">正常 ~100</span></div>
+        <div class="rule"><span><b>分期</b>看 eGFR</span><span><b>開藥</b>看 CrCl</span><span class="x"><b>AKI</b>兩個都不准</span></div>
+      </figure>
+    </div>
+  </section>
+
+  <section class="box" id="sec-calc">
+    <h2>腎功能計算 <small>CrCl（Cockcroft-Gault）＋ eGFR（CKD-EPI 2021）＋ AKI 檢查</small></h2>
+    <div class="calc">
+      <label>年齡<input id="cAge" type="number" inputmode="numeric" min="18" max="110"></label>
+      <label>性別<select id="cSex"><option value="M">男</option><option value="F">女</option></select></label>
+      <label>體重 kg<input id="cWt" type="number" inputmode="decimal" min="20" max="250"></label>
+      <label>現在 Cr mg/dL<input id="cCr" type="number" inputmode="decimal" step="0.1" min="0.1" max="20"></label>
+      <label>Baseline Cr（選填）<input id="cBase" type="number" inputmode="decimal" step="0.1" min="0.1" max="20"></label>
+      <label>身高 cm（選填，胖的人用）<input id="cHt" type="number" inputmode="numeric" min="120" max="220"></label>
+    </div>
+    <div class="res" id="cRes"></div>
+    <p class="hint">AKI 時 Cr 還沒穩定，兩個公式都會高估腎功能：看 Cr 上升速度和尿量（&lt; 0.5 mL/kg/hr × 6 hr）。</p>
+  </section>
+
+  <div id="labs"></div>
+</main>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  // [項目, 正常值, 值班要警覺]；搜尋也比對 k（別名）
+  const S = [
+    { id: 'vs', t: '生命徵象', s: '成人', rows: [
+      ['SBP', '90–139 mmHg', '< 90，或比 baseline 掉 > 40'],
+      ['MAP', '70–100 mmHg', '< 65'],
+      ['HR', '60–100 /min', '> 120 或 < 50；吃 β-blocker 的人 HR 不快不代表穩定'],
+      ['RR', '12–20 /min', '> 22（qSOFA）或 > 30'],
+      ['SpO₂', '≥ 95%', '< 92%；COPD 目標 88–92%'],
+      ['BT', '36–37.5°C', '≥ 38°C 發燒；< 36°C 也可能是 sepsis'],
+      ['尿量', '≥ 0.5 mL/kg/hr', '< 0.5 持續 6 hr（AKI）', 'urine output UO'],
+      ['Shock index', 'HR/SBP 0.5–0.7', '> 1', 'SI'],
+    ]},
+    { id: 'cbc', t: 'CBC', rows: [
+      ['WBC', '4–10 ×10³/μL', '> 12 或 < 4（SIRS）'],
+      ['ANC', '> 1500 /μL', '< 500 嚴重 neutropenia → 一發燒就是急症', 'neutrophil'],
+      ['Hb', '男 13.5–17.5；女 12–16 g/dL', '< 7 一般輸血閾值；心血管病人 < 8；急性出血時 Hb 會延遲下降', 'hemoglobin'],
+      ['Hct', '男 40–50%；女 36–46%', ''],
+      ['MCV', '80–100 fL', '< 80 小球性；> 100 大球性'],
+      ['Plt', '150–400 ×10³/μL', '< 50k 侵入性處置要注意；< 10k 預防性輸血小板', 'platelet'],
+    ]},
+    { id: 'lyte', t: '電解質', rows: [
+      ['Na', '135–145 mEq/L', '< 125 或 > 155；矯正速度 24 hr 不超過 8–10', 'sodium 鈉'],
+      ['K', '3.5–5.0 mEq/L', '> 6.0 或有 EKG 變化 → 先給 calcium；< 3.0', 'potassium 鉀'],
+      ['Cl', '98–107 mEq/L', '', 'chloride'],
+      ['HCO₃⁻', '22–26 mEq/L', '< 18 想到代謝性酸中毒，算 anion gap', 'bicarbonate HCO3'],
+      ['Anion gap', '8–12（Na − Cl − HCO₃⁻）', '> 12 → MUDPILES；低白蛋白要校正', 'AG'],
+      ['Ca（total）', '8.6–10.4 mg/dL', '低白蛋白校正：Ca + 0.8 × (4 − Alb)', 'calcium 鈣'],
+      ['iCa', '1.12–1.32 mmol/L', '大量輸血後會掉', 'ionized calcium'],
+      ['Mg', '1.7–2.4 mg/dL', '低 K 補不起來時先補 Mg', 'magnesium 鎂'],
+      ['P', '2.5–4.5 mg/dL', 'refeeding 時會掉', 'phosphate 磷'],
+    ]},
+    { id: 'renal', t: '腎功能', rows: [
+      ['BUN', '7–20 mg/dL', '上消化道出血也會升高'],
+      ['Cr', '男 0.7–1.3；女 0.6–1.1 mg/dL', '老人、瘦小的人 Cr「正常」也可能腎功能差', 'creatinine'],
+      ['BUN/Cr', '10–20', '> 20 腎前性；> 30 再想上消化道出血'],
+      ['eGFR', '≥ 90 mL/min/1.73 m²', '< 60 持續 3 個月 = CKD', 'CKD-EPI'],
+      ['CrCl', '約 100（男 90–140、女 80–125）mL/min', '> 50 多數藥不用調；30–50 部分調；< 30 很多藥減量或禁用；< 15／洗腎看仿單', 'Cockcroft-Gault clearance'],
+      ['FENa', '—', '< 1% 腎前性；> 2% 腎性（ATN）'],
+    ], note: `<b>評估腎功能三步</b><ul>
+      <li>現在多少：換算 CrCl／eGFR，不要只看 Cr</li>
+      <li>急性還是慢性：找 baseline。AKI（KDIGO）：48 hr 內 Cr ↑ ≥ 0.3，或 7 天內 ≥ 1.5 倍，或尿量 &lt; 0.5 mL/kg/hr × 6 hr</li>
+      <li>為什麼：腎前性（出血、脫水、心衰竭）、腎性（ATN、藥物、顯影劑、NSAID）、腎後性（阻塞 → 膀胱超音波或 Foley）</li>
+      <li>CKD 分期（eGFR）：G1 ≥ 90、G2 60–89、G3a 45–59、G3b 30–44、G4 15–29、G5 &lt; 15</li>
+      <li>例外：metformin、SGLT2 inhibitor 仿單用 eGFR</li></ul>` },
+    { id: 'liver', t: '肝膽胰', rows: [
+      ['AST／ALT', '< 40 U/L', '> 1000 想到缺血性肝炎、病毒、藥物（acetaminophen）', 'GOT GPT'],
+      ['ALP', '40–130 U/L', '膽道阻塞型升高'],
+      ['GGT', '男 < 60、女 < 40 U/L', '配合 ALP 看是不是肝膽來源'],
+      ['T-bil', '0.2–1.2 mg/dL', '> 2–3 臨床看得到黃疸', 'bilirubin 膽紅素'],
+      ['D-bil', '< 0.3 mg/dL', '以直接型為主 → 想到阻塞', 'direct bilirubin'],
+      ['Albumin', '3.5–5.0 g/dL', '低 → 校正 Ca、anion gap', '白蛋白'],
+      ['Lipase', '依試劑（常見上限 60 U/L）', '> 3 倍上限支持胰臟炎'],
+      ['Ammonia', '依試劑', '肝昏迷參考，不一定跟意識成比例', 'NH3'],
+    ]},
+    { id: 'coag', t: '凝血', rows: [
+      ['PT', '約 10–13 s', ''],
+      ['INR', '0.8–1.2', 'warfarin 目標多為 2–3；> 1.5 侵入性處置前注意'],
+      ['aPTT', '約 25–35 s', 'heparin 治療時看目標範圍'],
+      ['Fibrinogen', '200–400 mg/dL', '< 150 大量出血要補（cryo）'],
+      ['D-dimer', '< 0.5 μg/mL FEU', '只能用來排除；老人可用年齡 × 0.01'],
+    ], note: 'DOAC（apixaban、rivaroxaban）不一定讓 INR 明顯異常 → <b>INR 正常不代表沒有抗凝血作用</b>。' },
+    { id: 'glu', t: '血糖', rows: [
+      ['空腹血糖', '70–99 mg/dL', '隨機 < 140', 'glucose sugar'],
+      ['HbA1c', '< 5.7%', '≥ 6.5% 糖尿病'],
+      ['低血糖', '< 70 mg/dL', '< 54 或意識改變 = 嚴重', 'hypoglycemia'],
+      ['DKA', '—', '血糖 > 250、pH < 7.3、HCO₃⁻ < 18、酮體陽性'],
+      ['HHS', '—', '血糖 > 600、osmolality > 320、無明顯酮酸中毒'],
+    ]},
+    { id: 'abg', t: 'ABG', s: '動脈血氣', rows: [
+      ['pH', '7.35–7.45', '< 7.2 或 > 7.55'],
+      ['PaCO₂', '35–45 mmHg', '急性上升＋意識變差 → 考慮通氣支持', 'PaCO2'],
+      ['PaO₂', '80–100 mmHg', '< 60 呼吸衰竭', 'PaO2'],
+      ['HCO₃⁻', '22–26 mEq/L', ''],
+      ['Base excess', '−2 到 +2', '', 'BE'],
+      ['Lactate', '< 2 mmol/L', '> 2 sepsis 警訊；> 4 休克，要積極輸液', '乳酸'],
+      ['P/F ratio', '> 400', '< 300 ARDS（< 100 重度）'],
+    ]},
+    { id: 'heart', t: '心臟', rows: [
+      ['hs-troponin', '依試劑 99th percentile', '看 0／1–3 hr 變化量，單一數值不夠', 'troponin'],
+      ['BNP', '< 100 pg/mL', '低 → 急性心衰竭可能性低（腎差、老人會偏高）'],
+      ['NT-proBNP', '< 300 pg/mL', '同上'],
+      ['CK', '< 200 U/L', '橫紋肌溶解常 > 5 倍上限', 'CPK'],
+    ]},
+    { id: 'inf', t: '發炎與感染', rows: [
+      ['CRP', '< 0.5 mg/dL（< 5 mg/L）', ''],
+      ['Procalcitonin', '< 0.05 ng/mL', '> 0.5 細菌感染可能性高', 'PCT'],
+    ]},
+    { id: 'misc', t: '其他', rows: [
+      ['Osmolality', '275–295 mOsm/kg', '計算值 = 2 × Na + Glucose/18 + BUN/2.8'],
+      ['Osmolar gap', '< 10', '> 10 想到酒精類中毒'],
+      ['TSH', '0.4–4.0 mIU/L', ''],
+      ['Uric acid', '男 < 7、女 < 6 mg/dL', '', '尿酸'],
+      ['尿液', 'SG 1.005–1.030、pH 5–7', '出現蛋白、糖、亞硝酸鹽要解釋', 'UA urinalysis'],
+      ['CSF', '開放壓 10–20 cmH₂O、WBC < 5', '蛋白 15–45 mg/dL；葡萄糖約血糖 2/3', 'lumbar puncture 腰椎穿刺'],
+    ]},
+  ];
+
+  const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const hl = (s, q) => {
+    const e = esc(s);
+    if (!q) return e;
+    const i = s.toLowerCase().indexOf(q);
+    return i < 0 ? e : esc(s.slice(0, i)) + '<mark>' + esc(s.slice(i, i + q.length)) + '</mark>' + esc(s.slice(i + q.length));
+  };
+
+  $('jump').innerHTML = '<a href="#sec-calc">腎功能計算</a>' + S.map(x => `<a href="#sec-${x.id}">${x.t}</a>`).join('');
+
+  function render() {
+    const q = $('q').value.trim().toLowerCase();
+    let html = '', hits = 0;
+    S.forEach(sec => {
+      const rows = sec.rows.filter(r => !q || (r.join(' ') + ' ' + sec.t).toLowerCase().includes(q));
+      if (!rows.length) return;
+      hits += rows.length;
+      html += `<section class="box" id="sec-${sec.id}"><h2>${sec.t}${sec.s ? ` <small>${sec.s}</small>` : ''}</h2>
+        <div class="colh"><span>項目</span><span>正常</span><span>值班要警覺</span></div>` +
+        rows.map(r => `<div class="lab"><span class="n">${hl(r[0], q)}</span><span class="nv">${hl(r[1], q)}</span><span class="al">${hl(r[2], q)}</span></div>`).join('') +
+        (sec.note && !q ? `<div class="note">${sec.note}</div>` : '') + '</section>';
+    });
+    $('labs').innerHTML = html || '<p class="empty">找不到，換個寫法試試（例如 K、鉀、potassium）。</p>';
+    $('sec-mn').hidden = $('sec-calc').hidden = !!q;
+  }
+  $('q').addEventListener('input', render);
+  render();
+
+  // 腎功能計算
+  const f = id => parseFloat($(id).value);
+  function calc() {
+    const age = f('cAge'), wt = f('cWt'), cr = f('cCr'), base = f('cBase'), ht = f('cHt'), F = $('cSex').value === 'F';
+    const out = [];
+    if (age && cr) {
+      const k = F ? 0.7 : 0.9, a = F ? -0.241 : -0.302, r = cr / k;
+      const egfr = 142 * Math.pow(Math.min(r, 1), a) * Math.pow(Math.max(r, 1), -1.2) * Math.pow(0.9938, age) * (F ? 1.012 : 1);
+      const st = egfr >= 90 ? 'G1' : egfr >= 60 ? 'G2' : egfr >= 45 ? 'G3a' : egfr >= 30 ? 'G3b' : egfr >= 15 ? 'G4' : 'G5';
+      out.push(['eGFR（CKD-EPI 2021）', Math.round(egfr) + ' mL/min/1.73 m²', `若為慢性 = ${st}`, egfr < 30 ? 'bad' : egfr < 60 ? 'warn' : 'ok']);
+    }
+    if (age && wt && cr) {
+      let w = wt, wn = '實際體重';
+      if (ht) {
+        const ibw = (F ? 45.5 : 50) + 0.9 * (ht - 152.4);
+        if (wt > ibw * 1.2) { w = ibw + 0.4 * (wt - ibw); wn = `校正體重 ${w.toFixed(0)} kg（實際 > 理想 120%）`; }
+        else if (wt > ibw) { w = ibw; wn = `理想體重 ${ibw.toFixed(0)} kg`; }
+      }
+      const cc = (140 - age) * w / (72 * cr) * (F ? 0.85 : 1);
+      const band = cc > 50 ? '多數藥不用調' : cc >= 30 ? '部分藥要調整' : cc >= 15 ? '很多藥減量或禁用' : '看仿單洗腎劑量';
+      out.push(['CrCl（Cockcroft-Gault）', Math.round(cc) + ' mL/min', `${band}｜用${wn}`, cc < 30 ? 'bad' : cc < 60 ? 'warn' : 'ok']);
+    }
+    if (cr && base) {
+      const d = cr - base, x = cr / base;
+      const aki = x >= 3 ? 'KDIGO stage 3' : x >= 2 ? 'KDIGO stage 2' : (x >= 1.5 || d >= 0.3) ? 'KDIGO stage 1' : '';
+      out.push(['跟 baseline 比', `${d >= 0 ? '+' : ''}${d.toFixed(1)}（${x.toFixed(2)} 倍）`,
+        aki ? `符合 AKI ${aki}（若在 48 hr 內 ↑ ≥ 0.3 或 7 天內 ≥ 1.5 倍）→ 公式會高估` : '尚未達 AKI 標準，繼續追 Cr 和尿量', aki ? 'bad' : 'ok']);
+    }
+    $('cRes').innerHTML = out.length ? out.map(o => `<div class="r ${o[3]}"><b>${o[0]}</b><span class="v">${o[1]}</span><div class="t">${o[2]}</div></div>`).join('')
+      : '<div class="r"><b>輸入年齡、Cr</b><div class="t">加上體重算 CrCl；加 baseline 檢查 AKI</div></div>';
+  }
+  ['cAge', 'cSex', 'cWt', 'cCr', 'cBase', 'cHt'].forEach(id => $(id).addEventListener('input', calc));
+  calc();
+})();
+</script>
+</body>
+</html>

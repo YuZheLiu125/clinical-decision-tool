@@ -1,0 +1,1254 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>ACLS 輔助工具</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: crash-cart reference card — sticky tab rail, one panel at a time, code timer as the hero tool */
+:root{
+  --bg:#f6f7f8; --surface:#ffffff; --ink:#18202a; --muted:#5b6673; --line:#dde2e8;
+  --red:#c8202f; --red-soft:#fbe7e9; --teal:#0b7d83; --teal-soft:#e2f3f3; --amber:#a86a00; --amber-soft:#fbf0d9;
+  --new:#5b3fc4; --new-soft:#ece8fb; --on-accent:#ffffff;
+  --f-body:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11161c; --surface:#18202a; --ink:#e7ebef; --muted:#9aa6b2; --line:#2a3542;
+  --red:#ff5a66; --red-soft:#3a1d22; --teal:#4cc4c9; --teal-soft:#16302f; --amber:#f0b445; --amber-soft:#352a14;
+  --new:#a996ff; --new-soft:#25213d; --on-accent:#120a0c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161c; --surface:#18202a; --ink:#e7ebef; --muted:#9aa6b2; --line:#2a3542;
+  --red:#ff5a66; --red-soft:#3a1d22; --teal:#4cc4c9; --teal-soft:#16302f; --amber:#f0b445; --amber-soft:#352a14;
+  --new:#a996ff; --new-soft:#25213d; --on-accent:#120a0c; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.65}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:860px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{padding-block:28px 18px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;color:var(--red);text-transform:uppercase}
+h1{font-size:clamp(26px,6vw,36px);font-weight:900;margin:4px 0 6px;text-wrap:balance;line-height:1.2}
+.lede{color:var(--muted);margin:0;max-width:60ch}
+nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+nav .row{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-block:8px}
+nav .row::-webkit-scrollbar{display:none}
+nav button{flex:none;font:inherit;font-size:14px;font-weight:500;border:0;background:transparent;color:var(--muted);padding:7px 12px;border-radius:999px;cursor:pointer;white-space:nowrap}
+nav button[aria-selected="true"]{background:var(--ink);color:var(--surface)}
+nav button:focus-visible,button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+main{padding-block:22px 60px}
+section.panel{display:flex;flex-direction:column;gap:18px}
+h2{font-size:22px;font-weight:900;margin:0;text-wrap:balance}
+h3{font-size:16px;font-weight:700;margin:0 0 6px;text-wrap:balance}
+p{margin:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px}
+.grid2>*{min-width:0}
+ul.tight{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px}
+.num{font-family:var(--f-mono);font-weight:700;font-variant-numeric:tabular-nums}
+.tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.05em;padding:1px 7px;border-radius:4px;vertical-align:2px;margin-right:4px}
+.tag.new{background:var(--new-soft);color:var(--new)}
+.tag.shock{background:var(--red-soft);color:var(--red)}
+.tag.ns{background:var(--teal-soft);color:var(--teal)}
+.tag.warn{background:var(--amber-soft);color:var(--amber)}
+.change{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;padding:12px 0;border-top:1px solid var(--line)}
+.change:first-of-type{border-top:0}
+.change .k{font-size:12px;font-weight:700;color:var(--new);font-family:var(--f-mono);padding-top:3px}
+.change .old{color:var(--muted);font-size:13px}
+/* timer */
+.monitor{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.clocks{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px}
+.clock .val.sm{font-size:16px;line-height:1.9}
+.scen{display:flex;flex-wrap:wrap;gap:6px}
+.scen button{font:inherit;font-size:14px;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 12px;border-radius:999px;cursor:pointer}
+.scen button::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;background:var(--teal);vertical-align:1px}
+.scen button.s::before{background:var(--red)}
+.scen button[aria-checked="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.rhsel{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.rhsel>span{font-size:12px;color:var(--muted);margin-right:4px}
+.rhsel button{font:inherit;font-size:13px;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:4px 10px;border-radius:999px;cursor:pointer}
+.rhsel button[aria-pressed="true"]{border-color:var(--red);background:var(--red-soft);color:var(--red)}
+.btn.sm{padding:5px 10px;font-size:13px}
+.btn.suggest{outline:2px dashed var(--teal);outline-offset:2px}
+body.compact header.top{display:none}
+body.compact main.wrap,body.compact nav .wrap{max-width:1180px}
+body.compact main{padding-block:12px 40px}
+#p-timer{gap:10px}
+.scrow{display:flex;gap:8px;align-items:center}
+.scrow .scen{flex:1;min-width:0;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-block:2px}
+.scrow .scen::-webkit-scrollbar{display:none}
+.scen button{flex:none;white-space:nowrap}
+.scrow #b-reset{flex:none}
+.codegrid{display:grid;gap:12px;align-items:start}
+.colL,.colR{display:flex;flex-direction:column;gap:8px;min-width:0}
+.colR{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px}
+@media (min-width:880px){.codegrid{grid-template-columns:minmax(0,5fr) minmax(0,6fr)}.colR{position:sticky;top:calc(env(safe-area-inset-top,0px) + 58px)}}
+.phase{display:flex;justify-content:space-between;align-items:center;gap:12px;border-radius:10px;padding:10px 14px;background:var(--surface);border:1px solid var(--line)}
+.phase.cpr{background:var(--red);border-color:var(--red);color:var(--on-accent)}
+.phase.due{background:var(--amber-soft);border-color:var(--amber);color:var(--amber)}
+.phase.act{border-color:var(--teal)}
+.ph-l{min-width:0}
+.ph-tag{font-weight:900;font-size:19px;line-height:1.3}
+.ph-now{font-size:12.5px;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ph-r{text-align:right;flex:none}
+.ph-t{font-family:var(--f-mono);font-size:clamp(24px,8vw,30px);font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.ph-tl{font-size:11px;opacity:.85;white-space:nowrap}
+.phase.cpr .ph-tag::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:currentColor;margin-right:8px;vertical-align:2px;animation:beat 1s infinite}
+@keyframes beat{0%,100%{opacity:1}50%{opacity:.25}}
+.nextbar{background:var(--teal-soft);border-radius:8px;padding:8px 12px;font-size:14px;display:flex;flex-direction:column;gap:2px}
+.nb-row{display:grid;grid-template-columns:3.6em 1fr;gap:8px}
+.nb-row b{color:var(--teal);font-size:13px;padding-top:1px}
+.nb-row span{min-width:0}
+.nb-warn{color:var(--red);font-weight:700;font-size:13.5px}
+.clocks{grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:6px}
+.clock{padding:5px 6px}
+.clock .lab{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clock .val{font-size:18px;white-space:nowrap}
+.clock .val.sm{font-size:13px;line-height:1.35;white-space:normal;padding-block:3px}
+.btns{gap:6px}
+.btns .btn{padding:8px 11px;font-size:14px}
+.btn.suggest{outline:2px dashed var(--teal);outline-offset:2px}
+.snd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:6px 10px}
+.snd-dot{width:11px;height:11px;border-radius:50%;background:var(--line);flex:none}
+.snd-dot.on{background:var(--teal);box-shadow:0 0 0 3px var(--teal-soft)}
+.snd-dot.al{background:var(--red);box-shadow:0 0 0 3px var(--red-soft)}
+.snd-lab{flex:1;min-width:10em;font-size:13px;color:var(--muted);line-height:1.4}
+.snd-lab b{color:var(--ink)}
+.snd button[aria-pressed="true"]{background:var(--teal);border-color:var(--teal);color:var(--on-accent)}
+.logbox{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:6px 10px}
+.loglab{font-size:11px;color:var(--muted)}
+.logbox .log{border-top:0;padding-top:2px;max-height:4.6em;font-size:12.5px;line-height:1.5}
+.flowhead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.flowhead h3{margin:0;font-size:15px}
+.legend{font-size:11.5px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.lg{display:inline-block;width:11px;height:11px;border-radius:3px;border:2px solid var(--line);vertical-align:-1px;margin-right:4px}
+.lg.cur{border-color:var(--red);background:var(--red-soft)}
+.lg.nx{border:2px dashed var(--teal)}
+.lg.cp{border-color:var(--red-soft);background:var(--red-soft);border-left:3px solid var(--red)}
+.flow2{display:flex;flex-direction:column}
+.nd,.donesum{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:start;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);transition:background .2s,border-color .2s}
+.nd .b,.donesum .b{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-mono);font-weight:700;font-size:11px;background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.nd .bd{min-width:0}
+.nd .tt{font-weight:700;font-size:14px;line-height:1.45}
+.nd .dt{font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:1px}
+.nd .loop{color:var(--teal);font-weight:700}
+.nd.dec .b{border-radius:5px;background:var(--amber-soft);color:var(--amber);border-color:var(--amber)}
+.nd.done{opacity:.5}
+.nd.done .b,.donesum .b{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.donesum{opacity:.55;font-size:12.5px;border-style:dashed;align-items:center}
+.donesum span:last-child{min-width:0}
+.nd.nx{border:2px dashed var(--teal)}
+.nd.cur{border:2px solid var(--red);box-shadow:0 0 0 3px var(--red-soft)}
+.nd.cur .b{background:var(--red);color:var(--on-accent);border-color:var(--red)}
+.nd.cur .dt{color:var(--ink)}
+.nd.peek{background:var(--amber-soft);opacity:1}
+.cn.ar{height:10px;margin-left:20px;border-left:2px solid var(--line)}
+.cn.cpr{margin:3px 0 3px 19px;padding:3px 10px 3px 12px;border-left:3px solid var(--red-soft);display:flex;flex-wrap:wrap;gap:0 8px;align-items:baseline;font-size:12.5px;color:var(--muted);line-height:1.5}
+.cn.cpr .cl{font-weight:700;color:var(--red);font-size:12px;white-space:nowrap}
+.cn.cpr .cx{min-width:0}
+.cn.cpr.on{border-left-color:var(--red);background:var(--red-soft);border-radius:0 8px 8px 0;color:var(--ink);padding-block:6px}
+.cn.cpr.on .cl::before{content:"● ";animation:beat 1s infinite}
+.cn.cpr .ct{font-family:var(--f-mono);font-weight:700;color:var(--red);font-size:12.5px;font-variant-numeric:tabular-nums}
+.cn.cpr.due .ct{color:var(--amber)}
+.cn.cpr .pg{order:9;flex-basis:100%;height:4px;background:var(--surface);border-radius:2px;overflow:hidden;display:block;margin-top:4px}
+.cn.cpr .pg i{display:block;height:100%;width:0;background:var(--red);transition:width .4s linear}
+.cn.cpr.due .pg i{background:var(--amber)}
+.clock{border:1px solid var(--line);border-radius:8px;padding:10px;text-align:center}
+.clock .lab{font-size:12px;color:var(--muted)}
+.clock .val{font-family:var(--f-mono);font-size:clamp(20px,6vw,30px);font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+.clock.alert{border-color:var(--red);background:var(--red-soft)}
+.clock.alert .val{color:var(--red)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.btn{font:inherit;font-size:14px;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:9px 14px;border-radius:8px;cursor:pointer}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--red);border-color:var(--red);color:var(--on-accent)}
+.btn.teal{background:var(--teal);border-color:var(--teal);color:var(--on-accent)}
+.log{font-family:var(--f-mono);font-size:13px;max-height:180px;overflow-y:auto;border-top:1px solid var(--line);padding-top:8px;display:flex;flex-direction:column;gap:2px}
+.log:empty::before{content:"按下任何動作後開始計時，紀錄會依時間出現在這裡";color:var(--muted);font-family:var(--f-body)}
+.hint{font-size:13px;color:var(--muted)}
+/* algorithm stepper */
+.flow{display:flex;flex-direction:column;gap:0}
+.step{display:grid;grid-template-columns:34px 1fr;gap:12px;padding:12px 0;border-top:1px dashed var(--line)}
+.step:first-child{border-top:0}
+.step .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-mono);font-weight:700;font-size:13px;background:var(--ink);color:var(--surface)}
+.step.s .n{background:var(--red);color:#fff}
+.step.t .n{background:var(--teal);color:#fff}
+.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px}
+.lane{border-radius:10px;padding:14px;border:1px solid var(--line);background:var(--surface);min-width:0}
+.lane.s{border-top:4px solid var(--red)}
+.lane.t{border-top:4px solid var(--teal)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+.tbl{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.04em;color:var(--muted);font-weight:700;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:700;white-space:nowrap}
+.ht{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:8px}
+.ht div{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.ht b{font-family:var(--f-mono);color:var(--red);margin-right:6px}
+.ht small{display:block;color:var(--muted);font-size:12.5px;line-height:1.5;margin-top:2px}
+/* quiz */
+.q{display:flex;flex-direction:column;gap:10px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{font:inherit;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 12px;border-radius:8px;cursor:pointer}
+.opt:hover:not(:disabled){border-color:var(--ink)}
+.opt.right{border-color:var(--teal);background:var(--teal-soft)}
+.opt.wrong{border-color:var(--red);background:var(--red-soft)}
+.opt:disabled{cursor:default}
+.explain{font-size:14px;background:var(--bg);border-radius:8px;padding:10px 12px}
+.score{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+.foot{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+.foot a{color:var(--teal)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* H's & T's guided differential — reuses the crash-cart tokens above */
+main.wrap:has(#p-ht:not([hidden])){max-width:1080px}
+#dx{display:flex;flex-direction:column;gap:14px}
+.dx-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.dlab{font-size:11.5px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-bottom:2px}
+.stepper{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--line);padding-bottom:8px}
+.stepper::-webkit-scrollbar{display:none}
+.stepper button{flex:none;display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:13.5px;font-weight:500;border:0;background:transparent;color:var(--muted);padding:5px 10px 5px 5px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.stepper .sn{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-mono);font-size:11.5px;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--muted)}
+.stepper button[aria-current="step"]{background:var(--ink);color:var(--surface);font-weight:700}
+.stepper button[aria-current="step"] .sn{background:var(--red);border-color:var(--red);color:var(--on-accent)}
+.stepper .cnt{font-family:var(--f-mono);font-size:11px;font-weight:700;background:var(--teal-soft);color:var(--teal);border-radius:999px;padding:0 6px}
+.dxgrid{display:grid;gap:14px;align-items:start}
+.dxmain{display:flex;flex-direction:column;gap:12px;min-width:0}
+.rank{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}
+@media (min-width:880px){
+  .dxgrid{grid-template-columns:minmax(0,7fr) minmax(0,5fr)}
+  .rank{position:sticky;top:calc(env(safe-area-inset-top,0px) + 62px);max-height:calc(100vh - 80px);overflow-y:auto}
+}
+.lead{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
+.lead .ll{font-size:11.5px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-right:2px}
+.lc{font-weight:700;padding:2px 9px;border-radius:999px;background:var(--teal-soft);color:var(--teal)}
+.lc.hi{background:var(--red-soft);color:var(--red)}
+.lc.md{background:var(--amber-soft);color:var(--amber)}
+.sq h3{font-size:18px;margin:2px 0 0}
+.coach{background:var(--teal-soft);border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.65}
+.chips{display:flex;flex-direction:column;gap:6px}
+.chip{display:grid;grid-template-columns:20px minmax(0,1fr);gap:10px;align-items:start;text-align:left;font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:9px 12px;border-radius:8px;cursor:pointer}
+.chip:hover{border-color:var(--ink)}
+.chip .ck{width:18px;height:18px;border-radius:5px;border:2px solid var(--line);margin-top:3px;display:grid;place-items:center;font-size:12px;line-height:1;color:var(--on-accent)}
+.chip .t{font-weight:700;font-size:14.5px;line-height:1.45}
+.chip small{display:block;color:var(--muted);font-size:12.5px;line-height:1.5}
+.chip[aria-pressed="true"]{border-color:var(--teal);background:var(--teal-soft)}
+.chip[aria-pressed="true"] .ck{background:var(--teal);border-color:var(--teal)}
+.chip[aria-pressed="true"] .ck::after{content:"✓"}
+.why{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface);font-size:14px;display:flex;flex-direction:column;gap:6px}
+.why .wt{font-weight:700}
+.efs{display:flex;flex-wrap:wrap;gap:4px}
+.ef{font-family:var(--f-mono);font-size:12px;font-weight:700;padding:1px 7px;border-radius:4px;background:var(--bg);color:var(--muted)}
+.ef.up{background:var(--red-soft);color:var(--red)}
+.ef.dn{background:var(--teal-soft);color:var(--teal)}
+.navb{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.btn:disabled{opacity:.4;cursor:default}
+.rkhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.rkhead h3{margin:0;font-size:15px}
+.rk{border-bottom:1px solid var(--line)}
+.rk:last-child{border-bottom:0}
+.rkb{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;width:100%;text-align:left;font:inherit;background:transparent;border:0;color:var(--ink);padding:8px 2px;cursor:pointer}
+.rkb .nm{font-size:14px;font-weight:700;min-width:0}
+.lt{font-family:var(--f-mono);color:var(--red);margin-right:6px}
+.zh{font-weight:500;color:var(--muted);font-size:12.5px}
+.rkb .pv{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2;white-space:nowrap}
+.rkb .pc{font-family:var(--f-mono);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
+.rkb .rg{font-family:var(--f-mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.rkb .bar{grid-column:1/-1;position:relative;height:6px;border-radius:3px;background:var(--bg);overflow:hidden;color:var(--teal)}
+.rkb .bar .band{position:absolute;top:0;bottom:0;background:currentColor;opacity:.22}
+.rkb .bar .pt{position:absolute;left:0;top:0;bottom:0;background:currentColor;transition:width .3s}
+.rk.hi .bar,.rk.hi .pc{color:var(--red)}
+.rk.md .bar,.rk.md .pc{color:var(--amber)}
+.rk.lo .bar,.rk.lo .pc{color:var(--teal)}
+.rk.none .bar{color:var(--muted)}
+.rk.none .nm,.rk.none .pc{opacity:.6}
+.setrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.setrow .ll{font-size:11.5px;font-weight:700;letter-spacing:.06em;color:var(--muted)}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--surface)}
+.seg button{font:inherit;font-size:13.5px;font-weight:700;border:0;background:transparent;color:var(--muted);padding:6px 13px;border-radius:999px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.gt{font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap}
+.gt.L{color:var(--teal)}
+.gt.U{color:var(--amber)}
+details.method{border-top:1px solid var(--line);padding-top:12px}
+details.method summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--teal)}
+.mbody{display:flex;flex-direction:column;gap:8px;margin-top:10px;font-size:14px;max-width:72ch}
+.refs{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.refs a{color:var(--teal)}
+.rk.open .rkb .nm{opacity:1}
+.rkd{padding:2px 2px 12px;display:flex;flex-direction:column;gap:8px}
+.dsec p{margin:0;font-size:14px;line-height:1.65}
+.dsec.warn .dlab{color:var(--amber)}
+.evl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:13.5px}
+.evl li{display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:6px}
+.ev{font-family:var(--f-mono);font-size:12px;font-weight:700;text-align:center;border-radius:4px;padding:1px 0;background:var(--bg);color:var(--muted);align-self:start}
+.ev.up{background:var(--red-soft);color:var(--red)}
+.ev.dn,.ev.ok{background:var(--teal-soft);color:var(--teal)}
+.dcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.dcard.hi{border-color:var(--red)}
+.dch{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dch h3{margin:0;flex:1;min-width:0}
+.rkn{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-mono);font-weight:700;font-size:12px;background:var(--ink);color:var(--surface);flex:none}
+.dcard .sc{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.htgo{align-self:flex-start}
+.htbanner{background:var(--red);color:var(--on-accent)}
+.htbanner .wrap{padding-block:8px}
+.hb{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;width:100%;font:inherit;text-align:left;background:transparent;border:0;color:inherit;cursor:pointer;padding:2px 0}
+.hb-k{font-family:var(--f-mono);font-weight:700;font-size:15px;border:1.5px solid currentColor;border-radius:6px;padding:3px 8px;white-space:nowrap}
+.hb-t{display:flex;flex-direction:column;line-height:1.35;min-width:0}
+.hb-t b{font-size:15px}
+.hb-t span{font-size:12.5px;opacity:.9}
+.hb-go{font-weight:700;font-size:14px;white-space:nowrap;background:var(--on-accent);color:var(--red);border-radius:999px;padding:5px 12px}
+.hb:focus-visible{outline:2px solid var(--on-accent);outline-offset:3px}
+body.on-ht .htbanner{display:none}
+body.compact .htbanner .wrap{max-width:1180px}
+@media (max-width:420px){.hb-t span{display:none}}
+</style>
+<style id="hub-base">
+/* 臨床輔助決策工具 · 共用基底（每個工具都內嵌這一份）
+   字體：系統字（iPhone = 蘋方，Android = Noto CJK），不下載網路字型，開啟更快
+   色票：病房冷灰底 + 各工具辨識色；動畫：同一組曲線與時長 */
+:root{
+  --hub-bg:#EEF1F2; --hub-surface:#FFFFFF; --hub-surface2:#E6EAEC; --hub-ink:#152025; --hub-ink2:#4A575E; --hub-ink3:#6E7A81; --hub-line:#D3DADD;
+  --hub-bad:#B3261E; --hub-bad-soft:#FBE6E4; --hub-warn:#9A5B00; --hub-warn-soft:#FBEFD9; --hub-ok:#1D7A3E; --hub-ok-soft:#E1F2E6;
+  --hub-code:#C0262F; --hub-code-soft:#FBE4E5; --hub-pilot:#A35500; --hub-pilot-soft:#F6E7D2;
+  --hub-consult:#2C5C8C; --hub-consult-soft:#DFE8F2; --hub-meds:#0D6870; --hub-meds-soft:#DDEFF0;
+  --hub-labs:#5B4699; --hub-labs-soft:#EBE6F6; --hub-todo:#B4573A; --hub-todo-soft:#F5E3DA;
+  --hub-p1:#B3322B; --hub-p2:#C27416; --hub-p3:#4F6B8A; --hub-p4:#8A867B;
+  --hub-sans:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",system-ui,sans-serif;
+  --hub-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Roboto Mono",monospace;
+  --hub-ease:cubic-bezier(.2,.8,.2,1); --hub-dur:.18s;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --hub-bg:#0E1316; --hub-surface:#161D21; --hub-surface2:#1E272C; --hub-ink:#E4E9EB; --hub-ink2:#A2AEB4; --hub-ink3:#7E8B93; --hub-line:#2A353B;
+  --hub-bad:#FF7A70; --hub-bad-soft:#3A1B19; --hub-warn:#F0B04A; --hub-warn-soft:#352812; --hub-ok:#6CCF8E; --hub-ok-soft:#15301F;
+  --hub-code:#FF6B70; --hub-code-soft:#3A1A1D; --hub-pilot:#F0A23A; --hub-pilot-soft:#3A2911;
+  --hub-consult:#80B1E0; --hub-consult-soft:#162636; --hub-meds:#5CC2C8; --hub-meds-soft:#16302F;
+  --hub-labs:#B4A2EC; --hub-labs-soft:#2A2440; --hub-todo:#E08A68; --hub-todo-soft:#3A241B; --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#A6A297; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --hub-bg:#0E1316; --hub-surface:#161D21; --hub-surface2:#1E272C; --hub-ink:#E4E9EB; --hub-ink2:#A2AEB4; --hub-ink3:#7E8B93; --hub-line:#2A353B;
+  --hub-bad:#FF7A70; --hub-bad-soft:#3A1B19; --hub-warn:#F0B04A; --hub-warn-soft:#352812; --hub-ok:#6CCF8E; --hub-ok-soft:#15301F;
+  --hub-code:#FF6B70; --hub-code-soft:#3A1A1D; --hub-pilot:#F0A23A; --hub-pilot-soft:#3A2911;
+  --hub-consult:#80B1E0; --hub-consult-soft:#162636; --hub-meds:#5CC2C8; --hub-meds-soft:#16302F;
+  --hub-labs:#B4A2EC; --hub-labs-soft:#2A2440; --hub-todo:#E08A68; --hub-todo-soft:#3A241B; --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#A6A297; color-scheme:dark}
+
+/* 觸控：點擊不延遲、不閃灰框、iPhone 不自動放大字 */
+html{-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{-webkit-font-smoothing:antialiased;text-rendering:optimizeSpeed}
+::selection{background:color-mix(in srgb,var(--hub-accent,var(--hub-ink)) 22%,transparent)}
+/* iPhone 點進字小於 16px 的輸入框會自動放大、而且不會縮回來：觸控裝置上所有輸入框一律 ≥16px */
+@media (pointer:coarse){input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),textarea,select{font-size:max(16px,1em)!important}}
+/* 共用動畫：按下去微縮、顏色淡入淡出（低權重，工具自己的設定優先） */
+:where(button,.btn,.chip,.card,summary,[role="tab"],a){transition:background-color var(--hub-dur) var(--hub-ease),border-color var(--hub-dur) var(--hub-ease),color var(--hub-dur) var(--hub-ease),box-shadow var(--hub-dur) var(--hub-ease),opacity var(--hub-dur) var(--hub-ease),transform .12s var(--hub-ease)}
+:where(button,.btn,.chip,[role="tab"]):active:not(:disabled){transform:scale(.97)}
+@keyframes hub-in{from{opacity:0;transform:translateY(6px)}}
+@keyframes hub-pop{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
+.hub-toast{position:fixed;left:16px;right:16px;margin:0 auto;width:fit-content;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;max-width:min(520px,calc(100% - 32px));box-sizing:border-box;display:flex;gap:10px;align-items:center;background:var(--hub-ink);color:var(--hub-bg);font:500 14px/1.4 var(--hub-sans);padding:9px 14px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:hub-in .22s var(--hub-ease)}
+/* 待辦設定按鈕：跟待辦表的快速新增同一套（立即／緊急／待辦／有空，點緊急或待辦展開倒數） */
+.hp{display:flex;flex-direction:column;gap:8px;min-width:0}
+.hp-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.hp-pr{--pc:var(--hub-p3);display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:46px;padding:4px;border:1px solid color-mix(in srgb,var(--pc) 45%,var(--hub-line));border-radius:999px;background:transparent;color:var(--pc);font:500 15px/1.2 var(--hub-sans);cursor:pointer}
+.hp-pr[data-p="1"]{--pc:var(--hub-p1)}.hp-pr[data-p="2"]{--pc:var(--hub-p2)}.hp-pr[data-p="4"]{--pc:var(--hub-p4)}
+.hp-pr small{font-size:12px;font-variant-numeric:tabular-nums}
+.hp-pr small:empty{display:none}
+.hp-pr[aria-pressed="true"]{background:var(--pc);border-color:var(--pc);color:var(--hub-surface)}
+.hp-tm{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px}
+.hp-tm::-webkit-scrollbar{display:none}
+.hp-c{flex:none;min-height:40px;border:1px solid var(--hub-line);background:transparent;border-radius:999px;padding:6px 14px;font:15px/1 var(--hub-sans);color:var(--hub-ink);white-space:nowrap;cursor:pointer;font-variant-numeric:tabular-nums}
+.hp-c[aria-pressed="true"]{background:var(--hub-ink);border-color:var(--hub-ink);color:var(--hub-bg)}
+.hp input{flex:none;font:16px var(--hub-sans);min-height:40px;padding:5px 10px;border-radius:999px;border:1px solid var(--hub-line);background:var(--hub-bg);color:var(--hub-ink);width:80px;text-align:center}
+.hp-dt{display:flex;gap:6px}
+.hp-dt input[type="date"]{flex:1 1 9.5em;width:auto;max-width:12em}
+.hp-dt input[type="time"]{width:7em}
+/* 右滑加入待辦 */
+[data-swipe]{position:relative;touch-action:pan-y}
+[data-swipe].sw-drag{transition:none!important}
+[data-swipe].sw-back{transition:transform .22s var(--hub-ease)!important}
+[data-swipe]::before{content:"＋ 待辦";position:absolute;top:0;bottom:0;right:100%;width:var(--sw,0px);display:flex;align-items:center;justify-content:flex-end;padding-right:12px;box-sizing:border-box;background:var(--hub-todo);color:var(--hub-surface);font:700 14px/1 var(--hub-sans);white-space:nowrap;overflow:hidden;opacity:var(--swo,0);pointer-events:none}
+[data-swipe].sw-arm::before{content:"放開加入"}
+body.sw-on{-webkit-user-select:none;user-select:none}
+@keyframes hub-flash{from{background-color:var(--hub-todo-soft);box-shadow:inset 4px 0 0 var(--hub-todo)}}
+.sw-done{animation:hub-flash .9s var(--hub-ease)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+
+html:root:root{--bg:var(--hub-bg);--surface:var(--hub-surface);--line:var(--hub-line);--ink:var(--hub-ink);--muted:var(--hub-ink2);--red:var(--hub-code);--red-soft:var(--hub-code-soft);--hub-accent:var(--hub-code);--f-body:var(--hub-sans);--f-mono:var(--hub-mono)}
+</style>
+
+
+<div class="wrap"><header class="top">
+  <div class="eyebrow">AHA 2025 Guidelines · Adult ALS</div>
+  <h1>ACLS 輔助工具</h1>
+  <p class="lede">急救現場用的計時、鑑別與速查。依 2025 AHA CPR &amp; ECC Guidelines（Circulation 2025;152 suppl 2）整理。整體架構沿用 2020，改的是細節：給藥途徑、電擊策略、心律轉換能量、ROSC 後照護。紫色 <span class="tag new">NEW</span> 標示 2025 新增或修訂。</p>
+</header></div>
+
+<div class="htbanner"><div class="wrap"><button class="hb" data-goto="ht"><span class="hb-k">H’s &amp; T’s</span><span class="hb-t"><b>可逆原因鑑別</b><span>點出看到的線索，依情境與概似比算出各原因機率</span></span><span class="hb-go">開始 →</span></button></div></div>
+
+<nav class="tabs" aria-label="章節"><div class="wrap"><div class="row" role="tablist" id="tabs">
+  <button role="tab" data-t="timer" aria-selected="true">Code 計時器</button>
+  <button role="tab" data-t="ht">H’s &amp; T’s</button>
+  <button role="tab" data-t="arrest">心跳停止</button>
+  <button role="tab" data-t="brady">心搏過緩</button>
+  <button role="tab" data-t="tachy">心搏過速</button>
+  <button role="tab" data-t="rosc">ROSC 後</button>
+  <button role="tab" data-t="drugs">藥物速查</button>
+  <button role="tab" data-t="quiz">自我測驗</button>
+  <button role="tab" data-t="new">2025 改了什麼</button>
+</div></div></nav>
+
+<main class="wrap">
+
+<!-- TIMER -->
+<section class="panel" id="p-timer">
+  <div class="scrow">
+    <div class="scen" id="scen" role="radiogroup" aria-label="選擇情境"></div>
+    <button class="btn sm" id="b-reset">重設</button>
+  </div>
+  <div class="codegrid">
+    <div class="colL">
+      <div id="phase"></div>
+      <div class="nextbar" id="nextbar"></div>
+      <div class="clocks" id="clocks"></div>
+      <div id="extra"></div>
+      <div class="snd" id="snd">
+        <span class="snd-dot" id="snd-dot" aria-hidden="true"></span>
+        <span class="snd-lab" id="snd-lab"><b>壓胸節拍</b> · 110/min</span>
+        <button class="btn sm" id="snd-cpr" aria-pressed="false">🔈 開啟節拍</button>
+      </div>
+      <div class="btns" id="actions"></div>
+      <div class="logbox"><div class="loglab">紀錄（最新在上）</div><div class="log" id="log" aria-live="polite"></div></div>
+    </div>
+    <div class="colR">
+      <div class="flowhead"><h3 id="flow-title">流程</h3><span class="legend"><span><i class="lg cur"></i>現在</span><span><i class="lg nx"></i>下一步</span><span><i class="lg cp"></i>CPR</span></span></div>
+      <div class="flow2" id="fc"></div>
+    </div>
+  </div>
+</section>
+
+<!-- NEW -->
+<section class="panel" id="p-new" hidden>
+  <h2>2025 改了什麼</h2>
+  <div class="card">
+    <div class="change"><div class="k">給藥途徑</div><div><b>IV 優先，IV 打不上才用 IO。</b>急救中不建議放 central line；經氣管內管給藥已從 ACLS 移除（吸收不可靠）。<div class="old">2020：IV 優先，IO 可接受；ET 給藥仍列為備案</div></div></div>
+    <div class="change"><div class="k">持續性 VF</div><div><b>新定義「persistent VF」：電擊 ≥3 次仍 VF/pVT。</b>可考慮改貼片向量（前-側 → 前-後）或雙重連續電擊（DSED），均為 Class IIb，前提是基本功都做到位。</div></div>
+    <div class="change"><div class="k">不穩定 AF/AFL</div><div><b>同步整流起始能量提高到 ≥200 J。</b>低能量首擊成功率較低、且較易惡化為 VF。<div class="old">2020：AF 起始 120–200 J</div></div></div>
+    <div class="change"><div class="k">穩定寬 QRS</div><div><b>Sotalol 從建議藥物中移除。</b>無專家可會診時以 procainamide 或 amiodarone 為主。</div></div>
+    <div class="change"><div class="k">POCUS</div><div>只在不中斷壓胸、不延遲電擊、由有經驗者快速操作時使用，目的是找可逆原因（tamponade、tension PTX、大面積 PE、低血容）。不可單獨作為終止急救依據。</div></div>
+    <div class="change"><div class="k">體溫</div><div><b>改以「預防發燒」為核心，目標 32–37.5 °C。</b><div class="old">2020：TTM 32–36 °C</div></div></div>
+    <div class="change"><div class="k">ROSC 氧合</div><div>明確避免低血氧與高血氧，SpO₂ 目標約 <span class="num">90–98%</span>；MAP ≥ <span class="num">65</span> mmHg，並看 lactate 等灌流指標。</div></div>
+    <div class="change"><div class="k">心導管</div><div>早期冠狀動脈攝影改為<b>選擇性</b>：懷疑缺血病因時才做，不是每位都做。</div></div>
+    <div class="change"><div class="k">肌躍症</div><div>沒有 EEG 對應放電的 myoclonus，不建議治療壓抑。</div></div>
+    <div class="change"><div class="k">鴉片類</div><div>疑似 opioid overdose 也要<b>立刻開始 CPR</b>，不要因為準備給 naloxone 而延遲。</div></div>
+    <div class="change"><div class="k">不建議常規</div><div>機械式 CPR 不建議常規使用（運送中等特殊情境可考慮）；head-up CPR 僅限研究；心跳停止時電燒刺激（pacing）無效。Bicarbonate、calcium、magnesium、steroid 沒有特定適應症時不常規給。</div></div>
+    <div class="change"><div class="k">BLS 呼應</div><div>成人 CPR 重新強調壓胸＋人工呼吸（翻轉疫情期間偏向 compression-only 的做法）；肥胖病人用標準技巧。</div></div>
+  </div>
+</section>
+
+<!-- ARREST -->
+<section class="panel" id="p-arrest" hidden>
+  <h2>成人心跳停止演算法</h2>
+  <div class="flow card">
+    <div class="step"><div class="n">1</div><div><h3>開始 CPR</h3>給氧、接上 monitor / defibrillator，確認心律。</div></div>
+  </div>
+  <div class="split">
+    <div class="lane s">
+      <h3><span class="tag shock">可電擊</span>VF / pVT</h3>
+      <div class="flow">
+        <div class="step s"><div class="n">2</div><div><b>電擊</b>，立即 CPR 2 分鐘；建立 IV（不行再 IO）</div></div>
+        <div class="step s"><div class="n">3</div><div>仍可電擊 → <b>電擊</b> → CPR 2 分鐘＋<b>Epi 1 mg</b>，之後每 3–5 分鐘；考慮高級呼吸道與 ETCO₂</div></div>
+        <div class="step s"><div class="n">4</div><div>仍可電擊 → <b>電擊</b> → CPR 2 分鐘＋<b>Amiodarone 300 mg</b> 或 <b>Lidocaine 1–1.5 mg/kg</b>；處理可逆原因</div></div>
+        <div class="step s"><div class="n">5</div><div><span class="tag new">NEW</span>≥3 次電擊仍 VF = persistent VF：確認 CPR 品質，可考慮改貼片向量（AP）或 DSED（IIb）</div></div>
+      </div>
+    </div>
+    <div class="lane t">
+      <h3><span class="tag ns">不可電擊</span>Asystole / PEA</h3>
+      <div class="flow">
+        <div class="step t"><div class="n">2</div><div><b>Epi 1 mg 越快越好</b>，之後每 3–5 分鐘；IV 打不上立刻改 IO，不要拖延給藥</div></div>
+        <div class="step t"><div class="n">3</div><div>CPR 2 分鐘；考慮高級呼吸道與 ETCO₂</div></div>
+        <div class="step t"><div class="n">4</div><div>每 2 分鐘檢查心律；變可電擊就走左邊</div></div>
+        <div class="step t"><div class="n">5</div><div>持續找 H's &amp; T's；POCUS 只在不中斷壓胸時使用</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>高品質 CPR</h3>
+    <ul class="tight">
+      <li>速率 <span class="num">100–120</span>/min，深度 <span class="num">5–6 cm</span>，每下完全回彈</li>
+      <li>盡量減少中斷；電擊後立刻壓胸，不先摸脈搏；不疊加電擊</li>
+      <li>無高級呼吸道 <span class="num">30:2</span>；有高級呼吸道每 <span class="num">6</span> 秒 1 口（<span class="num">10</span>/min）持續壓胸</li>
+      <li>避免過度通氣；以 ETCO₂ 監測 CPR 品質（不可單獨作為終止急救依據）</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>電擊能量</h3>
+    <ul class="tight">
+      <li>雙相波：依廠商建議（多為 <span class="num">120–200 J</span>）；不清楚就用最大值；後續相同或更高</li>
+      <li>單相波：<span class="num">360 J</span></li>
+    </ul>
+  </div>
+  <h2 style="font-size:18px">可逆原因 H's &amp; T's</h2>
+  <div class="ht">
+    <div><b>H</b>Hypovolemia<small>輸液、止血、輸血</small></div>
+    <div><b>H</b>Hypoxia<small>確認呼吸道、給氧</small></div>
+    <div><b>H</b>Hydrogen ion（acidosis）<small>改善通氣；bicarbonate 僅特定適應症</small></div>
+    <div><b>H</b>Hypo/Hyperkalemia<small>高血鉀：calcium、insulin+glucose、bicarbonate</small></div>
+    <div><b>H</b>Hypothermia<small>主動復溫</small></div>
+    <div><b>T</b>Tension pneumothorax<small>針刺減壓 / 胸管</small></div>
+    <div><b>T</b>Tamponade<small>心包膜穿刺</small></div>
+    <div><b>T</b>Toxins<small>解毒劑；opioid 先 CPR 再 naloxone</small></div>
+    <div><b>T</b>Thrombosis, pulmonary<small>考慮 thrombolysis</small></div>
+    <div><b>T</b>Thrombosis, coronary<small>ROSC 後評估 PCI</small></div>
+  </div>
+  <button class="btn teal htgo" data-goto="ht">一步步鑑別 H’s &amp; T’s →</button>
+</section>
+
+<!-- H's & T's -->
+<section class="panel" id="p-ht" hidden>
+  <div id="dx"></div>
+</section>
+
+<!-- BRADY -->
+<section class="panel" id="p-brady" hidden>
+  <h2>成人心搏過緩（有脈搏）</h2>
+  <p class="hint">心律通常 &lt;50/min。治療看症狀與灌流，不看數字本身。</p>
+  <div class="flow card">
+    <div class="step"><div class="n">1</div><div><h3>評估與支持</h3>ABC、給氧（需要時）、monitor、血壓、SpO₂、IV、12-lead ECG（不延遲治療）。找原因。</div></div>
+    <div class="step"><div class="n">2</div><div><h3>是否造成心肺功能受損？</h3>低血壓、意識改變、休克徵象、缺血性胸痛、急性心衰竭。<br>沒有 → 監測、處理原因、會診。</div></div>
+    <div class="step s"><div class="n">3</div><div><h3>Atropine</h3><span class="num">1 mg</span> IV bolus，每 3–5 分鐘重複，總量上限 <span class="num">3 mg</span>。</div></div>
+    <div class="step s"><div class="n">4</div><div><h3>Atropine 無效（或預期無效）</h3>經皮節律器（TCP），和／或<br>Dopamine <span class="num">5–20 mcg/kg/min</span> 或 Epinephrine <span class="num">2–10 mcg/min</span>，依反應調整。</div></div>
+    <div class="step"><div class="n">5</div><div><h3>升級</h3>專家會診、經靜脈節律器（尤其高度房室傳導阻滯）。</div></div>
+  </div>
+  <div class="card"><h3><span class="tag warn">注意</span>Atropine 不太會有效的情況</h3>心臟移植病人（去神經支配）、Mobitz II、三度 AV block 合併寬 QRS escape：直接準備 pacing。</div>
+</section>
+
+<!-- TACHY -->
+<section class="panel" id="p-tachy" hidden>
+  <h2>成人心搏過速（有脈搏）</h2>
+  <p class="hint">心跳通常 ≥150/min。先判斷是否「因為快」而不穩定。</p>
+  <div class="split">
+    <div class="lane s">
+      <h3><span class="tag shock">不穩定</span>立即同步整流</h3>
+      <p class="hint">低血壓、意識改變、休克、缺血性胸痛、急性心衰竭</p>
+      <ul class="tight" style="margin-top:8px">
+        <li>清醒病人先鎮靜（不延遲）</li>
+        <li><span class="tag new">NEW</span>AF / AFL 起始 <span class="num">≥200 J</span>（雙相）</li>
+        <li>窄而規則（SVT）：依廠商建議，未成功逐步加量</li>
+        <li>寬而規則（單形 VT）：依廠商建議，逐步加量</li>
+        <li>寬而不規則（多形 VT）：<b>不同步</b>，用去顫能量</li>
+        <li>窄而規則可先試 adenosine（不延遲整流）</li>
+      </ul>
+    </div>
+    <div class="lane t">
+      <h3><span class="tag ns">穩定</span>看 QRS 寬度</h3>
+      <div class="flow">
+        <div class="step t"><div class="n">窄</div><div>規則：迷走神經刺激 → Adenosine <span class="num">6 mg</span> 快推＋沖水，無效 <span class="num">12 mg</span>。<br>不規則（AF）：β-blocker 或 CCB 控速。</div></div>
+        <div class="step t"><div class="n">寬</div><div>規則單形且可能是 SVT：可試 adenosine。<br>Procainamide <span class="num">20–50 mg/min</span>（上限 17 mg/kg）或 Amiodarone <span class="num">150 mg</span>/10 min。<br><span class="tag new">NEW</span>Sotalol 已移除。<br>不規則寬 QRS：不給 adenosine，會診。</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="card"><h3>Procainamide 停藥時機</h3>心律轉換、低血壓、QRS 增寬 &gt;50%、達總量 17 mg/kg。延長 QT 或心衰竭避免使用。</div>
+</section>
+
+<!-- ROSC -->
+<section class="panel" id="p-rosc" hidden>
+  <h2>ROSC 後照護</h2>
+  <p class="hint">2025 把 ROSC 後視為急救的延續，採 ICU 等級的流程化照護。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>項目</th><th>目標 / 做法</th></tr></thead>
+    <tbody>
+      <tr><td>呼吸道</td><td>早期放置氣管內管；用波形 ETCO₂ 確認位置</td></tr>
+      <tr><td>氧合</td><td>SpO₂ <span class="num">90–98%</span>，避免低血氧與高血氧 <span class="tag new">NEW</span></td></tr>
+      <tr><td>通氣</td><td>PaCO₂ <span class="num">35–45</span> mmHg</td></tr>
+      <tr><td>血壓</td><td>MAP ≥ <span class="num">65</span> mmHg；看 lactate 清除、尿量；需要時考慮機械循環輔助</td></tr>
+      <tr><td>12-lead ECG</td><td>盡快做；STEMI 或懷疑缺血病因 → 緊急心導管（選擇性）<span class="tag new">NEW</span></td></tr>
+      <tr><td>體溫</td><td>對指令無反應者主動控溫 <span class="num">32–37.5 °C</span>，重點在預防發燒 <span class="tag new">NEW</span></td></tr>
+      <tr><td>神經</td><td>EEG 監測癲癇；無 EEG 對應的 myoclonus 不治療 <span class="tag new">NEW</span></td></tr>
+      <tr><td>預後判斷</td><td>至少 ROSC 後 <span class="num">72</span> 小時，多模式（臨床、影像、電生理、生物標記）</td></tr>
+      <tr><td>POCUS</td><td>ROSC 後很有用：心功能、容積狀態、休克原因</td></tr>
+      <tr><td>其他</td><td>血糖、電解質、找出並處理病因、康復與存活者照護</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- DRUGS -->
+<section class="panel" id="p-drugs" hidden>
+  <h2>藥物速查</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>藥物</th><th>適應症</th><th>劑量</th></tr></thead>
+    <tbody>
+      <tr><td>Epinephrine</td><td>心跳停止</td><td><span class="num">1 mg</span> IV/IO 每 3–5 min；不可電擊越快越好，可電擊在首次電擊無效後</td></tr>
+      <tr><td>Amiodarone</td><td>難治 VF/pVT</td><td>首劑 <span class="num">300 mg</span>，第二劑 <span class="num">150 mg</span></td></tr>
+      <tr><td>Amiodarone</td><td>穩定寬 QRS</td><td><span class="num">150 mg</span> / 10 min，需要時重複；之後 1 mg/min × 6 h</td></tr>
+      <tr><td>Lidocaine</td><td>難治 VF/pVT</td><td><span class="num">1–1.5 mg/kg</span>，之後 <span class="num">0.5–0.75 mg/kg</span></td></tr>
+      <tr><td>Atropine</td><td>症狀性心搏過緩</td><td><span class="num">1 mg</span> 每 3–5 min，上限 <span class="num">3 mg</span></td></tr>
+      <tr><td>Dopamine</td><td>心搏過緩</td><td><span class="num">5–20 mcg/kg/min</span></td></tr>
+      <tr><td>Epinephrine 點滴</td><td>心搏過緩 / 低血壓</td><td><span class="num">2–10 mcg/min</span></td></tr>
+      <tr><td>Adenosine</td><td>穩定窄而規則</td><td><span class="num">6 mg</span> 快推，<span class="num">12 mg</span> 第二劑</td></tr>
+      <tr><td>Procainamide</td><td>穩定寬 QRS</td><td><span class="num">20–50 mg/min</span>，上限 17 mg/kg</td></tr>
+    </tbody>
+  </table></div>
+  <div class="card"><h3><span class="tag warn">不常規給</span></h3>Sodium bicarbonate、calcium、magnesium、steroid：只在有特定適應症時給（如高血鉀、低血鎂 / torsades、特定中毒）。Vasopressin 不在心跳停止演算法內。<b>經氣管內管給藥已移除。</b></div>
+</section>
+
+<!-- QUIZ -->
+<section class="panel" id="p-quiz" hidden>
+  <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">
+    <h2>自我測驗</h2><span class="score" id="score">0 / 0</span>
+  </div>
+  <div id="quiz" class="grid2" style="grid-template-columns:1fr"></div>
+  <button class="btn" id="q-reset" style="align-self:flex-start">重新作答</button>
+</section>
+
+<div class="foot">
+  學習用整理，實際處置以 AHA 官方 ACLS Provider Manual 與院內流程為準。<br>
+  主要依據：Wigginton JG, et al. Part 9: Adult Advanced Life Support. Circulation 2025;152(suppl 2):S538；
+  <a href="https://cpr.heart.org/en/resuscitation-science/cpr-and-ecc-guidelines" target="_blank" rel="noopener">AHA 2025 Guidelines</a>。
+</div>
+</main>
+
+<script>
+(function(){
+  // tabs
+  const tabs=[...document.querySelectorAll('#tabs button')];
+  function show(t){
+    tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.t===t));
+    document.querySelectorAll('section.panel').forEach(s=>s.hidden=s.id!=='p-'+t);
+    document.body.classList.toggle('compact',t==='timer');
+    document.body.classList.toggle('on-ht',t==='ht');
+    try{localStorage.setItem('acls-tab',t)}catch(e){}
+  }
+  tabs.forEach(b=>b.addEventListener('click',()=>{show(b.dataset.t);window.scrollTo({top:0})}));
+  let start='timer';
+  const h=(location.hash||'').slice(1);
+  if(h&&document.getElementById('p-'+h))start=h;
+  else{try{const s=localStorage.getItem('acls-tab');if(s&&document.getElementById('p-'+s))start=s}catch(e){}}
+  show(start);
+
+  // timer
+  const $=id=>document.getElementById(id);
+  const now=()=>Date.now()/1000;
+  const fmt=s=>{s=Math.max(0,Math.floor(s));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+  let S=null,visited,cur,ov,tickId=null;
+  function fresh(){S={t0:null,cyc:null,last:{},c:{},rhythm:S?S.rhythm:'AF'};visited={};cur={};ov={}}
+  fresh();
+  const cnt=k=>S.c[k]||0;
+  const inc=k=>{S.c[k]=cnt(k)+1;S.last[k]=now();return S.c[k]};
+  const since=k=>S.last[k]?now()-S.last[k]:null;
+  const V=k=>visited[k]||(visited[k]=new Set());
+  const RH={AF:{l:'AF / AFL',e:'同步整流，起始 ≥200 J（2025 新建議）'},SVT:{l:'SVT',e:'同步整流，依廠商建議起始能量，無效逐步加量'},MVT:{l:'單形 VT',e:'同步整流，依廠商建議起始能量，無效逐步加量'},PVT:{l:'多形 VT',e:'不同步，用去顫能量'}};
+  const CL={
+    total:['總時間',()=>({v:S.t0?fmt(now()-S.t0):'00:00'})],
+    cycle:['本輪 CPR',()=>{if(!S.cyc)return{v:'02:00'};const l=120-(now()-S.cyc);return{v:l>=0?fmt(l):'+'+fmt(-l),a:l<=0}}],
+    epi:['Epi 間隔',()=>{const s=since('epi');return s==null?{v:'—'}:{v:fmt(s),a:s>=180}}],
+    shock:['電擊',()=>({v:cnt('shock')})],
+    epin:['Epi 次數',()=>({v:cnt('epi')})],
+    anti:['抗心律藥',()=>({v:[cnt('amio')?'Amio×'+cnt('amio'):'',cnt('lido')?'Lido×'+cnt('lido'):''].filter(Boolean).join(' ')||'—',sm:1})],
+    check:['心律檢查',()=>({v:cnt('check')})],
+    atro:['Atropine 間隔',()=>{const s=since('atro');return s==null?{v:'—'}:{v:fmt(s),a:s>=180&&cnt('atro')<3}}],
+    atroT:['Atropine 累計',()=>({v:cnt('atro')+' mg'})],
+    cv:['整流次數',()=>({v:cnt('cv')})],
+    rh:['心律',()=>({v:RH[S.rhythm].l,sm:1})],
+    adenT:['Adenosine 累計',()=>({v:[0,6,18][Math.min(cnt('aden'),2)]+' mg'})],
+    rdone:['已完成',()=>({v:V('rosc').size+' / 6'})]
+  };
+  const st=(id,t,d,ac,f='',cpr='')=>({id,t,d,ac,cpr,dec:f.includes('d'),loop:f.includes('l'),nw:f.includes('n')});
+  const SC={
+    vf:{n:'VF / pVT',arrest:1,linear:1,title:'心跳停止 · 可電擊（VF / pVT）',
+      clocks:['epi','shock','epin','anti'],
+      steps:[
+        st('v1','開始 CPR','接上 monitor／去顫貼片，給氧',['start'],'','壓胸同時貼片、判讀心律'),
+        st('v2','電擊 #1','電擊後立即壓胸，不先摸脈搏',['shock'],'','建立 IV（打不上改 IO）'),
+        st('v3','心律檢查','仍可電擊 → 電擊；變不可電擊 → 轉 Asystole/PEA；有脈搏 → ROSC',['check','toNS','rosc'],'d'),
+        st('v4','電擊 #2','',['shock'],'','Epi 1 mg，之後每 3–5 分；考慮高級呼吸道、ETCO₂',),
+        st('v5','心律檢查','仍可電擊 → 電擊 #3',['check'],'d'),
+        st('v6','電擊 #3','',['shock'],'','Amiodarone 300 mg 或 Lidocaine 1–1.5 mg/kg；找 H’s & T’s'),
+        st('v7','心律檢查 · Persistent VF','電擊 ≥3 次仍 VF/pVT：確認壓胸品質，可考慮改貼片向量（前-後）或 DSED（IIb）',['check'],'dn'),
+        st('v8','循環：電擊','每 2 分鐘心律檢查，仍可電擊就電擊',['shock','check'],'l','Epi 每 3–5 分；Amiodarone 150 mg 或 Lidocaine 0.5–0.75 mg/kg'),
+        st('v9','ROSC','點上方「ROSC 後」繼續',['rosc'])
+      ],
+      actions:[
+        ['start','開始 CPR','primary',()=>{S.cyc=now();return['v1','開始 CPR，接上 monitor／貼片']}],
+        ['shock','⚡ 電擊','primary',()=>{const n=inc('shock');S.cyc=now();return[n===1?'v2':n===2?'v4':n===3?'v6':'v8','⚡ 電擊 #'+n+'，立即恢復 CPR'+(n===4?'（persistent VF：考慮改貼片向量）':'')]}],
+        ['check','心律檢查／換人','',()=>{const s=cnt('shock');inc('check');S.cyc=now();if(!s)return['v1','心律檢查：可電擊心律請立即電擊'];return[s===1?'v3':s===2?'v5':s===3?'v7':'v8','心律檢查，換人壓胸']}],
+        ['epi','Epi 1 mg','teal',()=>{const s=cnt('shock'),n=inc('epi');return[s<=2?'v4':s===3?'v6':'v8','Epinephrine 1 mg IV/IO（第 '+n+' 劑）'+(s<2?'　註：可電擊心律在首次電擊無效後才給':'')]}],
+        ['amio','Amiodarone','',()=>{const n=cnt('amio');if(n>=2)return[cur.vf||'v8','Amiodarone 已給滿 300＋150 mg'];inc('amio');return[n===0&&cnt('shock')<=3?'v6':'v8','Amiodarone '+(n?'150':'300')+' mg']}],
+        ['lido','Lidocaine','',()=>{const n=cnt('lido');if(n>=2)return[cur.vf||'v8','Lidocaine 已給兩劑'];inc('lido');return[n===0&&cnt('shock')<=3?'v6':'v8','Lidocaine '+(n?'0.5–0.75':'1–1.5')+' mg/kg']}],
+        ['airway','高級呼吸道','',()=>{inc('airway');const s=cnt('shock');return[s<=2?'v4':s===3?'v6':'v8','放置高級呼吸道：每 6 秒 1 口，持續壓胸，接波形 ETCO₂']}],
+        ['toNS','轉不可電擊','',()=>{switchTo('asys');return null}],
+        ['rosc','ROSC','',()=>{S.cyc=null;return['v9','ROSC！轉 post–cardiac arrest care']}]
+      ],
+      next:{v1:'v2',v2:'v3',v3:'v4',v4:'v5',v5:'v6',v6:'v7',v7:'v8',v8:'v8',v9:null},
+      tip:{v1:'判讀心律：VF／pVT 立即電擊',v2:'CPR 2 分鐘、建立 IV；2 分鐘到按「心律檢查」',v3:'仍可電擊 → 電擊 #2',v4:'給 Epi 1 mg，考慮高級呼吸道；2 分鐘到心律檢查',v5:'仍可電擊 → 電擊 #3',v6:'給 Amiodarone 300 mg 或 Lidocaine；2 分鐘到心律檢查',v7:'確認壓胸品質、考慮改貼片向量，再電擊',v8:'持續 CPR；2 分鐘到心律檢查 → 電擊；找 H’s & T’s',v9:'點上方「ROSC 後」繼續'},
+      sug:{_:['start'],v1:['shock'],v2:['check'],v3:['shock'],v4:['epi','check'],v5:['shock'],v6:['amio','lido','check'],v7:['shock'],v8:['check','shock'],v9:[]}
+    },
+    asys:{n:'Asystole / PEA',arrest:1,linear:1,title:'心跳停止 · 不可電擊（Asystole / PEA）',
+      clocks:['epi','epin','check'],
+      steps:[
+        st('a1','開始 CPR','接上 monitor，給氧',['start'],'','壓胸同時判讀心律、建立 IV／IO'),
+        st('a2','Epinephrine 越快越好','Epi 1 mg IV；IV 打不上立刻改 IO，不要拖延',['epi'],'','考慮高級呼吸道、波形 ETCO₂'),
+        st('a3','心律檢查','變可電擊 → 轉 VF/pVT；有脈搏 → ROSC；仍不可電擊 → 繼續',['check','toS','rosc'],'d'),
+        st('a4','循環','每 2 分鐘心律檢查',['check','epi','ht'],'l','Epi 每 3–5 分；找 H’s & T’s（POCUS 不可中斷壓胸）'),
+        st('a5','ROSC','點上方「ROSC 後」繼續',['rosc'])
+      ],
+      actions:[
+        ['start','開始 CPR','primary',()=>{S.cyc=now();return['a1','開始 CPR，接上 monitor']}],
+        ['epi','Epi 1 mg','teal',()=>{const first=!V('asys').has('a2');const n=inc('epi');return[first?'a2':'a4','Epinephrine 1 mg IV/IO（第 '+n+' 劑）']}],
+        ['check','心律檢查／換人','',()=>{inc('check');S.cyc=now();return[V('asys').has('a3')?'a4':'a3','心律檢查，換人壓胸']}],
+        ['airway','高級呼吸道','',()=>{inc('airway');return[V('asys').has('a3')?'a4':'a2','放置高級呼吸道：每 6 秒 1 口，持續壓胸，接波形 ETCO₂']}],
+        ['ht','找 H’s & T’s','',()=>['a4','找可逆原因：H’s & T’s']],
+        ['toS','轉可電擊','primary',()=>{switchTo('vf');return null}],
+        ['rosc','ROSC','',()=>{S.cyc=null;return['a5','ROSC！轉 post–cardiac arrest care']}]
+      ],
+      next:{a1:'a2',a2:'a3',a3:'a4',a4:'a4',a5:null},
+      tip:{a1:'不可電擊：盡快給 Epi 1 mg',a2:'持續 CPR，考慮高級呼吸道；2 分鐘到心律檢查',a3:'仍不可電擊：繼續 CPR，Epi 每 3–5 分，找 H’s & T’s',a4:'每 2 分鐘心律檢查；變可電擊 → 按「轉可電擊」',a5:'點上方「ROSC 後」繼續'},
+      sug:{_:['start'],a1:['epi'],a2:['airway','check'],a3:['ht','check'],a4:['check','ht'],a5:[]}
+    },
+    brady:{n:'心搏過緩',linear:1,title:'心搏過緩（有脈搏）',
+      clocks:['atro','atroT'],
+      steps:[
+        st('b1','評估與支持','ABC、給氧（需要時）、monitor、血壓、SpO₂、IV、12-lead；找原因',['assess']),
+        st('b2','心肺功能受損？','低血壓、意識改變、休克徵象、缺血性胸痛、急性心衰竭。否 → 監測、處理原因',['yes','no'],'d'),
+        st('b3','Atropine','1 mg IV，每 3–5 分鐘，總量上限 3 mg',['atro']),
+        st('b4','Atropine 無效','經皮節律器（TCP），和／或 Dopamine 5–20 mcg/kg/min、Epinephrine 2–10 mcg/min',['tcp','drip']),
+        st('b5','升級','專家會診、經靜脈節律器',['consult'])
+      ],
+      actions:[
+        ['assess','評估／12-lead','',()=>['b1','評估：ABC、monitor、IV、12-lead ECG']],
+        ['yes','有受損','primary',()=>['b2','判定：心肺功能受損 → 開始治療']],
+        ['no','無受損','',()=>['b2','判定：無受損 → 監測、找原因、會診',{tip:'觀察並處理原因；惡化再按「有受損」',next:null}]],
+        ['atro','Atropine 1 mg','teal',()=>{if(cnt('atro')>=3)return['b4','Atropine 已達 3 mg 上限 → TCP 或點滴'];const n=inc('atro');return['b3','Atropine 1 mg（累計 '+n+' mg）']}],
+        ['tcp','經皮節律器','',()=>['b4','開始經皮節律器（TCP），確認電與機械捕獲']],
+        ['drip','Dopamine／Epi 點滴','',()=>['b4','Dopamine 5–20 mcg/kg/min 或 Epinephrine 2–10 mcg/min']],
+        ['consult','會診／經靜脈','',()=>['b5','專家會診，考慮經靜脈節律器']]
+      ],
+      next:{b1:'b2',b2:'b3',b3:'b4',b4:'b5',b5:null},
+      tip:{b1:'判斷是否造成心肺功能受損',b2:'有受損 → Atropine 1 mg',b3:'3–5 分鐘後可重複；無效或預期無效（移植心臟、Mobitz II、三度阻滯）→ TCP',b4:'會診、準備經靜脈節律器',b5:'持續找原因並處理'},
+      sug:{_:['assess'],b1:['yes','no'],b2:['atro'],b3:['atro','tcp'],b4:['consult'],b5:[]}
+    },
+    ut:{n:'心搏過速 · 不穩定',extra:'rh',title:'心搏過速 · 不穩定（有脈搏）',
+      clocks:['cv','rh'],
+      steps:[
+        st('u1','是否因為「快」而不穩定？','HR 通常 ≥150，合併低血壓、意識改變、休克、缺血性胸痛或急性心衰竭',['assess'],'d'),
+        st('u2','窄而規則：可先試 Adenosine','6 mg 快推；不可因此延遲整流',['aden']),
+        st('u3','鎮靜','清醒病人先鎮靜，不延遲電擊',['sedate']),
+        st('u4','同步整流','AF/AFL 起始 ≥200 J；SVT、單形 VT 依廠商建議起始能量',['cv'],'n'),
+        st('u5','未轉換','加量再整流；找原因、專家會診',['cv'],'d'),
+        st('u6','多形 VT 或失去脈搏','不同步去顫；無脈搏 → 轉心跳停止流程',['cv','toVF'])
+      ],
+      actions:[
+        ['assess','判定不穩定','',()=>['u1','判定：心跳過快造成不穩定']],
+        ['aden','Adenosine','teal',()=>{const n=cnt('aden');if(n>=2)return['u5','Adenosine 已給 6＋12 mg'];inc('aden');return['u2','Adenosine '+(n?'12':'6')+' mg 快推＋沖水'+(S.rhythm==='SVT'?'':'　註：只適用窄而規則（或規則單形寬 QRS）')]}],
+        ['sedate','鎮靜','',()=>{inc('sedate');return['u3','給予鎮靜']}],
+        ['cv','⚡ 整流','primary',()=>{const n=inc('cv');if(S.rhythm==='PVT')return['u6','⚡ 多形 VT：'+RH.PVT.e];return[n===1?'u4':'u5','⚡ 整流 #'+n+'（'+RH[S.rhythm].l+'）：'+(n===1?RH[S.rhythm].e:'加量再整流')]}],
+        ['toVF','失去脈搏','',()=>{switchTo('vf');return null}]
+      ],
+      next:{u1:'u3',u2:'u3',u3:'u4',u4:'u5',u5:'u5',u6:null},
+      tip:{u1:'先選心律；清醒就鎮靜，窄而規則可先試 Adenosine',u2:'準備鎮靜與同步整流',u3:'確認心律後同步整流',u4:'評估是否轉換；未轉換就加量',u5:'持續加量整流、找原因、會診',u6:'無脈搏 → 按「失去脈搏」轉 VF/pVT 流程'},
+      sug:{_:['assess'],u1:['sedate','cv'],u2:['sedate','cv'],u3:['cv'],u4:['cv'],u5:['cv'],u6:['toVF']}
+    },
+    st:{n:'心搏過速 · 穩定',title:'心搏過速 · 穩定（有脈搏）',
+      clocks:['adenT'],
+      steps:[
+        st('t1','12-lead ECG','monitor、IV；判斷 QRS 寬窄、是否規則',['ecg'],'d'),
+        st('t2','窄而規則：迷走神經刺激','Modified Valsalva 等（排除禁忌）',['vagal']),
+        st('t3','Adenosine','6 mg 快推＋沖水；無效給 12 mg',['aden']),
+        st('t4','窄而不規則（多為 AF）','β-blocker 或 CCB 控制心率',['rate']),
+        st('t5','寬 QRS','Procainamide 20–50 mg/min（上限 17 mg/kg）或 Amiodarone 150 mg / 10 分鐘；Sotalol 已移除',['proc','amio2'],'n'),
+        st('t6','專家會診','持續監測，找原因',['consult']),
+        st('t7','惡化變不穩定','轉不穩定流程，準備同步整流',['toU'])
+      ],
+      actions:[
+        ['ecg','12-lead','',()=>['t1','12-lead ECG，判斷寬窄與規則性']],
+        ['vagal','迷走神經刺激','',()=>['t2','迷走神經刺激']],
+        ['aden','Adenosine','teal',()=>{const n=cnt('aden');if(n>=2)return['t6','Adenosine 已給 6＋12 mg → 會診'];inc('aden');return['t3','Adenosine '+(n?'12':'6')+' mg 快推＋沖水']}],
+        ['rate','控速','',()=>['t4','β-blocker 或 CCB 控速']],
+        ['proc','Procainamide','',()=>['t5','Procainamide 20–50 mg/min；出現低血壓、QRS 增寬 >50% 或達 17 mg/kg 時停']],
+        ['amio2','Amiodarone','',()=>['t5','Amiodarone 150 mg / 10 分鐘']],
+        ['consult','會診','',()=>['t6','專家會診']],
+        ['toU','變不穩定','primary',()=>{switchTo('ut');return null}]
+      ],
+      next:{t1:null,t2:'t3',t3:'t6',t4:'t6',t5:'t6',t6:null,t7:null},
+      tip:{t1:'窄而規則 → 迷走神經刺激；窄而不規則 → 控速；寬 QRS → Procainamide 或 Amiodarone',t2:'無效 → Adenosine 6 mg',t3:'無效可給 12 mg；仍無效 → 會診',t4:'會診、找原因',t5:'會診；惡化就按「變不穩定」',t6:'持續監測，惡化就按「變不穩定」'},
+      sug:{_:['ecg'],t1:['vagal','rate','proc','amio2'],t2:['aden'],t3:['aden','consult'],t4:['consult'],t5:['consult'],t6:[]}
+    },
+    rosc:{n:'ROSC 後',title:'ROSC 後照護',
+      clocks:['rdone'],
+      steps:[
+        st('r1','呼吸道','早期氣管內管，以波形 ETCO₂ 確認位置',['r_air']),
+        st('r2','氧合與通氣','SpO₂ 90–98%，避免低／高血氧；PaCO₂ 35–45 mmHg',['r_vent'],'n'),
+        st('r3','血壓與灌流','MAP ≥65 mmHg；輸液、升壓劑；看 lactate、尿量',['r_bp']),
+        st('r4','12-lead ECG','STEMI 或懷疑缺血病因 → 緊急心導管（選擇性）',['r_ecg'],'n'),
+        st('r5','控溫','對指令無反應 → 主動控溫 32–37.5 °C，重點預防發燒',['r_temp'],'n'),
+        st('r6','神經評估','EEG、血糖、電解質；無 EEG 對應的 myoclonus 不治療；預後判斷 ≥72 小時、多模式',['r_neuro'])
+      ],
+      actions:[
+        ['r_air','呼吸道','',()=>['r1','呼吸道：氣管內管，波形 ETCO₂ 確認']],
+        ['r_vent','氧合通氣','teal',()=>['r2','調整氧合通氣：SpO₂ 90–98%、PaCO₂ 35–45']],
+        ['r_bp','血壓','',()=>['r3','血壓：MAP ≥65，輸液／升壓劑']],
+        ['r_ecg','12-lead','',()=>['r4','12-lead ECG，評估是否需緊急心導管']],
+        ['r_temp','控溫','',()=>['r5','開始控溫 32–37.5 °C，預防發燒']],
+        ['r_neuro','神經評估','',()=>['r6','EEG、血糖、電解質；預後判斷延到 ≥72 小時']]
+      ],
+      next:c=>{const s=SC.rosc.steps.find(x=>!V('rosc').has(x.id));return s?s.id:null},
+      tip:{},
+      sug:{}
+    }
+  };
+  let scen='vf';
+  try{const s=localStorage.getItem('acls-scen');if(SC[s])scen=s}catch(e){}
+  const A=(sc,id)=>sc.actions.find(a=>a[0]===id);
+  const stepOf=(sc,id)=>sc.steps.find(s=>s.id===id);
+  function nextOf(k){const sc=SC[k],c=cur[k];if(ov[k]&&'next' in ov[k])return ov[k].next;if(typeof sc.next==='function')return sc.next(c);if(!c)return sc.steps[0].id;const n=sc.next[c];return n===undefined?null:n}
+  function log(msg){const el=document.createElement('div');el.textContent=(S.t0?fmt(now()-S.t0):'00:00')+'  '+msg;$('log').prepend(el)}
+  function warns(){
+    const sc=SC[scen],w=[];if(!S.t0)return w;
+    if(sc.arrest){
+      if(S.cyc&&now()-S.cyc>=120)w.push('2 分鐘到了：心律檢查、換人壓胸');
+      const e=since('epi');if(e!=null&&e>=180&&S.cyc)w.push('距上次 Epi 已 '+Math.floor(e/60)+' 分鐘，可給下一劑');
+      if(scen==='vf'&&cnt('shock')>=2&&!cnt('epi'))w.push('已電擊 2 次，尚未給 Epinephrine');
+      if(scen==='asys'&&!cnt('epi')&&S.cyc)w.push('不可電擊心律：盡快給 Epinephrine');
+    }
+    if(scen==='brady'&&cur.brady==='b3'){const a=since('atro');if(a!=null&&a>=180&&cnt('atro')<3)w.push('可重複 Atropine 1 mg，或直接 TCP')}
+    return w;
+  }
+  function sugSet(){
+    const sc=SC[scen],c=cur[scen];let s;
+    if(scen==='rosc'){const n=nextOf('rosc');s=n?stepOf(sc,n).ac.slice():[]}
+    else s=(sc.sug[c||'_']||[]).slice();
+    if(ov[scen]&&ov[scen].next===null)s=[];
+    if(sc.arrest&&S.t0&&S.cyc){
+      if(now()-S.cyc>=120)s.push('check');
+      const e=since('epi');
+      if((e!=null&&e>=180)||(scen==='asys'&&!cnt('epi'))||(scen==='vf'&&cnt('shock')>=2&&!cnt('epi')))s.push('epi');
+    }
+    if(scen==='vf'&&c==='v8'&&cnt('amio')===1&&!cnt('lido'))s.push('amio');
+    if(scen==='ut'&&c==='u1'&&S.rhythm==='SVT')s.push('aden');
+    if(scen==='brady'&&c==='b3'&&cnt('atro')>=3)s=s.filter(x=>x!=='atro');
+    return new Set(s);
+  }
+  function renderScen(){
+    $('scen').innerHTML=Object.keys(SC).map(k=>'<button role="radio" class="'+(SC[k].arrest?'s':'')+'" data-k="'+k+'" aria-checked="'+(k===scen)+'">'+SC[k].n+'</button>').join('');
+    $('scen').querySelectorAll('button').forEach(b=>b.onclick=()=>switchTo(b.dataset.k));
+  }
+  function renderClocks(){
+    $('clocks').innerHTML=SC[scen].clocks.map(id=>'<div class="clock" id="ck-'+id+'"><div class="lab">'+CL[id][0]+'</div><div class="val">—</div></div>').join('');
+  }
+  function renderExtra(){
+    const sc=SC[scen];
+    if(sc.extra!=='rh'){$('extra').innerHTML='';$('extra').hidden=true;return}
+    $('extra').hidden=false;
+    $('extra').innerHTML='<div class="rhsel"><span>心律</span>'+Object.keys(RH).map(k=>'<button data-r="'+k+'" aria-pressed="'+(S.rhythm===k)+'">'+RH[k].l+'</button>').join('')+'</div>';
+    $('extra').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.rhythm=b.dataset.r;if(S.t0)log('心律判讀：'+RH[S.rhythm].l);renderExtra();tick()});
+  }
+  function peek(ids,on){$('fc').querySelectorAll('.nd').forEach(li=>{const s=stepOf(SC[scen],li.dataset.id);li.classList.toggle('peek',on&&s.ac.includes(ids))})}
+  function renderActions(){
+    const sc=SC[scen];
+    $('actions').innerHTML=sc.actions.map(a=>'<button class="btn '+a[2]+'" data-a="'+a[0]+'">'+a[1]+'</button>').join('');
+    $('actions').querySelectorAll('button').forEach(b=>{
+      const id=b.dataset.a;
+      b.onclick=()=>act(id);
+      b.onmouseenter=b.onfocus=()=>peek(id,true);
+      b.onmouseleave=b.onblur=()=>peek(id,false);
+    });
+  }
+  function updateSuggest(){const s=sugSet();$('actions').querySelectorAll('button').forEach(b=>b.classList.toggle('suggest',s.has(b.dataset.a)))}
+  function renderFlow(){
+    const sc=SC[scen],c=cur[scen],nx=nextOf(scen),vs=V(scen);
+    $('flow-title').textContent=sc.title;
+    const ci=c?sc.steps.findIndex(s=>s.id===c):-1;
+    const doneBefore=sc.steps.filter((s,i)=>i<ci&&vs.has(s.id));
+    const out=[];
+    if(doneBefore.length)out.push('<div class="donesum"><span class="b">✓</span><span>'+doneBefore.map(s=>s.t).join(' → ')+'</span></div><div class="cn ar"></div>');
+    sc.steps.forEach((s,i)=>{
+      if(i<ci&&vs.has(s.id))return;
+      const isC=s.id===c,isN=s.id===nx&&!isC,done=vs.has(s.id)&&!isC;
+      const cls=['nd',isC?'cur':'',isN?'nx':'',done?'done':'',s.dec?'dec':''].join(' ').trim();
+      const badge=done?'✓':s.dec?'?':(i+1);
+      out.push('<div class="'+cls+'" data-id="'+s.id+'"><span class="b">'+badge+'</span><div class="bd"><div class="tt">'+s.t+(s.nw?' <span class="tag new">NEW</span>':'')+(s.loop?' <span class="loop">↺</span>':'')+'</div>'+((isC||isN)&&s.d?'<div class="dt">'+s.d+'</div>':'')+'</div></div>');
+      const last=i===sc.steps.length-1;
+      if(s.cpr){
+        const on=sc.arrest&&isC&&S.cyc;
+        out.push('<div class="cn cpr'+(on?' on':'')+'"><span class="cl">CPR 2 分鐘</span>'+(on?'<span class="ct" id="cprt"></span>':'')+'<span class="cx">'+s.cpr+'</span>'+(on?'<i class="pg"><i id="cprp"></i></i>':'')+'</div>');
+      }else if(!last)out.push('<div class="cn ar"></div>');
+    });
+    $('fc').innerHTML=out.join('');
+  }
+  let lastNext='',lastPhase='';
+  function renderNext(){
+    const sc=SC[scen],c=cur[scen],nx=nextOf(scen);
+    let tag,cls,t,tl;
+    if(!S.t0){tag='尚未開始';cls='idle';t='00:00';tl='總時間'}
+    else if(sc.arrest&&S.cyc){const l=120-(now()-S.cyc);if(l>0){tag='CPR 進行中';cls='cpr';t=fmt(l);tl='本輪剩餘 · 總 '+fmt(now()-S.t0)}else{tag='停壓胸 → 心律檢查';cls='due';t='+'+fmt(-l);tl='已超過 · 總 '+fmt(now()-S.t0)}}
+    else{tag=c?stepOf(sc,c).t:'進行中';cls='act';t=fmt(now()-S.t0);tl='總時間'}
+    const nowTxt=c?stepOf(sc,c).t:'—';
+    const ph='<div class="phase '+cls+'"><div class="ph-l"><div class="ph-tag">'+tag+'</div><div class="ph-now">上一個處置：'+nowTxt+'</div></div><div class="ph-r"><div class="ph-t">'+t+'</div><div class="ph-tl">'+tl+'</div></div></div>';
+    if(ph!==lastPhase){$('phase').innerHTML=ph;lastPhase=ph}
+    let tip=(ov[scen]&&ov[scen].tip)||(c&&sc.tip[c]);
+    if(!tip){
+      if(!c){const f=A(sc,(sc.sug._||sc.steps[0].ac)[0]);tip='按「'+f[1]+'」開始，計時會自動啟動'}
+      else if(nx){const s=stepOf(sc,nx);tip=s.t+(s.d?'：'+s.d:'')}
+      else tip='流程完成';
+    }
+    const html='<div class="nb-row"><b>下一步</b><span>'+tip+'</span></div>'+warns().map(w=>'<div class="nb-warn">⚠ '+w+'</div>').join('');
+    if(html!==lastNext){$('nextbar').innerHTML=html;lastNext=html}
+    const ct=$('cprt');
+    if(ct&&S.cyc){const e=now()-S.cyc;ct.textContent=e<120?'剩 '+fmt(120-e):'時間到';$('cprp').style.width=Math.min(100,e/120*100)+'%';ct.parentElement.classList.toggle('due',e>=120)}
+  }
+  function tick(){
+    SC[scen].clocks.forEach(id=>{const el=$('ck-'+id);if(!el)return;const r=CL[id][1]();const v=el.querySelector('.val');v.textContent=r.v;v.classList.toggle('sm',!!r.sm);el.classList.toggle('alert',!!r.a)});
+    renderNext();updateSuggest();
+  }
+  function renderAll(){renderScen();renderClocks();renderExtra();renderActions();renderFlow();lastNext=lastPhase='';tick()}
+  function act(id){
+    const sc=SC[scen],a=A(sc,id);
+    if(!S.t0){S.t0=now();if(!tickId)tickId=setInterval(tick,500)}
+    const r=a[3]();
+    if(!r)return;
+    const [sid,msg,o]=r;
+    cur[scen]=sid;ov[scen]=o||null;const vs=V(scen);vs.add(sid);
+    if(sc.linear){const i=sc.steps.findIndex(s=>s.id===sid);sc.steps.slice(0,i).forEach(s=>vs.add(s.id))}
+    log(msg);renderFlow();peek(id,$('actions').querySelector('[data-a="'+id+'"]')===document.activeElement);tick();
+  }
+  function switchTo(k){
+    if(k===scen)return;
+    scen=k;
+    try{localStorage.setItem('acls-scen',k)}catch(e){}
+    const sc=SC[k];
+    if(S.t0){
+      log('切換情境 → '+sc.n);
+      if(!cur[k]&&sc.steps[0].ac.includes('start')){cur[k]=sc.steps[0].id;V(k).add(cur[k])}
+      if(sc.arrest&&!S.cyc)S.cyc=now();
+    }
+    renderAll();
+  }
+  // CPR metronome 110/min (Web Audio, scheduled ahead for steady timing)
+  const AU={ctx:null,out:null,on:false,nc:0,iv:null,n:0};
+  function click(t,acc){
+    const x=AU.ctx,o=x.createOscillator(),v=x.createGain();
+    o.type='sine';o.frequency.value=acc?1500:1000;
+    v.gain.setValueAtTime(0.0001,t);v.gain.exponentialRampToValueAtTime(1,t+.004);v.gain.exponentialRampToValueAtTime(0.0001,t+.07);
+    o.connect(v);v.connect(AU.out);o.start(t);o.stop(t+.08);
+    const ms=Math.max(0,(t-x.currentTime)*1000),d=$('snd-dot');
+    setTimeout(()=>{d.classList.add('on');setTimeout(()=>d.classList.remove('on'),90)},ms);
+  }
+  function sched(){
+    const x=AU.ctx;if(!x||!AU.on||x.state!=='running')return;
+    const t0=x.currentTime;if(AU.nc<t0)AU.nc=t0+.05;
+    while(AU.nc<t0+.2){click(AU.nc,AU.n%30===0);AU.n++;AU.nc+=60/110}
+  }
+  function stopMet(){AU.on=false;clearInterval(AU.iv);AU.iv=null;$('snd-cpr').setAttribute('aria-pressed','false');$('snd-cpr').textContent='🔈 開啟節拍'}
+  $('snd-cpr').onclick=()=>{
+    if(AU.on){stopMet();return}
+    try{
+      // iOS: play through the silent switch like media
+      try{if(navigator.audioSession)navigator.audioSession.type='playback'}catch(e){}
+      if(!AU.ctx){const C=window.AudioContext||window.webkitAudioContext;AU.ctx=new C();AU.out=AU.ctx.createGain();AU.out.gain.value=.9;AU.out.connect(AU.ctx.destination)}
+      // unlock: silent buffer inside the click gesture
+      const b=AU.ctx.createBufferSource();b.buffer=AU.ctx.createBuffer(1,1,22050);b.connect(AU.ctx.destination);b.start(0);
+      const go=()=>{AU.on=true;AU.nc=0;AU.n=0;$('snd-cpr').setAttribute('aria-pressed','true');$('snd-cpr').textContent='🔊 停止節拍';sched();if(!AU.iv)AU.iv=setInterval(sched,25)};
+      if(AU.ctx.state!=='running')AU.ctx.resume().then(go,()=>{$('snd-lab').textContent='瀏覽器擋住了音效，請再點一次'});else go();
+    }catch(e){$('snd-lab').textContent='此瀏覽器無法播放音效'}
+  };
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AU.ctx&&AU.on&&AU.ctx.state!=='running')AU.ctx.resume()});
+
+  $('b-reset').onclick=()=>{clearInterval(tickId);tickId=null;fresh();$('log').innerHTML='';renderAll()};
+  renderAll();
+
+  // quiz
+  const Q=[
+    ['2025 ACLS 對成人心跳停止的給藥途徑建議為何？',['IO 優先','IV 優先，打不上再 IO','可經氣管內管給藥作為第二選擇','優先放 central line'],1,'IV 優先，IV 無法迅速建立才用 IO；急救中不建議放 central line，ET 給藥已移除。'],
+    ['不穩定 AF 合併低血壓，2025 建議同步整流起始能量？',['50 J','100 J','120 J','≥200 J'],3,'2025 提高起始能量至 ≥200 J，低能量首擊成功率較低且較易惡化為 VF。'],
+    ['穩定寬 QRS 心搏過速，哪個藥物在 2025 已被移除？',['Procainamide','Amiodarone','Sotalol','Adenosine'],2,'Sotalol 被移除：沒有額外好處且輸注時間較長。'],
+    ['症狀性心搏過緩，atropine 的劑量？',['0.5 mg，上限 3 mg','1 mg 每 3–5 分鐘，上限 3 mg','1 mg，上限 0.04 mg/kg','2 mg 單次'],1,'Atropine 1 mg IV，每 3–5 分鐘，總量 3 mg。'],
+    ['Asystole 病人，epinephrine 何時給？',['第二次心律檢查後','越快越好','第三次電擊後','建立高級呼吸道後'],1,'不可電擊心律應盡早給 epinephrine，IV 拖延就改 IO。'],
+    ['「Persistent VF」的定義？',['電擊 ≥3 次仍 VF/pVT','CPR 超過 20 分鐘','給完 amiodarone 仍 VF','ETCO₂ < 10'],0,'2025 新概念：≥3 次電擊仍為 VF/pVT；可考慮改貼片向量或 DSED（IIb）。'],
+    ['VF 第一劑 amiodarone 劑量？',['150 mg','300 mg','1 mg/kg','450 mg'],1,'難治 VF/pVT：300 mg，第二劑 150 mg。'],
+    ['ROSC 後體溫控制的目標範圍（2025）？',['32–34 °C','32–36 °C','32–37.5 °C，重點預防發燒','不需控溫'],2,'2025 以預防發燒為核心，允許 32–37.5 °C。'],
+    ['懷疑 opioid overdose 的心跳停止病人，第一步？',['先給 naloxone 再 CPR','立即 CPR，不因 naloxone 延遲','先放氣管內管','先抽血驗藥物'],1,'CPR 不能因考慮給 naloxone 而延遲。'],
+    ['關於急救中 POCUS，下列何者正確？',['可暫停壓胸 20 秒仔細掃描','看不到心臟活動即可終止急救','不可中斷壓胸或延遲電擊，用來找可逆原因','建議每次心律檢查都做'],2,'POCUS 不可中斷 CPR 或延遲電擊，也不能單獨作為終止急救的依據。'],
+    ['ROSC 後 SpO₂ 目標？',['100%','約 90–98%，避免高血氧','85–90%','> 94% 即可，無上限'],1,'2025 明確避免低血氧與高血氧。'],
+    ['有高級呼吸道時的通氣速率？',['每 3 秒 1 口','每 6 秒 1 口（10/min）','30:2','每 10 秒 1 口'],1,'放置高級呼吸道後，每 6 秒 1 口，持續壓胸不停。']
+  ];
+  let right=0,done=0;
+  function build(){
+    right=done=0;$('score').textContent='0 / '+Q.length;
+    const box=$('quiz');box.innerHTML='';
+    Q.forEach((q,i)=>{
+      const c=document.createElement('div');c.className='card q';
+      c.innerHTML='<h3>'+(i+1)+'. '+q[0]+'</h3><div class="opts"></div>';
+      const opts=c.querySelector('.opts');
+      q[1].forEach((o,j)=>{
+        const b=document.createElement('button');b.className='opt';b.textContent=o;
+        b.onclick=()=>{
+          [...opts.children].forEach((x,k)=>{x.disabled=true;if(k===q[2])x.classList.add('right')});
+          if(j!==q[2])b.classList.add('wrong');else right++;
+          done++;$('score').textContent=right+' / '+Q.length+(done===Q.length?'　完成':'');
+          const e=document.createElement('div');e.className='explain';e.textContent=q[3];c.appendChild(e);
+        };
+        opts.appendChild(b);
+      });
+      box.appendChild(c);
+    });
+  }
+  $('q-reset').onclick=build;build();
+})();
+</script>
+<script>
+// H's & T's Bayesian differential: prior (by setting) × grouped likelihood ratios → per-cause posterior with range
+(function(){
+  const $=id=>document.getElementById(id);
+  const CA={
+    hypovol:{l:'H',n:'Hypovolemia',z:'低血容',
+      ok:'看情境（出血、脫水、敗血症）與頸靜脈；POCUS：IVC 塌陷、心腔小而過動，FAST 找出血位置。Hb 早期可能還正常。',
+      tx:'大口徑 IV／IO 給溫熱晶體液；出血就輸血（大量輸血流程，紅血球：血漿：血小板約 1:1:1）並止血：加壓、骨盆固定帶、手術、介入或內視鏡。外傷性心跳停止優先處理可逆原因，單靠壓胸效果有限。',
+      pit:'失血初期 Hb 還沒被稀釋，正常不能排除出血。敗血症、過敏性休克是相對低血容，除了給容積也要升壓劑。'},
+    hypox:{l:'H',n:'Hypoxia',z:'缺氧',
+      ok:'先檢查自己：氣管內管位置（波形 ETCO₂、胸廓起伏、聽診）、氧氣有沒有接上、管路有沒有阻塞。插管病人突然惡化記 DOPE：Displacement、Obstruction、Pneumothorax、Equipment。',
+      tx:'100% 氧氣；確認或重新放置呼吸道、抽痰、移除異物；氣喘病人處理支氣管痙攣與 auto-PEEP。呼吸性停止是最容易救回來的一類。',
+      pit:'ETCO₂ 一條平線加上胃部氣過水音是食道插管，不是病人變差。插太深進右主支氣管會讓左側沒呼吸音，別誤判成氣胸。'},
+    acid:{l:'H',n:'Hydrogen ion',z:'酸中毒',
+      ok:'ABG／VBG：pH、HCO₃⁻、乳酸、陰離子間隙、酮體，加上腎功能。',
+      tx:'確保有效通氣（不過度、也不不足），處理原因（敗血症、DKA、中毒）。Sodium bicarbonate 50 mEq（約 1 mEq/kg）只在特定情境使用：高血鉀、三環抗鬱劑等鈉通道阻斷劑中毒、已知嚴重代謝性酸中毒；2025 仍不建議常規給。',
+      pit:'急救越久每個人都會酸。酸中毒常是低灌流的結果而不是原因，別在這裡停止找真正的病因。'},
+    k:{l:'H',n:'Hyper/Hypokalemia',z:'鉀離子異常',
+      ok:'病史（洗腎、腎衰竭、保鉀藥物、橫紋肌溶解；或利尿劑、腹瀉、低血鎂）、停止前 ECG（尖 T、寬 QRS；或 U 波、torsades），床邊 i-STAT 幾分鐘就有 K⁺。',
+      tx:'高血鉀：Calcium chloride 10% 10 mL IV（或 calcium gluconate 10% 30 mL）穩定心肌，insulin regular 10 U＋D50 25 g，sodium bicarbonate 50 mEq，之後緊急透析。低血鉀：靜脈補鉀（ERC 建議 2 mmol/min × 10 分鐘，再 10 mmol 於 5–10 分鐘給完），同時補鎂（MgSO₄ 2 g）。',
+      pit:'洗腎病人心跳停止，經驗性先給 calcium 的門檻要低。低血鉀不補鎂，鉀很難補上去。'},
+    hypoth:{l:'H',n:'Hypothermia',z:'低體溫',
+      ok:'量核心體溫（食道、膀胱、直腸），要用能量到低溫的溫度計；耳溫、額溫不準。環境病史、Osborn J 波。',
+      tx:'主動復溫：ECMO／體外循環最好，其次溫熱輸液、體腔灌洗、加溫毯，同時持續 CPR。給藥與電擊：AHA 認為可照標準流程；ERC 建議 <30 °C 暫停 epinephrine、電擊最多 3 次，30–35 °C 給藥間隔加倍。',
+      pit:'低體溫有腦保護作用，復溫前不輕易宣告死亡。搬動要輕，粗暴移動可能誘發 VF。'},
+    tension:{l:'T',n:'Tension pneumothorax',z:'張力性氣胸',
+      ok:'臨床診斷，不等胸部 X 光：單側呼吸音消失、正壓通氣後惡化、擠球變緊、頸靜脈怒張；POCUS 單側沒有 lung sliding，看到 lung point 更確定。',
+      tx:'立即針刺減壓（成人第 4–5 肋間腋中線前方，或第 2 肋間鎖骨中線，用 ≥5 cm 的針），接著手指胸廓造口或放胸管。外傷性心跳停止可雙側減壓。',
+      pit:'氣喘或 COPD 正壓通氣時的 auto-PEEP 很像張力性氣胸：先斷開呼吸器讓氣吐出來再判斷。管子插太深也會單側呼吸音消失。'},
+    tamp:{l:'T',n:'Tamponade',z:'心包填塞',
+      ok:'情境（心臟術後、導管後、主動脈剝離、穿刺傷、腎衰竭、惡性腫瘤）；POCUS 心包膜積液合併右心舒張期塌陷。急救中 Beck 三徵很難看到。',
+      tx:'超音波導引劍突下心包膜穿刺。外傷或心臟術後 → 緊急開胸（resuscitative thoracotomy 或重新開胸），血塊抽不出來時穿刺沒有用。',
+      pit:'心臟術後的積液可能只是局部血塊、只壓一個腔室，不一定是環狀。主動脈剝離造成的填塞以手術為主。'},
+    tox:{l:'T',n:'Toxins',z:'中毒',
+      ok:'病史、藥盒、toxidrome：針狀瞳孔（opioid）、寬 QRS＋aVR 終末 R 波（TCA／鈉通道阻斷）、嚴重心搏過緩低血壓（β-blocker／CCB）、COHb。聯絡毒藥物諮詢中心。',
+      tx:'Opioid：先 CPR，有脈搏但呼吸抑制再給 naloxone。TCA／鈉通道阻斷：sodium bicarbonate 1–2 mEq/kg 推注，可重複。β-blocker／CCB：calcium、高劑量 insulin，β-blocker 加 glucagon。局部麻醉劑中毒：20% 脂肪乳劑 1.5 mL/kg 推注。難治者考慮 ECPR。',
+      pit:'中毒病人通常年輕、器官原本健康，延長急救與 ECPR 的效益比一般心跳停止高。'},
+    pe:{l:'T',n:'Thrombosis, pulmonary',z:'肺栓塞',
+      ok:'情境（術後、臥床、癌症、懷孕、DVT）；停止前突然喘、低血氧；ETCO₂ 偏低；POCUS 右心擴大、D-shape、右心內血栓或 DVT。',
+      tx:'懷疑 PE 造成心跳停止可考慮溶栓（常用 alteplase 50 mg IV 推注），給藥後 CPR 至少持續 60–90 分鐘；確診 PE 時溶栓、手術或導管取栓都合理；有資源時考慮 ECPR。',
+      pit:'長時間 CPR 後右心本來就會擴大，右心大不等於 PE，要配合情境。D-dimer 在急救中沒有用。'},
+    mi:{l:'T',n:'Thrombosis, coronary',z:'冠狀動脈栓塞',
+      ok:'停止前胸痛、冠心病危險因子、初始心律 VF／pVT、ROSC 後 12-lead 有 ST 上升或新 LBBB、POCUS 局部室壁不動。',
+      tx:'持續標準 ACLS 與電擊。ROSC 後盡快 12-lead：STEMI 走緊急心導管，懷疑缺血病因也可考慮（2025 改為選擇性）。難治 VF 在有能力的醫院可考慮 ECPR 後直接上導管室。',
+      pit:'CPR 中不建議為了 MI 常規給溶栓藥。ROSC 後太早做的 ECG 偽陽性較多，約 8 分鐘後可再做一次確認。'}
+  };
+  const ORDER=Object.keys(CA);
+  // Priors by setting. lit = causes whose prior comes from a source read for this tool.
+  const SET={
+    ihca:{n:'院內',d:'病房／加護病房',p:{hypox:.25,mi:.20,hypovol:.13,acid:.06,k:.05,pe:.05,tox:.02,tamp:.02,tension:.01,hypoth:.005},lit:['hypox','mi','hypovol'],
+      src:'缺氧、冠狀動脈、低血容：Allencherril 2022 統合分析（26.5%、18.2%、14.8%），與 Albert 2023 瑞典登錄（肺部原因 21.4%、心肌缺血 29.9%、出血 8.5%）相符。其餘為估計值。'},
+    ohca:{n:'院外',d:'非外傷',p:{mi:.35,hypox:.10,tox:.045,pe:.03,k:.03,acid:.03,hypovol:.01,tamp:.01,tension:.005,hypoth:.005},lit:['hypox','tox','hypovol'],
+      src:'CARES 2025（美國成人）：推定心因性 84%、呼吸／窒息 9.7%、藥物過量 4.5%、出血 0.8%、溺水 0.5%。推定心因性裡有多少是冠狀動脈栓塞沒有分開統計，35% 是估計值，其餘也是估計值。'},
+    trauma:{n:'外傷',d:'',p:{hypovol:.48,hypox:.13,tension:.13,tamp:.10,acid:.03,mi:.02,hypoth:.02,tox:.02,k:.01,pe:.01},lit:[],
+      src:'外傷性心跳停止常被引用的分布：低血容約 48%、缺氧 13%、張力性氣胸 13%、填塞 10%。本次查證時原文網站限流，未能核對，暫列為估計值。'},
+    cs:{n:'心臟術後',d:'加護病房',p:{hypovol:.20,tamp:.15,mi:.15,hypox:.08,tension:.05,k:.05,acid:.05,pe:.01,tox:.01,hypoth:.005},lit:[],
+      src:'STS 心臟術後急救共識把出血、填塞、缺血（多以 VF 表現）列為主要原因；各比例為估計值。'}
+  };
+  const REF={
+    ilcor:'ILCOR CoSTR：急救中 POCUS 診斷正確性（數據來自 van der Wouw 1997，48 位院內心跳停止，確定性極低）',
+    wren:'Wren 1991：ECG 對高血鉀的敏感度約 0.34–0.62、特異度約 0.85（經 BestBets 整理）',
+    lus:'肺超音波對氣胸：敏感度約 0.9、特異度約 0.98（Alrajhi 2012 統合分析，非急救族群；本次未能核對原文）'
+  };
+  // ch(id, text, sub, {cause: LR}, why, group, {cause:'L'|'U'}, refKey, skipInSettings)
+  const ch=(id,t,s,w,why,g,lit,ref,no)=>({id,t,s,w,why,g:g||id,lit:lit||{},ref,no:no||[]});
+  const STEPS=[
+    {id:'ctx',t:'情境',q:'病人是誰？停止前發生了什麼事？',
+     coach:'上面選的院內、院外、外傷、心臟術後決定起始機率；這裡的情境再把個別原因往上或往下調。可以複選。',
+     chips:[
+      ch('c_bleed','大量出血','外傷、腸胃道出血、產後出血、主動脈瘤破裂',{hypovol:6},'失血是最直接的前負荷不足。外傷性心跳停止要先止血、補容積，單靠壓胸效果有限。'),
+      ch('c_fluid','嚴重脫水或分布性休克','大量嘔吐腹瀉、敗血症、過敏性休克',{hypovol:3,acid:1.3},'有效循環容積不足，絕對或相對。敗血症與過敏讓血管擴張，效果等同低血容。'),
+      ch('c_chest','胸部外傷','鈍傷或穿刺傷',{tension:3,tamp:3,hypovol:2},'胸部外傷先想三件事：張力性氣胸、心包填塞、大量血胸或出血。'),
+      ch('c_renal','腎衰竭或洗腎病人','漏洗、透析中、ACEi／ARB／spironolactone',{k:4,acid:1.5},'洗腎病人突然心跳停止，第一個要想高血鉀。'),
+      ch('c_dka','代謝性酸中毒的情境','DKA、乳酸中毒、敗血症',{acid:4,k:1.5},'嚴重酸中毒會降低心肌收縮力與升壓劑反應，DKA 也常合併鉀離子大幅移動。'),
+      ch('c_lowk','低血鉀高風險','利尿劑、嚴重腹瀉、低血鎂、酒精使用',{k:3},'低血鉀常合併低血鎂，容易引發 torsades 與 VF。'),
+      ch('c_resp','呼吸問題起頭','窒息、異物、氣喘／COPD 惡化、溺水',{hypox:6,acid:1.3,tension:1.3},'呼吸性停止通常先缺氧、心跳變慢，再變 PEA 或 asystole，也是最可逆的一類。'),
+      ch('c_ppv','正壓通氣中或剛做胸部處置','剛插管、呼吸器、放 central line、胸腔穿刺',{tension:3,hypox:1.5},'正壓通氣會把小氣胸撐成張力性氣胸；中心靜脈導管與胸腔穿刺是醫源性氣胸常見來源。插管病人也要想到管子本身出問題。'),
+      ch('c_card','心臟手術或心導管後','CABG／瓣膜術後、PCI、電燒、節律器放置',{tamp:5,mi:1.3},'心臟術後與導管穿孔是填塞的經典情境，往往是血塊而不是清澈的積液。上方已選「心臟術後」時這項不重複計算。',null,null,null,['cs']),
+      ch('c_dissect','主動脈剝離或心肌破裂風險','突發撕裂痛；心肌梗塞後數天',{tamp:3,mi:1.3},'A 型剝離破入心包、心肌梗塞後游離壁破裂，都會造成急性填塞。'),
+      ch('c_vte','靜脈血栓高風險','術後、臥床、癌症、懷孕或產後、長途旅行、DVT 病史',{pe:4},'在這些人身上，突然喘、低血氧後很快變 PEA，要高度懷疑大面積 PE。'),
+      ch('c_acs','停止前胸痛或已知冠心病','胸悶、冒冷汗、多重危險因子',{mi:4,pe:1.3},'成人突發心跳停止最常見的原因是冠狀動脈疾病，尤其初始心律是 VF／pVT 時。'),
+      ch('c_tox','藥物或毒物暴露','空藥盒、opioid、TCA、β-blocker／CCB、局部麻醉劑、一氧化碳',{tox:8,acid:1.3,hypox:1.3},'中毒病人通常年輕、心臟原本健康，找到並逆轉毒物後預後可以很好。'),
+      ch('c_cold','寒冷或浸水環境','戶外倒臥、溺水、酒醉、獨居長者',{hypoth:6,hypox:1.3},'低體溫會讓藥物與電擊效果變差，但腦部也受保護，是延長急救的理由。')
+     ]},
+    {id:'ecg',t:'心律／ECG',q:'螢幕上是什麼心律？停止前有沒有 ECG？',
+     coach:'PEA 先看 QRS 寬窄。<b>窄 QRS</b> 多半是機械性問題，血填不進來或打不出去（填塞、氣胸、PE、低血容）。<b>寬 QRS</b> 多半是心肌本身的電氣壞了（高血鉀、鈉通道阻斷中毒、缺血）。四種初始心律只計一個。',
+     chips:[
+      ch('r_vf','VF / pVT','初始心律可電擊',{mi:3,k:1.3,tox:1.3,hypoth:1.3,tamp:.5,tension:.5,hypovol:.5,pe:.5},'可電擊心律最常見是缺血性心臟病；機械性阻塞較少以 VF 表現。','rhythm'),
+      ch('r_pean','PEA，窄 QRS、偏快','',{tamp:3,tension:3,pe:3,hypovol:3,hypox:1.3,k:.5,tox:.7,mi:.7},'心臟電氣正常，竇性心搏還在努力，問題在機械：前負荷不足或右心阻塞。','rhythm'),
+      ch('r_peaw','PEA，寬 QRS、偏慢','',{k:4,tox:3,mi:2,acid:2,hypox:1.3,tamp:.7,tension:.7,hypovol:.7},'寬而慢的 PEA 表示心肌電氣本身受損：高血鉀、鈉通道阻斷中毒、嚴重缺血，或末期的酸中毒與缺氧。','rhythm'),
+      ch('r_asys','Asystole','',{hypox:1.3,acid:1.3,k:1.3,hypoth:1.3},'Asystole 常是任何原因拖久後的終末心律，鑑別力最低，要回頭從情境找線索。','rhythm'),
+      ch('r_brady','停止前心跳越來越慢','bradycardia → PEA／asystole',{hypox:3,k:2,tox:2,hypoth:2},'缺氧、高血鉀、β-blocker／CCB 中毒、低體溫都會先讓心跳慢下來。'),
+      ch('e_peakt','尖 T、寬 QRS、sine wave','停止前 ECG',{k:3},'高血鉀的典型進程：尖 T → P 波消失 → QRS 增寬 → sine wave。ECG 對高血鉀的敏感度其實不高，正常 ECG 不能排除。和血鉀值算同一組。','k',{k:'L'},'wren'),
+      ch('e_u','U 波、QT 延長、torsades','停止前 ECG',{k:3,tox:2},'低血鉀、低血鎂，或延長 QT 的藥物。和血鉀值算同一組。','k'),
+      ch('e_avr','寬 QRS＋aVR 終末大 R 波','QRS >100 ms，常合併心搏過速',{tox:6,k:1.3},'TCA 等鈉通道阻斷劑中毒的典型 ECG，解藥是 sodium bicarbonate。','k'),
+      ch('e_st','ST 上升或新的 LBBB','停止前或短暫 ROSC 時',{mi:6},'STEMI 表現指向冠狀動脈栓塞，ROSC 後走緊急心導管。和超音波局部室壁不動算同一組。','isch'),
+      ch('e_rv','右心負荷','S1Q3T3、新 RBBB、V1–V3 T 倒置',{pe:3},'急性右心壓力負荷。和超音波右心擴大算同一組，兩個都點只計較強的那個。','rv'),
+      ch('e_alt','低電壓、electrical alternans','',{tamp:4},'大量心包膜積液讓心臟在液體裡擺盪。和超音波積液算同一組。','eff'),
+      ch('e_j','Osborn J 波','',{hypoth:4},'J 波是 QRS 末端的駝峰，體溫越低越明顯。和核心體溫算同一組。','temp')
+     ]},
+    {id:'exam',t:'理學／呼吸器',q:'摸、聽、看管路。',
+     coach:'這一步也順便檢查自己：管子位置對不對、氧氣有沒有接上。插管病人突然惡化記 <b>DOPE</b>：Displacement、Obstruction、Pneumothorax、Equipment failure。',
+     chips:[
+      ch('x_unibs','單側呼吸音消失、胸廓不對稱','氣管偏移是晚期徵象',{tension:6,hypox:1.3},'張力性氣胸是臨床診斷，不等胸部 X 光。但也要排除管子插太深進右主支氣管。和 lung sliding 算同一組。','pleura'),
+      ch('x_paw','擠球很緊、氣道壓力突然升高','',{tension:3,hypox:2},'張力性氣胸、管路阻塞、支氣管痙攣都會。氣喘或 COPD 病人還要想到 auto-PEEP，先斷開呼吸器讓氣吐出來。'),
+      ch('x_etco2lost','ETCO₂ 波形消失、胃部有氣過水音','',{hypox:8},'管子跑掉或進了食道。壓胸品質好的時候，ETCO₂ 不該是一條平線。'),
+      ch('x_etdrop','ETCO₂ 突然掉很低','壓胸品質沒變',{pe:3,hypovol:1.3,tamp:1.3,tension:1.3},'肺血流被擋住（大面積 PE）時，CO₂ 送不到肺泡，ETCO₂ 掉得特別明顯；其他阻塞性休克也會。'),
+      ch('x_jvd','頸靜脈怒張','',{tamp:2,tension:2,pe:2,hypovol:.3},'右心回流受阻，指向填塞、氣胸、PE；低血容不像。和 IVC 算同一組。','venous'),
+      ch('x_flat','頸靜脈塌陷、蒼白、看得到出血','',{hypovol:6,tamp:.7,tension:.7,pe:.7},'沒有血回到心臟。記得找看不到的出血：胸、腹、骨盆、後腹腔、大腿。和 IVC 算同一組。','venous'),
+      ch('x_cyan','停止前就發紺、SpO₂ 低','',{hypox:3,pe:2},'先缺氧後停止。PE 也會嚴重低血氧，但肺部聽診常是乾淨的。和 PaO₂ 算同一組。','oxy'),
+      ch('x_leg','單側小腿或大腿腫脹','',{pe:4},'DVT 的線索。和超音波 DVT 算同一組。','dvt'),
+      ch('x_pin','針狀瞳孔、呼吸抑制、注射痕跡','',{tox:4,hypox:2},'Opioid toxidrome。2025：一律先 CPR，不因準備 naloxone 而延遲。'),
+      ch('x_cold30','核心體溫 <30 °C','食道、膀胱或直腸溫度',{hypoth:30},'重度低體溫本身就足以造成心跳停止。一般耳溫、額溫量不到低溫，要用核心溫度計。','temp'),
+      ch('x_cold35','核心體溫 30–35 °C','',{hypoth:3},'輕中度低體溫較少單獨造成心跳停止，可能是其他原因合併或停止後的結果。','temp'),
+      ch('x_warm','核心體溫正常','',{hypoth:.05},'量到正常核心體溫，低體溫就可以排除。','temp')
+     ]},
+    {id:'pocus',t:'POCUS',q:'心臟、肺、IVC 各看一眼。',
+     coach:'只在心律檢查的 10 秒內看，錄影回放再解讀，不可延長中斷或延遲電擊（2025）。ILCOR 的結論是沒有一個 POCUS 發現敏感到可以單獨排除某個原因。',
+     chips:[
+      ch('u_eff','心包膜積液＋至少一個腔室塌陷','',{tamp:8},'急救中唯一的研究敏感度與特異度都是 1.0，但只有 31 人、信賴區間很寬，這裡保守取 LR 8。心臟術後的積液常是局部血塊。','eff',{tamp:'L'},'ilcor'),
+      ch('u_noeff','沒有心包膜積液','',{tamp:.15},'看清楚沒有積液，填塞很不像；但研究太小，不能說完全排除。','eff'),
+      ch('u_rv','右心擴大（RV ≥ LV）、D-shape','',{pe:4},'研究中特異度 0.97（CI 0.82–0.99），但長時間 CPR 後右心本來就會漲，這裡保守取 LR 4，要配合情境。','rv',{pe:'L'},'ilcor'),
+      ch('u_clot','右心內浮動血栓或下肢 DVT','',{pe:6},'看到 clot-in-transit 或 DVT，PE 機率很高。','dvt'),
+      ch('u_nolung','單側 lung sliding 消失','看到 lung point 更確定',{tension:10},'肺超音波對氣胸的特異度很高（非急救族群）。插管太深、單側沒通氣也會沒有 sliding。','pleura',{tension:'U'},'lus'),
+      ch('u_lungok','雙側 lung sliding 都在','',{tension:.1},'看得到 sliding 的那一側就可以排除氣胸。','pleura',{tension:'U'},'lus'),
+      ch('u_ivcsmall','IVC 塌陷、心腔小而過動','pseudo-PEA',{hypovol:6},'心臟其實在動，只是裡面是空的。給容積、止血。','venous'),
+      ch('u_ivcbig','IVC 漲大不塌','',{hypovol:.4,tamp:1.3,tension:1.3,pe:1.3},'回流受阻或容積過多，低血容不像。','venous'),
+      ch('u_fast','FAST 陽性','腹腔或胸腔大量液體',{hypovol:4},'內出血。和 Hb 算同一組。','bleed'),
+      ch('u_rwma','局部室壁不動','常在 ROSC 後或 pseudo-PEA 時看到',{mi:5},'研究中敏感度 0.86、特異度 0.94，但只有 31 人，這裡保守取 LR 5。','isch',{mi:'L'},'ilcor'),
+      ch('u_still','心臟完全不動','cardiac standstill',{},'預後差，但不能單獨作為終止急救的依據。它不指向任何特定原因。')
+     ]},
+    {id:'lab',t:'檢驗',q:'ABG／VBG、i-STAT 有什麼？',
+     coach:'床邊血液氣體分析幾分鐘就有 K⁺、pH、Hb、乳酸。急救越久每個人都會酸、乳酸都會高，這兩項要看程度與情境。',
+     chips:[
+      ch('l_khi','K⁺ > 6.5 mmol/L','',{k:10},'高血鉀：calcium、insulin＋glucose、bicarbonate，之後透析。和高血鉀 ECG 算同一組。','k'),
+      ch('l_klo','K⁺ < 2.5 mmol/L','',{k:8},'嚴重低血鉀，常合併低血鎂，補鉀同時補鎂。','k'),
+      ch('l_kok','K⁺ 正常','',{k:.1},'鉀正常，鉀離子異常就很不像；會蓋過 ECG 的線索。','k'),
+      ch('l_ph','pH < 7.1、HCO₃⁻ 很低','',{acid:3},'要分辨是原因還是結果：急救 20 分鐘後的酸中毒多半是低灌流造成的。'),
+      ch('l_ket','高血糖＋酮體','',{acid:3,k:1.5},'DKA：酸中毒加上鉀離子大移動，血鉀可高可低。'),
+      ch('l_po2','PaO₂ 很低','已確認通氣與管路',{hypox:3,pe:1.3},'通氣正常仍低血氧，想肺本身（肺炎、ARDS）或 PE。','oxy'),
+      ch('l_hb','Hb 很低或比之前大降','',{hypovol:4},'急性出血時 Hb 一開始可能還正常，正常不能排除出血。','bleed'),
+      ch('l_tox','COHb 升高、osmolar／anion gap 異常','',{tox:4,acid:1.5},'一氧化碳、甲醇、乙二醇、水楊酸等中毒的線索。')
+     ]}
+  ];
+  const CH={};STEPS.forEach((s,i)=>s.chips.forEach(c=>{c.si=i;CH[c.id]=c}));
+  const NS=STEPS.length;
+  const GU={L:.3,U:.4,E:.5}; // spread applied to ln(LR): literature narrower, estimate wider
+  const GT={L:'文獻',U:'文獻·未核對',E:'估計'};
+  const DAMP=.15; // per extra positive finding
+  let set='ihca',step=0,sel=new Set(),last=null,open=null,fk=null;
+  try{const s=localStorage.getItem('acls-dx-set');if(SET[s])set=s}catch(e){}
+  const sig=x=>1/(1+Math.exp(-x));
+  const grade=(c,k)=>c.lit[k]||'E';
+  const active=c=>!c.no.includes(set);
+  // For cause k: within each group keep the chip with the largest |ln LR|
+  function used(k){
+    const best={};
+    sel.forEach(id=>{const c=CH[id],v=c.w[k];if(!v||!active(c))return;const b=best[c.g];if(!b||Math.abs(Math.log(v))>Math.abs(Math.log(b.w[k])))best[c.g]=c});
+    return best;
+  }
+  function post(k){
+    const S=SET[set],p0=S.p[k],pf=S.lit.includes(k)?1.3:1.8,lo0=Math.log(p0/(1-p0));
+    // positive and negative evidence kept apart: positive ln LR is damped by the number of positive groups (residual correlation)
+    const P=[0,0,0],N=[0,0,0];let np=0;
+    Object.values(used(k)).forEach(c=>{const l=Math.log(c.w[k]),u=GU[grade(c,k)];if(l>0){np++;P[0]+=l;P[1]+=l*(1-u);P[2]+=l*(1+u)}else{N[0]+=l;N[1]+=l*(1+u);N[2]+=l*(1-u)}});
+    const d=1/(1+DAMP*Math.max(0,np-1));
+    return{k,p:sig(lo0+P[0]*d+N[0]),lo:sig(lo0-Math.log(pf)+P[1]*d+N[1]),hi:sig(lo0+Math.log(pf)+P[2]*d+N[2]),t:Object.keys(used(k)).length};
+  }
+  const calc=()=>ORDER.map(post).sort((x,y)=>y.p-x.p);
+  const pct=p=>p<.01?'<1%':p>.99?'>99%':Math.round(p*100)+'%';
+  const rng=r=>pct(r.lo).replace('%','')+'–'+pct(r.hi);
+  function tier(r){if(r.p>=.5)return['hi','很可能'];if(r.p>=.2)return['md','可能'];if(r.p>=.05)return['lo','要排除'];return['none','不太像']}
+  const lr=v=>'×'+(v>=10?Math.round(v):String(+v.toFixed(2)));
+  const name=k=>'<b class="lt">'+CA[k].l+'</b>'+CA[k].n+' <span class="zh">'+CA[k].z+'</span>';
+  function effects(c){return Object.keys(c.w).sort((a,b)=>c.w[b]-c.w[a]).map(k=>'<span class="ef '+(c.w[k]>1?'up':'dn')+'">'+CA[k].n+' '+lr(c.w[k])+(grade(c,k)!=='E'?' · '+GT[grade(c,k)]:'')+'</span>').join('')}
+  function evidence(k){
+    const u=used(k),out=[];
+    STEPS.forEach(s=>s.chips.forEach(c=>{
+      if(!sel.has(c.id)||!c.w[k])return;
+      const g=grade(c,k),tag='<small class="gt '+g+'">'+GT[g]+'</small>';
+      if(!active(c))out.push('<li><span class="ev">—</span><span>'+c.t+' <small class="gt">此情境已含，不重複計</small></span></li>');
+      else if(u[c.g]===c)out.push('<li><span class="ev '+(c.w[k]>1?'up':'dn')+'">'+lr(c.w[k])+'</span><span>'+c.t+' '+tag+'</span></li>');
+      else out.push('<li><span class="ev">同組</span><span>'+c.t+' <small class="gt">已由「'+u[c.g].t+'」計入</small></span></li>');
+    }));
+    return out.length?'<ul class="evl">'+out.join('')+'</ul>':'<p class="hint">還沒有線索影響它，目前就是起始機率。</p>';
+  }
+  function detail(k,ev){const c=CA[k];return (ev?'<div class="dsec"><div class="dlab">計入的線索（LR）</div>'+evidence(k)+'</div>':'')+'<div class="dsec"><div class="dlab">怎麼確認</div><p>'+c.ok+'</p></div><div class="dsec"><div class="dlab">急救中怎麼處理</div><p>'+c.tx+'</p></div><div class="dsec warn"><div class="dlab">陷阱</div><p>'+c.pit+'</p></div>'}
+  function bar(r){return '<span class="bar"><i class="band" style="left:'+(r.lo*100)+'%;width:'+((r.hi-r.lo)*100)+'%"></i><i class="pt" style="width:'+(r.p*100)+'%"></i></span>'}
+  function rankHTML(R){
+    return '<div class="rkhead"><h3>各原因機率</h3><span class="hint">各自計算，總和不是 100%</span></div>'+R.map(r=>{
+      const [tc,tl]=tier(r),o=open===r.k;
+      return '<div class="rk '+tc+(o?' open':'')+'"><button class="rkb" data-key="rk-'+r.k+'" data-open="'+r.k+'" aria-expanded="'+o+'"><span class="nm">'+name(r.k)+'</span><span class="pv"><span class="pc">'+pct(r.p)+'</span><span class="rg">'+rng(r)+'</span></span>'+bar(r)+'</button>'+(o?'<div class="rkd">'+detail(r.k,true)+'</div>':'')+'</div>';
+    }).join('');
+  }
+  function leadHTML(R){const p=R.filter(r=>r.p>=.2).slice(0,3);return '<div class="lead"><span class="ll">目前最像</span>'+(p.length?p.map(r=>'<span class="lc '+tier(r)[0]+'">'+CA[r.k].n+' '+pct(r.p)+'</span>').join(''):'<span class="hint">還沒有原因超過 20%，繼續點線索</span>')+'</div>'}
+  function stepperHTML(){
+    return '<div class="stepper" aria-label="鑑別步驟">'+STEPS.map((s,i)=>{const n=s.chips.filter(c=>sel.has(c.id)).length;return '<button data-key="st-'+i+'" data-step="'+i+'"'+(i===step?' aria-current="step"':'')+'><span class="sn">'+(i+1)+'</span>'+s.t+(n?'<span class="cnt">'+n+'</span>':'')+'</button>'}).join('')+'<button data-key="st-'+NS+'" data-step="'+NS+'"'+(step===NS?' aria-current="step"':'')+'><span class="sn">✓</span>結果</button></div>';
+  }
+  function stepHTML(R){
+    const s=STEPS[step];
+    let h=leadHTML(R)+'<div class="sq"><div class="eyebrow">第 '+(step+1)+' 步 / '+NS+' · '+s.t+'</div><h3>'+s.q+'</h3></div><div class="coach">'+s.coach+'</div>';
+    h+='<div class="chips">'+s.chips.map(c=>'<button class="chip" data-key="c-'+c.id+'" data-chip="'+c.id+'" aria-pressed="'+sel.has(c.id)+'"><span class="ck" aria-hidden="true"></span><span class="ct"><span class="t">'+c.t+'</span>'+(c.s?'<small>'+c.s+'</small>':'')+'</span></button>').join('')+'</div>';
+    const L=last&&CH[last].si===step?CH[last]:null;
+    h+='<div class="why" aria-live="polite">'+(L?'<div class="wt">'+(sel.has(L.id)?'':'已取消：')+L.t+'</div><p>'+L.why+'</p>'+(!active(L)?'<p class="hint">目前情境已包含這項，不重複計算。</p>':'')+'<div class="efs">'+(Object.keys(L.w).length?effects(L):'<span class="ef">不改變機率</span>')+'</div>'+(L.ref?'<p class="hint">依據：'+REF[L.ref]+'</p>':''):'<p class="hint">點一個線索，這裡會顯示它對各原因的 LR，以及數值來自文獻還是估計。</p>')+'</div>';
+    h+='<div class="navb"><button class="btn" data-key="prev" data-act="prev"'+(step===0?' disabled':'')+'>上一步</button><button class="btn primary" data-key="next" data-act="next">'+(step===NS-1?'看結果':'下一步：'+STEPS[step+1].t)+'</button></div>';
+    return h;
+  }
+  function resultHTML(R){
+    const top=R.filter(r=>r.p>=.2).slice(0,3),low=R.filter(r=>r.p>=.05&&r.p<.2);
+    let h='<div class="sq"><div class="eyebrow">結果 · '+SET[set].n+'</div><h3>'+(top.length?'機率最高的可逆原因':'還沒有原因超過 20%')+'</h3></div>';
+    if(!top.length)h+='<p class="hint">回到前面幾步點選線索，或看下方仍需排除的原因。</p>';
+    h+=top.map((r,i)=>'<div class="dcard '+tier(r)[0]+'"><div class="dch"><span class="rkn">'+(i+1)+'</span><h3>'+name(r.k)+'</h3><span class="sc">'+pct(r.p)+'（'+rng(r)+'）</span></div>'+detail(r.k,true)+'</div>').join('');
+    if(low.length)h+='<div class="coach"><b>還要排除（5–20%）：</b>'+low.map(r=>CA[r.k].n+' '+pct(r.p)).join('、')+'。急救中沒排除的原因，便宜又安全的處置可以同時做，例如確認呼吸道、給一次容積。</div>';
+    h+='<div class="navb"><button class="btn" data-key="prev" data-act="prev">上一步</button><button class="btn" data-key="restart" data-act="restart">重新開始</button></div>';
+    return h;
+  }
+  function methodHTML(){
+    return '<details class="method"><summary>怎麼算的、數字從哪裡來</summary><div class="mbody">'+
+      '<p><b>計算</b>：每個原因各自算。起始機率（依院內、院外等情境）換成 odds，乘上每個線索的概似比（LR），再換回機率。同一個生理機轉的線索（例如頸靜脈與 IVC、ECG 與血鉀值）只取最強的一個。分組後不同線索之間仍常彼此相關，所以支持某原因的線索越多，加總時打折越多（第 n 個支持線索起，總和乘以 1／(1＋0.15×(n−1))）；排除用的線索不打折。</p>'+
+      '<p><b>區間</b>：反映數值本身的不確定性。估計值的 LR 在對數尺度上放寬 ±50%，有文獻的 ±30%，起始機率也一併放寬。區間很寬是正常的，代表證據就是這麼薄。</p>'+
+      '<p><b>限制</b>：大部分 LR 沒有心跳停止族群的研究，是依生理機轉與臨床經驗的估計，頁面上都有標示。這是幫忙排序與提醒的工具，不能單獨用來決定溶栓、開胸這類處置。</p>'+
+      '<p><b>目前情境的起始機率</b>：'+SET[set].src+'</p>'+
+      '<div class="dlab">參考資料</div><ul class="refs">'+
+      '<li><a href="https://researchexperts.utmb.edu/en/publications/etiologies-of-in-hospital-cardiac-arrest-a-systematic-review-and-/" target="_blank" rel="noopener">Allencherril J, et al. Etiologies of in-hospital cardiac arrest: systematic review and meta-analysis. Resuscitation 2022;175:88–95</a></li>'+
+      '<li><a href="https://academic.oup.com/ehjopen/article/3/4/oead066/7205389" target="_blank" rel="noopener">Albert M, et al. Aetiology and outcome in hospitalized cardiac arrest patients. Eur Heart J Open 2023;3(4):oead066</a></li>'+
+      '<li><a href="https://mycares.net/sitepages/uploads/2026/2025_flipbook/inc/html/page45.html" target="_blank" rel="noopener">CARES 2025 Annual Report：院外心跳停止病因分布</a></li>'+
+      '<li><a href="https://costr.ilcor.org/document/diagnostic-test-accuracy-of-point-of-care-ultrasound-during-cardiopulmonary-resuscitation-to-indicate-the-etiology-of-cardiac-arrest" target="_blank" rel="noopener">ILCOR CoSTR：急救中 POCUS 判斷病因的診斷正確性</a></li>'+
+      '<li><a href="https://www.bestbets.org/?p=5637" target="_blank" rel="noopener">BestBets：ECG 診斷高血鉀的正確性（Wren 1991、Montague 2008）</a></li>'+
+      '<li>Alrajhi K, et al. Chest 2012;141:703–8（肺超音波診斷氣胸，本次未能核對原文）</li>'+
+      '<li><a href="https://www.sts.org/sites/default/files/documents/ExpertConsensus_ResuscitationAfterCardiacSurgery.pdf" target="_blank" rel="noopener">STS Expert Consensus：心臟術後急救</a></li>'+
+      '</ul></div></details>';
+  }
+  function render(){
+    const R=calc(),box=$('dx');
+    let h='<div class="dx-top"><h2>H’s &amp; T’s 鑑別</h2><button class="btn sm" data-key="clr" data-act="restart"'+(sel.size?'':' disabled')+'>全部清除'+(sel.size?'（'+sel.size+'）':'')+'</button></div>';
+    h+='<div class="setrow"><span class="ll">情境</span><div class="seg" role="group" aria-label="情境">'+Object.keys(SET).map(k=>'<button data-key="set-'+k+'" data-set="'+k+'" aria-pressed="'+(k===set)+'">'+SET[k].n+'</button>').join('')+'</div></div>';
+    h+='<p class="hint">起始機率依情境而定，點線索後用概似比更新。每個原因各自計算，可以同時有好幾個偏高。括號內是不確定範圍。</p>';
+    h+=stepperHTML()+'<div class="dxgrid"><div class="dxmain">'+(step===NS?resultHTML(R):stepHTML(R))+'</div><aside class="rank" aria-label="各原因機率">'+rankHTML(R)+'</aside></div>'+methodHTML();
+    const mo=box.querySelector('details.method');const wasOpen=mo&&mo.open;
+    box.innerHTML=h;
+    if(wasOpen)box.querySelector('details.method').open=true;
+    if(fk){const el=box.querySelector('[data-key="'+fk+'"]');if(el)el.focus({preventScroll:true})}
+  }
+  function reset(){sel=new Set();step=0;last=null;open=null}
+  function toTop(){const st=$('dx').querySelector('.stepper');if(!st)return;const y=st.getBoundingClientRect().top+window.scrollY-64;if(window.scrollY>y)window.scrollTo({top:Math.max(0,y)})}
+  $('dx').addEventListener('click',e=>{
+    const b=e.target.closest('button');if(!b||b.disabled)return;
+    const d=b.dataset;let move=false;fk=d.key||null;
+    if(d.chip){sel.has(d.chip)?sel.delete(d.chip):sel.add(d.chip);last=d.chip}
+    else if(d.open){open=open===d.open?null:d.open}
+    else if(d.set){set=d.set;try{localStorage.setItem('acls-dx-set',set)}catch(err){}}
+    else if(d.step!=null){step=+d.step;last=null;move=true}
+    else if(d.act==='next'){step=Math.min(NS,step+1);last=null;move=true}
+    else if(d.act==='prev'){step=Math.max(0,step-1);last=null;move=true}
+    else if(d.act==='restart'){reset();move=true}
+    else return;
+    render();if(move)toTop();
+  });
+  document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>{const t=document.querySelector('#tabs [data-t="'+b.dataset.goto+'"]');if(t)t.click()}));
+  render();
+})();
+</script>
+
+</body></html>

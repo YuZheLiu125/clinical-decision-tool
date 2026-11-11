@@ -1,0 +1,608 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>會診電話稿</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 版面：左邊填表，右邊即時產生 ISBAR 稿子（手機時上下堆疊）；唸稿模式全螢幕大字 */
+:root {
+  --paper: #f4f6f5;
+  --card: #ffffff;
+  --ink: #17201e;
+  --muted: #5d6b67;
+  --line: #d6dedb;
+  --accent: #0e5b5f;
+  --accent-soft: #e1eeee;
+  --warn: #b3261e;
+  --warn-soft: #fbe9e7;
+  --ok: #2c7a4b;
+  --ok-soft: #e4f2e9;
+  --f-body: "Noto Sans TC", "PingFang TC", "Heiti TC", system-ui, sans-serif;
+  --f-display: "Noto Serif TC", "Songti TC", serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #111716; --card: #19211f; --ink: #e6ecea; --muted: #9aa8a4; --line: #2c3835;
+    --accent: #6cc3c5; --accent-soft: #1d3132; --warn: #ff8a80; --warn-soft: #3a1e1c;
+    --ok: #7fd3a0; --ok-soft: #1a3024; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #111716; --card: #19211f; --ink: #e6ecea; --muted: #9aa8a4; --line: #2c3835;
+  --accent: #6cc3c5; --accent-soft: #1d3132; --warn: #ff8a80; --warn-soft: #3a1e1c;
+  --ok: #7fd3a0; --ok-soft: #1a3024; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.6; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 24px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+h1 { font-family: var(--f-display); font-size: 1.75rem; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 2px 0 0; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 8px 14px; }
+button.primary { background: var(--accent); color: var(--paper); border-color: var(--accent); font-weight: 700; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.banner { background: var(--accent-soft); color: var(--accent); border-radius: 8px; padding: 8px 12px; font-size: 0.875rem; margin-bottom: 16px; }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+form { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+fieldset { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 14px 16px 16px; margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+legend { font-weight: 700; padding: 0 6px; display: flex; gap: 8px; align-items: baseline; }
+legend .tag { font-family: var(--f-mono); font-size: 0.75rem; color: var(--accent); letter-spacing: 0.08em; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; }
+.row > label { flex: 1 1 120px; min-width: 0; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8125rem; color: var(--muted); }
+input, select, textarea { font: inherit; font-size: 15px; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; width: 100%; }
+textarea { resize: vertical; min-height: 64px; }
+.mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { position: relative; }
+.chip input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.chip span { display: inline-block; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; font-size: 0.875rem; color: var(--ink); background: var(--paper); }
+.chip input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.hint { font-size: 0.8125rem; color: var(--muted); margin: 0; }
+aside { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.panel h2 { font-size: 0.8125rem; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 10px; font-weight: 700; }
+.checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.checks li { display: flex; gap: 8px; align-items: baseline; }
+.mark { font-family: var(--f-mono); font-size: 0.8125rem; width: 1.4em; flex: none; text-align: center; border-radius: 4px; }
+.ok .mark { color: var(--ok); background: var(--ok-soft); }
+.miss .mark { color: var(--warn); background: var(--warn-soft); }
+.miss { color: var(--warn); }
+.warns { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.warn { background: var(--warn-soft); color: var(--warn); border-radius: 6px; padding: 7px 10px; font-size: 0.875rem; font-weight: 500; }
+.si { display: flex; align-items: baseline; gap: 8px; margin-top: 10px; font-size: 0.875rem; color: var(--muted); }
+.si b { font-family: var(--f-mono); font-size: 1.125rem; color: var(--ink); }
+.si b.hi { color: var(--warn); }
+.script p { margin: 0 0 10px; }
+.script .k { font-family: var(--f-mono); font-size: 0.75rem; color: var(--accent); letter-spacing: 0.08em; display: block; }
+.script .blank { color: var(--warn); }
+.panel-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+#reader { position: fixed; inset: 0; z-index: 20; background: var(--paper); overflow-y: auto; padding-block: calc(env(safe-area-inset-top, 0px) + 20px) calc(env(safe-area-inset-bottom, 0px) + 40px); padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+#reader .inner { max-width: 760px; margin: 0 auto; }
+#reader .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+#reader .script p { font-size: 1.5rem; line-height: 1.7; margin-bottom: 22px; }
+#reader .script .k { font-size: 0.875rem; }
+@media (prefers-reduced-motion: no-preference) { button { transition: background 0.15s; } }
+</style>
+<style id="hub-base">
+/* 臨床輔助決策工具 · 共用基底（每個工具都內嵌這一份）
+   字體：系統字（iPhone = 蘋方，Android = Noto CJK），不下載網路字型，開啟更快
+   色票：病房冷灰底 + 各工具辨識色；動畫：同一組曲線與時長 */
+:root{
+  --hub-bg:#EEF1F2; --hub-surface:#FFFFFF; --hub-surface2:#E6EAEC; --hub-ink:#152025; --hub-ink2:#4A575E; --hub-ink3:#6E7A81; --hub-line:#D3DADD;
+  --hub-bad:#B3261E; --hub-bad-soft:#FBE6E4; --hub-warn:#9A5B00; --hub-warn-soft:#FBEFD9; --hub-ok:#1D7A3E; --hub-ok-soft:#E1F2E6;
+  --hub-code:#C0262F; --hub-code-soft:#FBE4E5; --hub-pilot:#A35500; --hub-pilot-soft:#F6E7D2;
+  --hub-consult:#2C5C8C; --hub-consult-soft:#DFE8F2; --hub-meds:#0D6870; --hub-meds-soft:#DDEFF0;
+  --hub-labs:#5B4699; --hub-labs-soft:#EBE6F6; --hub-todo:#B4573A; --hub-todo-soft:#F5E3DA;
+  --hub-p1:#B3322B; --hub-p2:#C27416; --hub-p3:#4F6B8A; --hub-p4:#8A867B;
+  --hub-sans:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",system-ui,sans-serif;
+  --hub-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Roboto Mono",monospace;
+  --hub-ease:cubic-bezier(.2,.8,.2,1); --hub-dur:.18s;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --hub-bg:#0E1316; --hub-surface:#161D21; --hub-surface2:#1E272C; --hub-ink:#E4E9EB; --hub-ink2:#A2AEB4; --hub-ink3:#7E8B93; --hub-line:#2A353B;
+  --hub-bad:#FF7A70; --hub-bad-soft:#3A1B19; --hub-warn:#F0B04A; --hub-warn-soft:#352812; --hub-ok:#6CCF8E; --hub-ok-soft:#15301F;
+  --hub-code:#FF6B70; --hub-code-soft:#3A1A1D; --hub-pilot:#F0A23A; --hub-pilot-soft:#3A2911;
+  --hub-consult:#80B1E0; --hub-consult-soft:#162636; --hub-meds:#5CC2C8; --hub-meds-soft:#16302F;
+  --hub-labs:#B4A2EC; --hub-labs-soft:#2A2440; --hub-todo:#E08A68; --hub-todo-soft:#3A241B; --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#A6A297; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --hub-bg:#0E1316; --hub-surface:#161D21; --hub-surface2:#1E272C; --hub-ink:#E4E9EB; --hub-ink2:#A2AEB4; --hub-ink3:#7E8B93; --hub-line:#2A353B;
+  --hub-bad:#FF7A70; --hub-bad-soft:#3A1B19; --hub-warn:#F0B04A; --hub-warn-soft:#352812; --hub-ok:#6CCF8E; --hub-ok-soft:#15301F;
+  --hub-code:#FF6B70; --hub-code-soft:#3A1A1D; --hub-pilot:#F0A23A; --hub-pilot-soft:#3A2911;
+  --hub-consult:#80B1E0; --hub-consult-soft:#162636; --hub-meds:#5CC2C8; --hub-meds-soft:#16302F;
+  --hub-labs:#B4A2EC; --hub-labs-soft:#2A2440; --hub-todo:#E08A68; --hub-todo-soft:#3A241B; --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#A6A297; color-scheme:dark}
+
+/* 觸控：點擊不延遲、不閃灰框、iPhone 不自動放大字 */
+html{-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{-webkit-font-smoothing:antialiased;text-rendering:optimizeSpeed}
+::selection{background:color-mix(in srgb,var(--hub-accent,var(--hub-ink)) 22%,transparent)}
+/* iPhone 點進字小於 16px 的輸入框會自動放大、而且不會縮回來：觸控裝置上所有輸入框一律 ≥16px */
+@media (pointer:coarse){input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),textarea,select{font-size:max(16px,1em)!important}}
+/* 共用動畫：按下去微縮、顏色淡入淡出（低權重，工具自己的設定優先） */
+:where(button,.btn,.chip,.card,summary,[role="tab"],a){transition:background-color var(--hub-dur) var(--hub-ease),border-color var(--hub-dur) var(--hub-ease),color var(--hub-dur) var(--hub-ease),box-shadow var(--hub-dur) var(--hub-ease),opacity var(--hub-dur) var(--hub-ease),transform .12s var(--hub-ease)}
+:where(button,.btn,.chip,[role="tab"]):active:not(:disabled){transform:scale(.97)}
+@keyframes hub-in{from{opacity:0;transform:translateY(6px)}}
+@keyframes hub-pop{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
+.hub-toast{position:fixed;left:16px;right:16px;margin:0 auto;width:fit-content;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;max-width:min(520px,calc(100% - 32px));box-sizing:border-box;display:flex;gap:10px;align-items:center;background:var(--hub-ink);color:var(--hub-bg);font:500 14px/1.4 var(--hub-sans);padding:9px 14px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:hub-in .22s var(--hub-ease)}
+/* 待辦設定按鈕：跟待辦表的快速新增同一套（立即／緊急／待辦／有空，點緊急或待辦展開倒數） */
+.hp{display:flex;flex-direction:column;gap:8px;min-width:0}
+.hp-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.hp-pr{--pc:var(--hub-p3);display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:46px;padding:4px;border:1px solid color-mix(in srgb,var(--pc) 45%,var(--hub-line));border-radius:999px;background:transparent;color:var(--pc);font:500 15px/1.2 var(--hub-sans);cursor:pointer}
+.hp-pr[data-p="1"]{--pc:var(--hub-p1)}.hp-pr[data-p="2"]{--pc:var(--hub-p2)}.hp-pr[data-p="4"]{--pc:var(--hub-p4)}
+.hp-pr small{font-size:12px;font-variant-numeric:tabular-nums}
+.hp-pr small:empty{display:none}
+.hp-pr[aria-pressed="true"]{background:var(--pc);border-color:var(--pc);color:var(--hub-surface)}
+.hp-tm{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px}
+.hp-tm::-webkit-scrollbar{display:none}
+.hp-c{flex:none;min-height:40px;border:1px solid var(--hub-line);background:transparent;border-radius:999px;padding:6px 14px;font:15px/1 var(--hub-sans);color:var(--hub-ink);white-space:nowrap;cursor:pointer;font-variant-numeric:tabular-nums}
+.hp-c[aria-pressed="true"]{background:var(--hub-ink);border-color:var(--hub-ink);color:var(--hub-bg)}
+.hp input{flex:none;font:16px var(--hub-sans);min-height:40px;padding:5px 10px;border-radius:999px;border:1px solid var(--hub-line);background:var(--hub-bg);color:var(--hub-ink);width:80px;text-align:center}
+.hp-dt{display:flex;gap:6px}
+.hp-dt input[type="date"]{flex:1 1 9.5em;width:auto;max-width:12em}
+.hp-dt input[type="time"]{width:7em}
+/* 右滑加入待辦 */
+[data-swipe]{position:relative;touch-action:pan-y}
+[data-swipe].sw-drag{transition:none!important}
+[data-swipe].sw-back{transition:transform .22s var(--hub-ease)!important}
+[data-swipe]::before{content:"＋ 待辦";position:absolute;top:0;bottom:0;right:100%;width:var(--sw,0px);display:flex;align-items:center;justify-content:flex-end;padding-right:12px;box-sizing:border-box;background:var(--hub-todo);color:var(--hub-surface);font:700 14px/1 var(--hub-sans);white-space:nowrap;overflow:hidden;opacity:var(--swo,0);pointer-events:none}
+[data-swipe].sw-arm::before{content:"放開加入"}
+body.sw-on{-webkit-user-select:none;user-select:none}
+@keyframes hub-flash{from{background-color:var(--hub-todo-soft);box-shadow:inset 4px 0 0 var(--hub-todo)}}
+.sw-done{animation:hub-flash .9s var(--hub-ease)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+
+html:root:root{--paper:var(--hub-bg);--card:var(--hub-surface);--line:var(--hub-line);--ink:var(--hub-ink);--muted:var(--hub-ink2);--accent:var(--hub-consult);--accent-soft:var(--hub-consult-soft);--warn:var(--hub-bad);--warn-soft:var(--hub-bad-soft);--ok:var(--hub-ok);--ok-soft:var(--hub-ok-soft);--hub-accent:var(--hub-consult);--f-body:var(--hub-sans);--f-display:var(--hub-sans);--f-mono:var(--hub-mono)}
+</style>
+
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>會診電話稿</h1>
+      <p class="sub">撥號前 30 秒：填空、看檢核，然後照稿唸。</p>
+    </div>
+    <div class="actions">
+      <button type="button" id="loadExample">看範例</button>
+      <button type="button" id="clearAll">清空</button>
+    </div>
+  </header>
+
+  <div class="banner" id="exampleBanner" hidden>目前是範例：模擬病例 #1 周佳穎。按「清空」開始填你自己的病人。</div>
+
+  <div class="grid">
+    <form id="f" autocomplete="off">
+      <fieldset>
+        <legend><span class="tag">I</span>你是誰、打給誰</legend>
+        <div class="row">
+          <label>你的名字<input id="me" placeholder="劉宇哲"></label>
+          <label>身份<input id="role" value="PGY1"></label>
+          <label>單位<input id="unit" placeholder="急診"></label>
+        </div>
+        <div class="row">
+          <label>床號<input id="bed" placeholder="第三床"></label>
+          <label>會診科別<input id="dept" placeholder="婦產科"></label>
+          <label>怎麼稱呼對方<input id="callee" value="學長"></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="tag">S</span>一句話講問題，判斷放前面</legend>
+        <div class="row">
+          <label>年紀<input id="age" class="mono" inputmode="numeric" placeholder="28"></label>
+          <label>性別<select id="sex"><option value="">—</option><option value="女性">女性</option><option value="男性">男性</option></select></label>
+          <label>主訴<input id="cc" placeholder="下腹痛"></label>
+          <label>多久<input id="dur" placeholder="一天"></label>
+        </div>
+        <label>你擔心的診斷（不確定也要寫）<input id="dx" placeholder="例：R/O ectopic"></label>
+        <div class="seg" role="group" aria-label="血行動力學">
+          <label class="chip"><input type="radio" name="stab" value="unstable" id="stabU"><span>不穩定</span></label>
+          <label class="chip"><input type="radio" name="stab" value="stable" id="stabS"><span>穩定</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="tag">B</span>相關病史</legend>
+        <textarea id="bg" placeholder="只寫相關的：LMP、UPT…"></textarea>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="tag">A</span>生命徵象與關鍵發現</legend>
+        <div class="row">
+          <label>HR<input id="hr" class="mono" inputmode="numeric"></label>
+          <label>BP<input id="bp" class="mono" placeholder="92/58"></label>
+          <label>RR<input id="rr" class="mono" inputmode="numeric"></label>
+          <label>SpO₂<input id="spo2" class="mono" inputmode="numeric"></label>
+          <label>BT<input id="bt" class="mono" inputmode="decimal"></label>
+        </div>
+        <label>意識／外觀<input id="look" placeholder="蒼白、冒汗"></label>
+        <div class="row">
+          <label>之前什麼時候<input id="prevT" placeholder="檢傷時"></label>
+          <label>當時 HR<input id="prevHr" class="mono" inputmode="numeric"></label>
+          <label>當時 BP<input id="prevBp" class="mono" placeholder="102/64"></label>
+        </div>
+        <label>關鍵檢查結果<textarea id="find" placeholder="例：FAST 有液體"></textarea></label>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="tag">R</span>你要對方做什麼、你做了什麼</legend>
+        <label>要求
+          <select id="req">
+            <option value="">— 選一個 —</option>
+            <option value="現在下來評估">現在下來評估</option>
+            <option value="評估是否需要手術介入">評估是否需要手術</option>
+            <option value="給我處置上的建議">電話上給處置建議</option>
+            <option value="評估是否需要轉加護病房">評估是否轉加護病房</option>
+            <option value="看一下，安排書面會診">不急，書面會診</option>
+          </select>
+        </label>
+        <label>具體問題（選填）<input id="q" placeholder="例：要停抗凝嗎"></label>
+        <p class="hint">已經做的處置</p>
+        <div class="chips" id="doneChips"></div>
+        <label>其他已做<input id="doneOther" placeholder="例：NS bolus"></label>
+      </fieldset>
+    </form>
+
+    <aside>
+      <div class="panel" id="checkPanel">
+        <h2>撥號前檢核</h2>
+        <ul class="checks" id="checks"></ul>
+        <div class="si" id="si"></div>
+        <div class="warns" id="warns"></div>
+      </div>
+      <div class="panel">
+        <h2>你的稿子</h2>
+        <div class="script" id="script"></div>
+        <div class="panel-actions">
+          <button type="button" class="primary" id="openReader">唸稿模式</button>
+          <button type="button" id="copy">複製稿子</button>
+          <button type="button" id="toTodo">加入待辦：等回電</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div id="reader" hidden>
+  <div class="inner">
+    <div class="top">
+      <strong>照著唸</strong>
+      <button type="button" id="closeReader">關閉</button>
+    </div>
+    <div class="script" id="readerScript"></div>
+  </div>
+</div>
+
+<script>
+/* 待辦表共用：同一個總站共用 localStorage（shiftboard.v1），待辦表那邊會即時更新
+   ‧ hubTodo.add()：加一項（可帶子項目）
+   ‧ hubTodo.pickerHTML()：跟待辦表一樣的「立即／緊急／待辦／有空＋倒數」按鈕
+   ‧ data-swipe 的列：手指右滑加入待辦（主程式提供 window.hubOnSwipe(el) 回傳內容）
+   ‧ 床號預設 = 最近一次輸入的床號（hub.lastBed，各工具共用） */
+(function () {
+  const KEY = 'shiftboard.v1', BED = 'hub.lastBed', PK = 'hub.todoPick';
+  const PRN = { 1: '立即', 2: '緊急', 3: '待辦', 4: '有空' };
+  const TM = { 2: [[5, '5分'], [10, '10分'], [15, '15分'], [30, '30分']], 3: [[60, '1時'], [120, '2時'], [240, '4時'], [-1, '明天'], [-2, '日期']] };
+  const timed = p => p === 2 || p === 3;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const set = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+
+  let pk = { p: 3, tm: 0, cm: '', d: '', t: '08:00', open: false };
+  try { const s = JSON.parse(get(PK) || 'null'); if (s && PRN[s.p]) pk = { ...pk, ...s, open: false }; } catch (e) {}
+  const savePk = () => set(PK, JSON.stringify({ p: pk.p, tm: pk.tm, t: pk.t }));
+
+  function tmLabel() {
+    if (!timed(pk.p)) return '';
+    const cm = parseInt(pk.cm, 10);
+    if (cm > 0) return cm >= 60 && cm % 60 === 0 ? `${cm / 60}時` : `${cm}分`;
+    if (pk.tm === -1) return '明天';
+    if (pk.tm === -2) return pk.d ? `${+pk.d.slice(5, 7)}/${+pk.d.slice(8, 10)}` : '日期';
+    const hit = (TM[pk.p] || []).find(x => x[0] === pk.tm); return hit ? hit[1] : '';
+  }
+  function inner() {
+    const lbl = tmLabel(), cmOn = parseInt(pk.cm, 10) > 0;
+    let h = `<div class="hp-row" role="group" aria-label="緊急程度">${[1, 2, 3, 4].map(p =>
+      `<button type="button" class="hp-pr" data-p="${p}" data-hp-p="${p}" aria-pressed="${pk.p === p}"><span>${PRN[p]}</span><small>${pk.p === p ? lbl : ''}</small></button>`).join('')}</div>`;
+    if (pk.open && timed(pk.p)) {
+      h += `<div class="hp-tm" role="group" aria-label="倒數時間">${TM[pk.p].map(([m, t]) =>
+        `<button type="button" class="hp-c" data-hp-tm="${m}" aria-pressed="${pk.tm === m && !cmOn}">${t}</button>`).join('')}<input type="number" data-hp-cm min="1" max="1440" inputmode="numeric" placeholder="自訂分" aria-label="自訂分鐘" value="${esc(pk.cm)}"></div>`;
+      if (pk.tm < 0 && !cmOn) h += `<div class="hp-dt"><input type="date" data-hp-d aria-label="日期" value="${esc(pk.d)}"><input type="time" data-hp-t aria-label="時間" value="${esc(pk.t || '08:00')}"></div>`;
+    }
+    return h;
+  }
+  function sumText() { const b = api.bed(), l = tmLabel(); return `${b ? b + ' 床 · ' : ''}${PRN[pk.p]}${l ? ' · ' + l : ''}`; }
+  function refresh(full) {
+    document.querySelectorAll('[data-hp-root]').forEach(r => {
+      if (full) r.innerHTML = inner();
+      else r.querySelectorAll('.hp-pr').forEach(b => { b.querySelector('small').textContent = +b.dataset.hpP === pk.p ? tmLabel() : ''; });
+    });
+    document.querySelectorAll('[data-hp-sum]').forEach(e => { e.textContent = sumText(); });
+  }
+
+  const api = window.hubTodo = {
+    KEY,
+    bed() { return (get(BED) || '').trim(); },
+    setBed(v) { set(BED, (v || '').trim()); document.querySelectorAll('[data-hp-bed]').forEach(i => { if (i !== document.activeElement) i.value = v; }); refresh(false); },
+    pickerHTML() { return `<div class="hp" data-hp-root>${inner()}</div>`; },
+    sumHTML() { return `<span data-hp-sum>${esc(sumText())}</span>`; },
+    // 依目前按鈕算到時時間；回傳 { due, err }
+    due() {
+      const now = Date.now(), cm = parseInt(pk.cm, 10);
+      if (!timed(pk.p)) return { due: 0 };
+      if (cm > 0) return { due: now + cm * 60e3 };
+      if (pk.tm === -1) { const d = new Date(); d.setDate(d.getDate() + 1); const [h, m] = (pk.t || '08:00').split(':'); d.setHours(+h, +m, 0, 0); return { due: d.getTime() }; }
+      if (pk.tm === -2) {
+        const w = pk.d ? new Date(`${pk.d}T${pk.t || '08:00'}`).getTime() : NaN;
+        return w > now ? { due: w } : { err: pk.d ? '選的時間已經過了' : '請先選日期' };
+      }
+      return { due: pk.tm > 0 ? now + pk.tm * 60e3 : 0 };
+    },
+    lastErr: '',
+    _read() { try { const st = JSON.parse(get(KEY) || 'null'); if (st && Array.isArray(st.items)) return st; } catch (e) {} return null; },
+    // 這一項在待辦表裡的狀態：'open'（還沒做）、'done'（已完成）或 null（不在／被刪掉）
+    status(id) { if (!id) return null; const st = api._read(); if (!st) return null; if (st.items.some(i => i.id === id)) return 'open'; return (st.done || []).some(i => i.id === id) ? 'done' : null; },
+    subStatus(id, k) {
+      const st = api._read(); if (!st) return null;
+      const it = st.items.find(i => i.id === id), d = it ? null : (st.done || []).find(i => i.id === id);
+      const x = it || d; if (!x || !x.subs || !x.subs[k]) return null;
+      return x.subs[k].d || d ? 'done' : 'open';
+    },
+    subDone(id, k) {
+      const st = api._read(); if (!st) return false;
+      const it = st.items.find(i => i.id === id); if (!it || !it.subs || !it.subs[k]) return false;
+      it.subs[k].d = 1; set(KEY, JSON.stringify(st)); return true;
+    },
+    complete(id) {
+      const st = api._read(); if (!st) return false;
+      const it = st.items.find(i => i.id === id); if (!it) return false;
+      st.items = st.items.filter(i => i !== it); st.done = st.done || []; st.done.push({ ...it, doneAt: Date.now() });
+      set(KEY, JSON.stringify(st)); return true;
+    },
+    // b = { bed?, text, p?, mins?, subs:[{t, tag}], src }；沒給 p 就用按鈕目前的設定
+    add(b) {
+      const now = Date.now();
+      let p = b.p, due = b.mins ? now + b.mins * 60e3 : 0;
+      if (!p) { const r = api.due(); if (r.err) { api.lastErr = r.err; return null; } p = pk.p; due = r.due; }
+      const bed = b.bed != null ? String(b.bed).trim() : api.bed();
+      let st = null;
+      try { st = JSON.parse(get(KEY) || 'null'); } catch (e) {}
+      if (!st || !Array.isArray(st.items)) st = { items: [], done: [] };
+      if (st.seeded) { st.items = st.items.filter(i => !i.ex); st.done = (st.done || []).filter(i => !i.ex); st.seeded = false; }
+      const id = now.toString(36) + Math.random().toString(36).slice(2, 5);
+      const it = { id, bed, text: b.text, p, due, start: now, src: b.src || '' };
+      if (b.subs && b.subs.length) it.subs = b.subs.map((s, k) => ({ id: id + '.' + k, t: s.t, tag: s.tag || '', d: 0 }));
+      st.items.push(it);
+      try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) { api.lastErr = '存不進待辦表'; return null; }
+      if (bed) set(BED, bed);
+      if (!b.p && parseInt(pk.cm, 10) > 0) { pk.cm = ''; pk.tm = 0; refresh(true); }
+      try { parent.postMessage({ hub: 'todo-add', id, text: it.text, bed, n: (it.subs || []).length }, '*'); } catch (e) {}
+      return id;
+    }
+  };
+
+  // 按鈕行為跟待辦表的快速新增一樣：點「緊急／待辦」展開倒數，再點一次收起；倒數再點一次＝不計時
+  document.addEventListener('click', e => {
+    const pb = e.target.closest('[data-hp-p]'), tb = e.target.closest('[data-hp-tm]');
+    if (pb) {
+      const p = +pb.dataset.hpP;
+      if (p === pk.p) pk.open = timed(p) && !pk.open;
+      else { pk.p = p; pk.tm = 0; pk.cm = ''; pk.open = timed(p); }
+      savePk(); refresh(true); return;
+    }
+    if (tb) {
+      const m = +tb.dataset.hpTm; pk.cm = ''; pk.tm = pk.tm === m ? 0 : m;
+      if (pk.tm === -2 && !pk.d) pk.d = ymd(new Date());
+      savePk(); refresh(true);
+      if (pk.tm === -2) { const d = document.querySelector('[data-hp-d]'); try { d && d.showPicker(); } catch (er) {} }
+    }
+  });
+  document.addEventListener('input', e => {
+    const t = e.target;
+    if (t.matches('[data-hp-bed]')) { api.setBed(t.value); return; }
+    if (t.matches('[data-hp-cm]')) { pk.cm = t.value; if (pk.tm < 0) pk.tm = 0; refresh(false); document.querySelectorAll('[data-hp-tm]').forEach(b => b.setAttribute('aria-pressed', 'false')); }
+    if (t.matches('[data-hp-d]')) { pk.d = t.value; refresh(false); }
+    if (t.matches('[data-hp-t]')) { pk.t = t.value; savePk(); refresh(false); }
+  });
+  addEventListener('storage', e => { if (e.key === BED) { document.querySelectorAll('[data-hp-bed]').forEach(i => { if (i !== document.activeElement) i.value = api.bed(); }); refresh(false); } });
+
+  // 右滑加入待辦（滑超過門檻放開才加入；只往右，不影響上下捲動）
+  // 手機用 touch 事件：第一下判斷是往右滑就立刻 preventDefault，iPhone 才不會把手勢交給外層去切換工具
+  const TH = 64; let g = null, swiped = 0;
+  function start(el, x, y, kind) { g = { el, x, y, kind, lock: false, dx: 0 }; }
+  function move(x, y, ev) {
+    if (!g) return;
+    const dx = x - g.x, dy = y - g.y;
+    if (!g.lock) {
+      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+      if (dx > 0 && dx > Math.abs(dy)) {
+        g.lock = true; g.el.classList.add('sw-drag'); document.body.classList.add('sw-on');
+        try { getSelection().removeAllRanges(); } catch (er) {}
+      } else { g = null; return; }
+    }
+    if (ev.cancelable) ev.preventDefault();
+    ev.stopPropagation();
+    const d = Math.max(0, dx), v = d < TH ? d : TH + (d - TH) * 0.35;
+    g.dx = d;
+    g.el.style.transform = `translateX(${v}px)`;
+    g.el.style.setProperty('--sw', v + 'px'); g.el.style.setProperty('--swo', Math.min(1, d / TH));
+    g.el.classList.toggle('sw-arm', d >= TH);
+  }
+  function finish(commit) {
+    const G = g; g = null;
+    if (!G || !G.lock) return;
+    swiped = Date.now(); document.body.classList.remove('sw-on');
+    const el = G.el;
+    el.classList.remove('sw-drag', 'sw-arm'); el.classList.add('sw-back');
+    el.style.transform = ''; el.style.setProperty('--sw', '0px'); el.style.setProperty('--swo', '0');
+    setTimeout(() => el.classList.remove('sw-back'), 240);
+    if (commit && G.dx >= TH && window.hubOnSwipe) {
+      const r = window.hubOnSwipe(el); if (!r) return;
+      if (r === true) { el.classList.remove('sw-done'); void el.offsetWidth; el.classList.add('sw-done'); try { navigator.vibrate && navigator.vibrate(15); } catch (er) {} return; }
+      const id = api.add(r);
+      if (!id) { window.hubSwipeErr && window.hubSwipeErr(api.lastErr); return; }
+      el.classList.remove('sw-done'); void el.offsetWidth; el.classList.add('sw-done');
+      if (window.hubOnSwiped) window.hubOnSwiped(el, id);
+      try { navigator.vibrate && navigator.vibrate(15); } catch (er) {}
+    }
+  }
+  const swEl = t => t && t.closest && !t.closest('input,textarea,select') ? t.closest('[data-swipe]') : null;
+  document.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) { g = null; return; }
+    const el = swEl(e.target); if (!el) { g = null; return; }
+    start(el, e.touches[0].clientX, e.touches[0].clientY, 'touch');
+  }, { passive: true, capture: true });
+  document.addEventListener('touchmove', e => { if (g && g.kind === 'touch') move(e.touches[0].clientX, e.touches[0].clientY, e); }, { passive: false, capture: true });
+  document.addEventListener('touchend', () => { if (g && g.kind === 'touch') finish(true); }, { passive: true, capture: true });
+  document.addEventListener('touchcancel', () => { if (g && g.kind === 'touch') finish(false); }, { passive: true, capture: true });
+  // 電腦用滑鼠拖也可以
+  document.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse' || e.button > 0) return; const el = swEl(e.target); if (el) start(el, e.clientX, e.clientY, 'mouse'); }, true);
+  document.addEventListener('pointermove', e => { if (g && g.kind === 'mouse') move(e.clientX, e.clientY, e); }, true);
+  document.addEventListener('pointerup', () => { if (g && g.kind === 'mouse') finish(true); }, true);
+  document.addEventListener('click', e => { if (Date.now() - swiped < 400) { e.preventDefault(); e.stopPropagation(); } }, true);
+})();
+</script>
+<script>
+const DONE = ["打 IV", "兩條粗 IV", "抽血", "備血", "驗孕", "NPO", "給氧", "輸液", "心電監視", "通知主治"];
+const FIELDS = ["me","role","unit","bed","dept","callee","age","sex","cc","dur","dx","bg","hr","bp","rr","spo2","bt","look","prevT","prevHr","prevBp","find","req","q","doneOther"];
+const EXAMPLE = {
+  me: "", role: "PGY1", unit: "急診", bed: "第三床", dept: "婦產科", callee: "學長",
+  age: "28", sex: "女性", cc: "下腹痛", dur: "一天", dx: "ruptured ectopic pregnancy",
+  stab: "unstable",
+  bg: "最近一次月經 7 週前，有性生活，UPT 陽性，右肩痛兩小時",
+  hr: "120", bp: "92/58", rr: "22", spo2: "99", bt: "37.1",
+  look: "臉色蒼白、冒冷汗、叫得醒", prevT: "檢傷時", prevHr: "108", prevBp: "102/64",
+  find: "FAST 在 Morison's pouch 和 Douglas' pouch 都有液體，子宮內看不到妊娠囊，右側附屬器有 3.5 cm 團塊",
+  req: "現在下來評估", q: "可能需要緊急手術",
+  done: ["兩條粗 IV", "抽血", "備血", "驗孕", "NPO", "通知主治"], doneOther: "NS 250 mL bolus"
+};
+const $ = id => document.getElementById(id);
+const chipBox = $("doneChips");
+DONE.forEach((d, i) => {
+  const l = document.createElement("label"); l.className = "chip";
+  l.innerHTML = `<input type="checkbox" id="done${i}" value="${d}"><span>${d}</span>`;
+  chipBox.appendChild(l);
+});
+
+function read() {
+  const s = {};
+  FIELDS.forEach(k => s[k] = $(k).value.trim());
+  const r = document.querySelector('input[name="stab"]:checked');
+  s.stab = r ? r.value : "";
+  s.done = DONE.filter((d, i) => $("done" + i).checked);
+  return s;
+}
+function write(s) {
+  FIELDS.forEach(k => $(k).value = s[k] || "");
+  $("stabU").checked = s.stab === "unstable";
+  $("stabS").checked = s.stab === "stable";
+  DONE.forEach((d, i) => $("done" + i).checked = (s.done || []).includes(d));
+}
+const B = t => `<span class="blank">${t}</span>`;
+const v = (x, ph) => x ? esc(x) : B(ph);
+function esc(t) { return String(t).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function sbp(bp) { const m = /^(\d{2,3})/.exec(bp || ""); return m ? +m[1] : null; }
+
+function build(s) {
+  const who = s.callee || "學長";
+  const parts = [];
+  parts.push(["I", `${esc(who)}好，我是${v(s.unit, "單位")} ${esc(s.role || "PGY1")}${" " + esc(s.me || "劉宇哲")}，${v(s.bed, "床號")}有一位病人想${s.stab === "unstable" ? "緊急" : ""}會診${v(s.dept, "科別")}。`]);
+  const stabTxt = s.stab === "unstable" ? "，現在血行動力學不穩定" : s.stab === "stable" ? "，目前生命徵象穩定" : "";
+  parts.push(["S", `${v(s.age, "年紀")} 歲${esc(s.sex)}，${v(s.cc, "主訴")}${esc(s.dur)}，我擔心是 <strong>${v(s.dx, "你的判斷")}</strong>${stabTxt}。`]);
+  if (s.bg) parts.push(["B", esc(s.bg) + "。"]);
+  const vs = [["HR", s.hr], ["BP", s.bp], ["RR", s.rr], ["SpO₂", s.spo2], ["BT", s.bt]].filter(x => x[1]).map(x => `${x[0]} ${esc(x[1])}`);
+  let a = vs.length ? `現在 ${vs.join("、")}` : `生命徵象 ${B("HR、BP")}`;
+  if (s.prevHr || s.prevBp) a += `（${esc(s.prevT || "之前")}是${s.prevHr ? " HR " + esc(s.prevHr) : ""}${s.prevBp ? "、BP " + esc(s.prevBp) : ""}）`;
+  a += "。";
+  if (s.look) a += esc(s.look) + "。";
+  if (s.find) a += esc(s.find) + "。";
+  parts.push(["A", a]);
+  const done = [...s.done]; if (s.doneOther) done.push(s.doneOther);
+  let r = `<strong>想請${esc(who)}${v(s.req, "你的要求")}</strong>`;
+  if (s.q) r += `，${esc(s.q)}`;
+  r += "。";
+  r += done.length ? `我已經${done.map(esc).join("、")}。` : `我已經${B("做了什麼")}。`;
+  parts.push(["R", r]);
+  parts.push(["覆誦", `好，我先${B("＿＿")}，${esc(who)}${B("＿＿")}分鐘後到，對嗎？`]);
+  return parts.map(([k, t]) => `<p><span class="k">${k}</span>${t}</p>`).join("");
+}
+
+function check(s) {
+  const items = [
+    ["生命徵象", !!(s.hr && s.bp)],
+    ["關鍵發現", !!s.find],
+    ["已做的處置", s.done.length > 0 || !!s.doneOther],
+    ["你的判斷", !!s.dx],
+    ["你的要求", !!s.req]
+  ];
+  $("checks").innerHTML = items.map(([t, ok]) =>
+    `<li class="${ok ? "ok" : "miss"}"><span class="mark">${ok ? "✓" : "✕"}</span>${t}${ok ? "" : "：還沒填"}</li>`).join("");
+  const w = [];
+  const age = +s.age;
+  if (s.sex === "女性" && age >= 12 && age <= 50 && !s.done.includes("驗孕")) w.push("育齡女性：驗孕了嗎？");
+  if (s.stab === "unstable" && !s.done.includes("通知主治")) w.push("病人不穩定：主治知道了嗎？");
+  const bleed = /出血|bleed|ectopic|外孕|休克|shock|hemo|GI/i.test(s.dx + s.find);
+  if (bleed && !s.done.includes("備血")) w.push("懷疑出血：備血了沒？");
+  if (bleed && !s.done.includes("兩條粗 IV")) w.push("懷疑出血：兩條粗 IV 了沒？");
+  if (s.stab === "unstable" && s.req === "看一下，安排書面會診") w.push("病人不穩定卻選書面會診：要不要改成現在下來？");
+  const hr = +s.hr, sb = sbp(s.bp);
+  if (hr && sb) {
+    const si = hr / sb;
+    $("si").innerHTML = `Shock index <b class="${si >= 1 ? "hi" : ""}">${si.toFixed(2)}</b>${si >= 1 ? "心跳比收縮壓快，當作休克" : ""}`;
+    if (si >= 1 && s.stab !== "unstable") w.push("Shock index ≥ 1，你卻勾「穩定」：再想一下");
+  } else $("si").innerHTML = "";
+  $("warns").innerHTML = w.map(t => `<div class="warn">${t}</div>`).join("");
+}
+
+function render(save = true) {
+  const s = read();
+  const html = build(s);
+  $("script").innerHTML = html;
+  $("readerScript").innerHTML = html;
+  check(s);
+  if (save) { try { localStorage.setItem("consult-draft", JSON.stringify(s)); localStorage.setItem("consult-example", isExample ? "1" : "0"); } catch (e) {} }
+}
+
+let isExample = false;
+function setExample(on) { isExample = on; $("exampleBanner").hidden = !on; }
+$("f").addEventListener("input", () => { if (isExample) setExample(false); render(); });
+$("f").addEventListener("change", () => { if (isExample) setExample(false); render(); });
+$("f").addEventListener("submit", e => e.preventDefault());
+$("loadExample").onclick = () => { write(EXAMPLE); setExample(true); render(); };
+$("clearAll").onclick = () => {
+  write({ role: "PGY1", callee: "學長", done: [] });
+  setExample(false); render();
+};
+$("openReader").onclick = () => { $("reader").hidden = false; $("closeReader").focus(); };
+$("closeReader").onclick = () => { $("reader").hidden = true; $("openReader").focus(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("reader").hidden) $("closeReader").click(); });
+$("copy").onclick = () => {
+  const done = () => { $("copy").textContent = "已複製"; setTimeout(() => $("copy").textContent = "複製稿子", 1500); };
+  try {
+    navigator.clipboard.writeText($("script").innerText).then(done, sel);
+  } catch (e) { sel(); }
+  function sel() { const r = document.createRange(); r.selectNodeContents($("script")); const g = getSelection(); g.removeAllRanges(); g.addRange(r); $("copy").textContent = "已選取，請按複製"; }
+};
+
+// 寫進待辦表（同一個值班總站共用 localStorage），15 分鐘後提醒追蹤
+$("toTodo").onclick = () => {
+  const s = read(), btn = $("toTodo");
+  const ok = window.hubTodo && hubTodo.add({ bed: s.bed.replace(/^第|床$/g, ""), text: `等${s.dept || "會診科"}回覆${s.req ? "（" + s.req + "）" : ""}`,
+    p: s.stab === "unstable" ? 1 : 2, mins: 15, src: "會診電話稿" });
+  btn.textContent = ok ? "已加入，15 分後提醒" : "存不進待辦";
+  setTimeout(() => btn.textContent = "加入待辦：等回電", 2000);
+};
+
+let start = { role: "PGY1", callee: "學長", done: [] }, startEx = false;
+try {
+  const d = localStorage.getItem("consult-draft");
+  if (d && localStorage.getItem("consult-example") !== "1") start = JSON.parse(d);
+} catch (e) {}
+if (start.me === "劉宇哲") start.me = "";
+write(start); setExample(startEx); render(false);
+</script>
+
+</body></html>

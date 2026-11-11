@@ -1,0 +1,1654 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>查房板</title>
+<style id="hub-base">
+/* 臨床輔助決策工具 · 共用基底（每個工具都內嵌這一份）
+   字體：系統字（iPhone = 蘋方，Android = Noto CJK），不下載網路字型，開啟更快
+   色票：病房冷灰底 + 各工具辨識色；動畫：同一組曲線與時長 */
+:root{
+  --hub-bg:#EEF1F2; --hub-surface:#FFFFFF; --hub-surface2:#E6EAEC; --hub-ink:#152025; --hub-ink2:#4A575E; --hub-ink3:#6E7A81; --hub-line:#D3DADD;
+  --hub-bad:#B3261E; --hub-bad-soft:#FBE6E4; --hub-warn:#9A5B00; --hub-warn-soft:#FBEFD9; --hub-ok:#1D7A3E; --hub-ok-soft:#E1F2E6;
+  --hub-code:#C0262F; --hub-code-soft:#FBE4E5; --hub-pilot:#A35500; --hub-pilot-soft:#F6E7D2;
+  --hub-consult:#2C5C8C; --hub-consult-soft:#DFE8F2; --hub-meds:#0D6870; --hub-meds-soft:#DDEFF0;
+  --hub-labs:#5B4699; --hub-labs-soft:#EBE6F6; --hub-todo:#B4573A; --hub-todo-soft:#F5E3DA;
+  --hub-p1:#B3322B; --hub-p2:#C27416; --hub-p3:#4F6B8A; --hub-p4:#8A867B;
+  --hub-sans:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",system-ui,sans-serif;
+  --hub-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Roboto Mono",monospace;
+  --hub-ease:cubic-bezier(.2,.8,.2,1); --hub-dur:.18s;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --hub-bg:#0E1316; --hub-surface:#161D21; --hub-surface2:#1E272C; --hub-ink:#E4E9EB; --hub-ink2:#A2AEB4; --hub-ink3:#7E8B93; --hub-line:#2A353B;
+  --hub-bad:#FF7A70; --hub-bad-soft:#3A1B19; --hub-warn:#F0B04A; --hub-warn-soft:#352812; --hub-ok:#6CCF8E; --hub-ok-soft:#15301F;
+  --hub-code:#FF6B70; --hub-code-soft:#3A1A1D; --hub-pilot:#F0A23A; --hub-pilot-soft:#3A2911;
+  --hub-consult:#80B1E0; --hub-consult-soft:#162636; --hub-meds:#5CC2C8; --hub-meds-soft:#16302F;
+  --hub-labs:#B4A2EC; --hub-labs-soft:#2A2440; --hub-todo:#E08A68; --hub-todo-soft:#3A241B; --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#A6A297; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --hub-bg:#0E1316; --hub-surface:#161D21; --hub-surface2:#1E272C; --hub-ink:#E4E9EB; --hub-ink2:#A2AEB4; --hub-ink3:#7E8B93; --hub-line:#2A353B;
+  --hub-bad:#FF7A70; --hub-bad-soft:#3A1B19; --hub-warn:#F0B04A; --hub-warn-soft:#352812; --hub-ok:#6CCF8E; --hub-ok-soft:#15301F;
+  --hub-code:#FF6B70; --hub-code-soft:#3A1A1D; --hub-pilot:#F0A23A; --hub-pilot-soft:#3A2911;
+  --hub-consult:#80B1E0; --hub-consult-soft:#162636; --hub-meds:#5CC2C8; --hub-meds-soft:#16302F;
+  --hub-labs:#B4A2EC; --hub-labs-soft:#2A2440; --hub-todo:#E08A68; --hub-todo-soft:#3A241B; --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#A6A297; color-scheme:dark}
+
+/* 觸控：點擊不延遲、不閃灰框、iPhone 不自動放大字 */
+html{-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{-webkit-font-smoothing:antialiased;text-rendering:optimizeSpeed}
+::selection{background:color-mix(in srgb,var(--hub-accent,var(--hub-ink)) 22%,transparent)}
+/* iPhone 點進字小於 16px 的輸入框會自動放大、而且不會縮回來：觸控裝置上所有輸入框一律 ≥16px */
+@media (pointer:coarse){input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),textarea,select{font-size:max(16px,1em)!important}}
+/* 共用動畫：按下去微縮、顏色淡入淡出（低權重，工具自己的設定優先） */
+:where(button,.btn,.chip,.card,summary,[role="tab"],a){transition:background-color var(--hub-dur) var(--hub-ease),border-color var(--hub-dur) var(--hub-ease),color var(--hub-dur) var(--hub-ease),box-shadow var(--hub-dur) var(--hub-ease),opacity var(--hub-dur) var(--hub-ease),transform .12s var(--hub-ease)}
+:where(button,.btn,.chip,[role="tab"]):active:not(:disabled){transform:scale(.97)}
+@keyframes hub-in{from{opacity:0;transform:translateY(6px)}}
+@keyframes hub-pop{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
+.hub-toast{position:fixed;left:16px;right:16px;margin:0 auto;width:fit-content;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;max-width:min(520px,calc(100% - 32px));box-sizing:border-box;display:flex;gap:10px;align-items:center;background:var(--hub-ink);color:var(--hub-bg);font:500 14px/1.4 var(--hub-sans);padding:9px 14px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:hub-in .22s var(--hub-ease)}
+/* 待辦設定按鈕：跟待辦表的快速新增同一套（立即／緊急／待辦／有空，點緊急或待辦展開倒數） */
+.hp{display:flex;flex-direction:column;gap:8px;min-width:0}
+.hp-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.hp-pr{--pc:var(--hub-p3);display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:46px;padding:4px;border:1px solid color-mix(in srgb,var(--pc) 45%,var(--hub-line));border-radius:999px;background:transparent;color:var(--pc);font:500 15px/1.2 var(--hub-sans);cursor:pointer}
+.hp-pr[data-p="1"]{--pc:var(--hub-p1)}.hp-pr[data-p="2"]{--pc:var(--hub-p2)}.hp-pr[data-p="4"]{--pc:var(--hub-p4)}
+.hp-pr small{font-size:12px;font-variant-numeric:tabular-nums}
+.hp-pr small:empty{display:none}
+.hp-pr[aria-pressed="true"]{background:var(--pc);border-color:var(--pc);color:var(--hub-surface)}
+.hp-tm{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px}
+.hp-tm::-webkit-scrollbar{display:none}
+.hp-c{flex:none;min-height:40px;border:1px solid var(--hub-line);background:transparent;border-radius:999px;padding:6px 14px;font:15px/1 var(--hub-sans);color:var(--hub-ink);white-space:nowrap;cursor:pointer;font-variant-numeric:tabular-nums}
+.hp-c[aria-pressed="true"]{background:var(--hub-ink);border-color:var(--hub-ink);color:var(--hub-bg)}
+.hp input{flex:none;font:16px var(--hub-sans);min-height:40px;padding:5px 10px;border-radius:999px;border:1px solid var(--hub-line);background:var(--hub-bg);color:var(--hub-ink);width:80px;text-align:center}
+.hp-dt{display:flex;gap:6px}
+.hp-dt input[type="date"]{flex:1 1 9.5em;width:auto;max-width:12em}
+.hp-dt input[type="time"]{width:7em}
+/* 右滑加入待辦 */
+[data-swipe]{position:relative;touch-action:pan-y}
+[data-swipe].sw-drag{transition:none!important}
+[data-swipe].sw-back{transition:transform .22s var(--hub-ease)!important}
+[data-swipe]::before{content:"＋ 待辦";position:absolute;top:0;bottom:0;right:100%;width:var(--sw,0px);display:flex;align-items:center;justify-content:flex-end;padding-right:12px;box-sizing:border-box;background:var(--hub-todo);color:var(--hub-surface);font:700 14px/1 var(--hub-sans);white-space:nowrap;overflow:hidden;opacity:var(--swo,0);pointer-events:none}
+[data-swipe].sw-arm::before{content:"放開加入"}
+body.sw-on{-webkit-user-select:none;user-select:none}
+@keyframes hub-flash{from{background-color:var(--hub-todo-soft);box-shadow:inset 4px 0 0 var(--hub-todo)}}
+.sw-done{animation:hub-flash .9s var(--hub-ease)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+
+html:root:root{--bg:var(--hub-bg);--surface:var(--hub-surface);--line:var(--hub-line);--fg:var(--hub-ink);--muted:var(--hub-ink2);--accent:var(--hub-todo);--accent-soft:var(--hub-todo-soft);--p1:var(--hub-p1);--p1-soft:var(--hub-bad-soft);--p2:var(--hub-p2);--p3:var(--hub-p3);--p4:var(--hub-p4);--hub-accent:var(--hub-todo);--font-display:var(--hub-sans);--font-body:var(--hub-sans);--font-num:var(--hub-mono)}
+
+/* 版面放寬（11/11）：卡片、按鈕、表單的間距和字級都加大，手機抽屜和電腦側欄都不擠 */
+.wrap{gap:20px;padding-block:18px 56px}
+form{padding:14px;gap:10px}
+.row{gap:10px}
+#bed{width:76px}
+.prrow{gap:8px}
+.summary{font-size:14px;gap:12px}
+.list{gap:12px}
+.item{padding:14px 14px 14px 16px;gap:6px 12px}
+.meta{gap:10px}
+.bed{font-size:15px}
+.tag{font-size:12px}
+.src,.ex{font-size:12px}
+.text{font-size:16px;line-height:1.5}
+.timer{font-size:23px}
+.timer small{font-size:12px;margin-top:2px}
+.actions{gap:10px;margin-top:10px}
+.act{min-height:44px;padding:8px 18px;font-size:15px}
+.sub{padding:12px 4px;font-size:15px;line-height:1.5;gap:10px}
+.sbox{width:22px;height:22px}
+.subadd{gap:8px;margin:10px 3px 4px}
+.subadd input{min-height:44px!important;padding:8px 12px!important}
+.subadd button{min-height:44px;padding:0 16px;font-size:15px}
+.tbtn{min-height:42px;padding:8px 16px;font-size:14.5px}
+.foot{gap:10px}
+details{padding:12px 14px}
+.donelist{gap:8px;font-size:15px}
+.note{font-size:13px;line-height:1.6}
+.triage{font-size:14px;padding:10px 12px}
+/* 窄的時候（手機抽屜）：倒數移到卡片右上角，內容用整張卡的寬度 */
+@media (max-width:460px){
+  .item .timer{grid-row:1;grid-column:2;align-self:start;font-size:19px;white-space:nowrap}
+  .item .timer small{display:inline;margin-left:4px}
+  .item .text{grid-column:1/-1}
+  .actions{gap:8px}
+  .act{padding:8px 13px}
+}
+</style>
+<style>
+/* 查房板：每床一張卡（problem／每日清單／等待中結果／異常值趨勢），逐床跑、產生交班、匯入站（電腦 → QR → 手機）
+   辨識色：苔綠 */
+:root{--ac:#3F6B2E;--ac-soft:#E3EEDC;--hub-accent:var(--ac)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ac:#93CC7C;--ac-soft:#1E2E18}}
+:root[data-theme="dark"]{--ac:#93CC7C;--ac-soft:#1E2E18}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{background:var(--hub-bg);color:var(--hub-ink)}
+body{font:16px/1.5 var(--hub-sans);padding:0 0 calc(90px + env(safe-area-inset-bottom,0px))}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.wrap{max-width:780px;margin:0 auto;padding:0 16px}
+.bar{position:sticky;top:0;z-index:10;background:var(--hub-bg);border-bottom:1px solid var(--hub-line);padding:6px 0}
+.bar .wrap{display:flex;gap:6px;align-items:center;flex-wrap:nowrap}
+/* 頂端列只佔一行：按鈕比內容區的按鈕小，主要畫面留給病人 */
+.bar .btn{min-height:36px;padding:5px 12px;font-size:14px}
+.bar .btn.ghost{padding-left:8px;padding-right:8px}
+/* 頂端工具列在窄螢幕縮小一點，四顆按鈕才排得進一行 */
+@media (max-width:440px){.bar .btn{padding:5px 10px;font-size:13.5px}.prog{font-size:12px}}
+.btn{border:1px solid var(--hub-line);background:var(--hub-surface);border-radius:999px;padding:8px 16px;min-height:42px;font-size:15px;white-space:nowrap}
+.btn.pri{background:var(--ac);border-color:var(--ac);color:var(--hub-surface);font-weight:700}
+.btn.sm{min-height:36px;padding:5px 13px;font-size:14px}
+.btn.bad{color:var(--hub-bad);border-color:color-mix(in srgb,var(--hub-bad) 45%,var(--hub-line))}
+.btn.ghost{background:transparent}
+.prog{font-size:13px;color:var(--hub-ink2);margin-right:auto;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.prog b{color:var(--ac);font-size:15px}
+.save{display:flex;align-items:center;gap:8px;margin:10px 0 0;padding:4px 6px 4px 12px;border-radius:999px;font-size:13px;background:var(--hub-warn-soft);color:var(--hub-warn);border:1px solid color-mix(in srgb,var(--hub-warn) 35%,transparent)}
+.save.hot{background:var(--hub-bad);color:var(--hub-surface);border-color:var(--hub-bad);font-weight:700}
+.save.ok{background:var(--hub-ok-soft);color:var(--hub-ok);border-color:transparent}
+.save span{flex:1;min-width:0}
+.save .btn{color:var(--hub-ink);min-height:30px;padding:2px 12px;font-size:13px}
+h2{font-size:13.5px;letter-spacing:.1em;color:var(--hub-ink2);margin:26px 0 8px;font-weight:600;display:flex;align-items:center;gap:8px}
+h2 .btn{margin-left:auto;letter-spacing:0}
+.empty{color:var(--hub-ink3);font-size:14px;padding:10px 2px}
+/* 床卡列表 */
+.beds{display:grid;gap:8px;margin-top:10px}
+.bed{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:2px 12px;align-items:center;text-align:left;background:var(--hub-surface);border:1px solid var(--hub-line);border-left:4px solid var(--ac);border-radius:12px;padding:10px 12px;width:100%}
+.bed .no{grid-row:1/3;font:700 22px/1 var(--hub-mono);min-width:2.2em;text-align:center}
+.bed .nm{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bed .dx{font-size:13px;color:var(--hub-ink2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bed .tags{grid-column:1/-1;display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.bed .ok{grid-row:1/3;grid-column:3;font-size:12px;color:var(--hub-ok);font-weight:700}
+.tag{font-size:12px;border-radius:999px;padding:1px 8px;background:var(--hub-surface2);color:var(--hub-ink2);white-space:nowrap}
+.tag.bad{background:var(--hub-bad-soft);color:var(--hub-bad);font-weight:600}
+.tag.warn{background:var(--hub-warn-soft);color:var(--hub-warn)}
+.tag.ac{background:var(--ac-soft);color:var(--ac)}
+/* 詳細頁 */
+.sec{background:var(--hub-surface);border:1px solid var(--hub-line);border-radius:14px;padding:14px;margin-top:10px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row+.row{margin-top:10px}
+.fld{display:flex;flex-direction:column;gap:4px;flex:1 1 140px;min-width:0}
+.fld>span{font-size:13px;color:var(--hub-ink3)}
+input[type=text],input[type=date],input[type=number],select,textarea{border:1px solid var(--hub-line);background:var(--hub-bg);border-radius:10px;padding:9px 12px;min-height:44px;width:100%;min-width:0;font-size:16px}
+textarea{min-height:88px;resize:vertical;line-height:1.55}
+.list{display:grid;gap:8px}
+.item{border:1px solid var(--hub-line);border-radius:12px;padding:12px;background:var(--hub-bg)}
+.item.red{border-color:var(--hub-bad);box-shadow:inset 3px 0 0 var(--hub-bad)}
+.item.done{opacity:.55}
+.item .t{font-weight:600}
+.sub{font-size:14px;color:var(--hub-ink2)}
+/* 新增表單：第一層是一整列的主要輸入，第二層放日期／天數／選單和「新增」按鈕 */
+.form{display:grid;gap:10px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--hub-line)}
+.form .f2{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.form .f2 .fld{flex:1 1 130px;max-width:260px}
+
+.form .add{flex:1 0 110px;max-width:220px;min-height:44px;font-weight:700;margin-left:auto}
+.form-t{font-size:13px;font-weight:600;color:var(--hub-ink2);margin:0}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{border:1px solid var(--hub-line);background:var(--hub-surface);border-radius:999px;padding:5px 13px;font-size:14px;min-height:38px}
+.seg button[aria-pressed=true]{background:var(--hub-ink);border-color:var(--hub-ink);color:var(--hub-bg)}
+.seg button.st-worse[aria-pressed=true]{background:var(--hub-bad);border-color:var(--hub-bad);color:var(--hub-surface)}
+.seg button.st-better[aria-pressed=true]{background:var(--hub-ok);border-color:var(--hub-ok);color:var(--hub-surface)}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--hub-line);background:var(--hub-surface);border-radius:999px;padding:6px 13px;font-size:14px;min-height:38px}
+.fu{display:flex;gap:10px;align-items:center;font-size:15px;padding:7px 0;line-height:1.45}
+.fu+.fu{border-top:1px solid color-mix(in srgb,var(--hub-line) 60%,transparent)}
+.fu input[type=checkbox]{width:22px;height:22px;flex:none}
+.fu .w{font:12px var(--hub-mono);color:var(--hub-ink2);flex:none;min-width:4.6em}
+.fu .w.over{color:var(--hub-bad);font-weight:700}
+.fu-daily{display:inline-flex;align-items:center;gap:8px;min-height:44px;font-size:15px;font-weight:600;cursor:pointer}
+.fu-daily input{width:22px;height:22px}
+input[type=date]:disabled{opacity:.4}
+.fu .x{margin-left:auto;flex:none;border:0;background:none;color:var(--hub-ink3);font-size:20px;min-width:40px;min-height:40px;padding:0}
+.lab{display:grid;grid-template-columns:minmax(4.5em,auto) auto auto minmax(0,1fr);gap:2px 10px;align-items:baseline;font-variant-numeric:tabular-nums}
+.lab .n{font-weight:600}
+.lab .v{font:600 15px var(--hub-mono)}
+.lab .v.H,.lab .v.L{color:var(--hub-bad)}
+.lab .tr{font-size:13px;color:var(--hub-ink2);font-family:var(--hub-mono)}
+.lab .rg{font-size:11.5px;color:var(--hub-ink3);text-align:right;line-height:1.3}
+/* 每日清單 */
+.ck{border:1px solid var(--hub-line);border-radius:10px;background:var(--hub-bg);overflow:hidden}
+.ck+.ck{margin-top:6px}
+.ck-h{display:flex;align-items:center;gap:8px;padding:8px 10px 8px 12px}
+.ck-h .nm{flex:1;min-width:0;font-size:15px;font-weight:600}
+.ck-h .bt{flex:none;width:46px;height:40px;border-radius:8px;border:1px solid var(--hub-line);background:var(--hub-surface);font-weight:700}
+.ck-h .bt.on.k{background:var(--hub-ok);border-color:var(--hub-ok);color:var(--hub-surface)}
+.ck-h .bt.on.w{background:var(--hub-bad);border-color:var(--hub-bad);color:var(--hub-surface)}
+.ck-h .how{flex:none;border:0;background:none;color:var(--ac);font-size:13px;padding:4px}
+.ck.k{border-color:color-mix(in srgb,var(--hub-ok) 40%,var(--hub-line))}
+.ck.w{border-color:var(--hub-bad)}
+.ck .note{padding:0 8px 8px}
+.howto{padding:2px 12px 10px;font-size:13.5px;border-top:1px dashed var(--hub-line);background:var(--hub-surface)}
+.howto h4{margin:8px 0 2px;font-size:12px;letter-spacing:.08em;color:var(--hub-ink2)}
+.howto h4.red{color:var(--hub-bad)}
+.howto ul{margin:0;padding-left:1.2em}
+.howto .src{margin-top:8px;font-size:11.5px;color:var(--hub-ink3)}
+.howto .wh{display:flex;gap:6px;align-items:center}
+.draft{font-size:11.5px;color:var(--hub-warn);margin-top:6px}
+/* 疊層 */
+.view{display:none}
+.view.on{display:block}
+.top2{display:flex;align-items:center;gap:8px;padding:8px 0}
+.top2 .ti{font-weight:800;font-size:17px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stepper{display:flex;gap:4px;margin:4px 0 2px}
+.stepper i{flex:1;height:4px;border-radius:2px;background:var(--hub-line)}
+.stepper i.on{background:var(--ac)}
+.bottom{position:fixed;left:0;right:0;bottom:0;z-index:12;background:var(--hub-surface);border-top:1px solid var(--hub-line);padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px))}
+.bottom .wrap{display:flex;gap:8px;padding:0}
+.bottom .btn{flex:1;min-height:44px;font-size:15px}
+.out{font:13.5px/1.55 var(--hub-mono);min-height:320px}
+.qr{display:flex;justify-content:center;padding:12px;background:#fff;border-radius:12px}
+.qr img,.qr canvas{width:min(84vw,62vh,440px);height:auto;image-rendering:pixelated}
+.drop{border:2px dashed var(--hub-line);border-radius:12px;padding:16px;text-align:center;color:var(--hub-ink2);font-size:14px}
+.drop.on{border-color:var(--ac);background:var(--ac-soft)}
+.imp{display:grid;grid-template-columns:auto minmax(4em,auto) 6em minmax(0,1fr);gap:6px 8px;align-items:center;font-size:14px}
+.imp input[type=number]{min-height:34px;padding:3px 6px;font-family:var(--hub-mono)}
+.imp .fl{font-weight:700;color:var(--hub-bad);font-family:var(--hub-mono)}
+.imp .rg{font-size:12px;color:var(--hub-ink3)}
+.ask{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.ask-box{background:var(--hub-surface);color:var(--hub-ink);border:1px solid var(--hub-line);border-radius:14px;padding:16px;width:100%;max-width:420px;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+.ask-box p{margin:0 0 12px;font-size:15px;line-height:1.55;white-space:pre-line}
+.ask-box input{margin-bottom:10px}
+.btn.bad-fill{background:var(--hub-bad);border-color:var(--hub-bad);color:var(--hub-surface);font-weight:700}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:40;background:var(--hub-ink);color:var(--hub-bg);padding:8px 16px;border-radius:999px;font-size:14px;max-width:calc(100% - 32px);box-shadow:0 8px 24px rgba(0,0,0,.25)}
+details.snap summary{cursor:pointer;font-size:14px}
+.muted{color:var(--hub-ink3);font-size:13.5px;line-height:1.55}
+.lnk{border:0;background:none;color:var(--ac);padding:0;font-size:13px;text-decoration:underline}
+@media (min-width:700px){.imp{grid-template-columns:auto minmax(6em,auto) 7em minmax(0,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- 主畫面：床卡列表 -->
+<section class="view on" id="v-list">
+  <div class="bar"><div class="wrap">
+    <span class="prog" id="prog"></span>
+    <button class="btn pri" data-act="round">逐床跑</button>
+    <button class="btn" data-act="hand">交班</button>
+    <button class="btn" data-act="import">匯入</button>
+    <button class="btn" data-act="settings" aria-label="設定與存檔">⋯</button>
+  </div></div>
+  <div class="wrap">
+    <div class="save" id="save"></div>
+    <div class="beds" id="beds"></div>
+    <div class="row" style="margin-top:12px">
+      <input type="text" id="nbBed" placeholder="床號" style="flex:0 0 5.5em" inputmode="text" autocomplete="off">
+      <input type="text" id="nbCode" placeholder="代號，例：W" style="flex:1 1 6em" autocomplete="off">
+      <button class="btn pri" data-act="addBed">＋ 新病人</button>
+    </div>
+    <p class="muted">只寫床號和代號（例如姓氏縮寫 W），資料只存在這支裝置的瀏覽器裡。</p>
+  </div>
+</section>
+
+<!-- 單床／逐床跑 -->
+<section class="view" id="v-bed">
+  <div class="bar"><div class="wrap">
+    <button class="btn ghost" data-act="back">← 返回</button>
+    <span class="ti" id="bedTitle" style="font-weight:800;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    <span class="prog" id="roundProg" style="margin:0"></span>
+  </div><div class="wrap"><div class="stepper" id="stepper" hidden></div></div></div>
+  <div class="wrap" id="bedBody"></div>
+  <div class="bottom" id="roundBar" hidden><div class="wrap">
+    <button class="btn" data-act="roundPrev">← 上一床</button>
+    <button class="btn pri" data-act="roundNext">這床完成 → 下一床</button>
+  </div></div>
+</section>
+
+<!-- 交班 -->
+<section class="view" id="v-hand">
+  <div class="bar"><div class="wrap">
+    <button class="btn ghost" data-act="back">← 返回</button>
+    <span style="font-weight:800;flex:1">產生交班／口頭報告</span>
+  </div></div>
+  <div class="wrap">
+    <h2>格式</h2>
+    <div class="seg" id="hFmt">
+      <button data-fmt="isbar" aria-pressed="true">ISBAR 交班</button>
+      <button data-fmt="oral" aria-pressed="false">口頭報告</button>
+    </div>
+    <h2>哪幾床 <button class="btn sm" data-act="hAll">全選</button></h2>
+    <div class="seg" id="hBeds"></div>
+    <h2>內容（可以先改再複製）</h2>
+    <textarea class="out" id="hOut"></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn pri" data-act="hCopy" style="flex:1">複製</button></div>
+    <p class="muted">R 只列還沒完成的待辦、等待中結果和交班重點。貼到哪裡由你決定，這裡不會自動送出。</p>
+  </div>
+</section>
+
+<!-- 匯入站 -->
+<section class="view" id="v-imp">
+  <div class="bar"><div class="wrap">
+    <button class="btn ghost" data-act="back">← 返回</button>
+    <span style="font-weight:800;flex:1">匯入檢驗值</span>
+  </div></div>
+  <div class="wrap" id="impBody"></div>
+</section>
+
+<!-- 整床傳到手機（電腦端） -->
+<section class="view" id="v-send">
+  <div class="bar"><div class="wrap">
+    <button class="btn ghost" data-act="back">← 返回</button>
+    <span style="font-weight:800;flex:1">整床傳到手機</span>
+  </div></div>
+  <div class="wrap" id="sendBody"></div>
+</section>
+
+<!-- 設定與存檔 -->
+<section class="view" id="v-set">
+  <div class="bar"><div class="wrap">
+    <button class="btn ghost" data-act="back">← 返回</button>
+    <span style="font-weight:800;flex:1">設定與存檔</span>
+  </div></div>
+  <div class="wrap" id="setBody"></div>
+</section>
+
+<input type="file" id="fileImg" accept="image/*" hidden>
+<input type="file" id="fileQR" accept="image/*" capture="environment" hidden>
+<input type="file" id="fileJSON" accept="application/json,.json" hidden>
+
+<script>
+const CHECKLIST = [{"id":"vitals-io","name":"Vitals 趨勢、I/O","where":"","normal":["生命徵象穩定，和病人自己的 baseline 相近，趨勢沒有變差","UO ≥ 0.5 mL/kg/h","I/O 與體重變化符合治療目標（例如心衰竭希望負平衡）"],"watch":["SBP < 90 或 MAP < 65 mmHg，或比平常明顯下降","新出現且持續的 HR > 100 或 < 50","RR ≥ 22、SpO2 < 94%（COPD 目標另訂）或氧氣需求上升","體溫 ≥ 38°C 或 < 36°C","UO < 0.5 mL/kg/h 持續 6 小時"],"next":["親自去看病人、重量一次，不要只看數字","想原因：感染、出血、體液不足或過多、疼痛、藥物","算 NEWS2 或 qSOFA，看趨勢而不是單一數值","確認 I/O 紀錄完整，對照體重變化"],"callSenior":["SBP < 90 或 MAP < 65 mmHg","SpO2 < 90% 或氧氣需求快速增加","新出現的意識改變","NEWS2 ≥ 7，或少尿合併血壓偏低"],"basis":["NEWS2（Royal College of Physicians 2017）","Surviving Sepsis Campaign 2021、Sepsis-3（qSOFA）","KDIGO AKI guideline 2012"]},{"id":"lines-tubes","name":"管路（Foley、CVC、周邊 IV、NG、引流管）","where":"","normal":["每條管路今天都說得出還需要的理由","置入處乾淨，無紅腫、滲液、疼痛","管路通暢、固定良好、有標示置放日期"],"watch":["Foley 只為了方便記 I/O 或失禁照護而留著","CVC 已無必要（升壓劑已停、可改周邊或口服）","周邊 IV 處紅、腫、痛、摸到硬條索或滲漏","有 CVC 的病人出現不明原因發燒，或置入處化膿","引流液的量、顏色、性狀突然改變（變血、變混濁、變膽汁色）"],"next":["每天對每條管路問一次「今天可以拔嗎」","評估移除，或改成較不侵入的方式","懷疑管路感染時，與學長討論培養與是否移除","引流管、胸管的去留問放置的團隊"],"callSenior":["有 CVC 且發燒、寒顫或血壓下降（懷疑 CLABSI）","引流管突然流出大量鮮血","重要管路滑脫或被自拔（CVC、胸管、氣切、引流管）","NG 位置不確定：確認前不要灌食"],"basis":["CDC/HICPAC CAUTI guideline 2009","CDC Guidelines for the Prevention of Intravascular Catheter-Related Infections 2011","IDSA CRBSI guideline 2009"]},{"id":"antibiotics","name":"抗生素（D幾、培養、降階或停藥）","where":"","normal":["說得出適應症、感染源、今天 D 幾、預計療程","培養與藥敏已回，目前用藥有對到","臨床在進步（退燒、症狀改善、WBC/CRP 下降）"],"watch":["用藥 48–72 小時仍沒改善或變差","培養與藥敏已出，但還沒據此調整","廣效抗生素用了 48–72 小時沒有重新評估","臨床穩定、可進食，卻還在用 IV","新出現腹瀉（想 C. difficile）、皮疹或腎功能變差"],"next":["查培養與藥敏，評估降階","評估 IV 轉口服，並確認療程與停藥日","沒改善時重新找感染源（影像、膿瘍引流、管路）","考慮會診感染科"],"callSenior":["新的血液培養陽性報告","治療中出現敗血性休克徵象","疑似嚴重藥物過敏（喘、血壓掉、大片皮疹或黏膜破損）","培養出多重抗藥性菌（MDRO）"],"basis":["IDSA/SHEA Antibiotic Stewardship guideline 2016","Surviving Sepsis Campaign 2021","CDC Core Elements of Hospital Antibiotic Stewardship Programs"]},{"id":"dvt-prophylaxis","name":"DVT 預防","where":"","normal":["VTE 風險與出血風險都評估過，且有紀錄","高風險者已有預防措施（藥物或機械式）","低風險、能下床者以鼓勵活動為主"],"watch":["內科病人 Padua score ≥ 4 卻沒有任何預防","用藥物預防但有活動性出血或血小板 < 50,000/µL","單側下肢腫、痛、熱","用 heparin 類後血小板比基準值下降 ≥ 50%（想 HIT）","腎功能變差（會影響預防藥物的選擇）"],"next":["重新算 Padua score（內科）或 Caprini score（外科）","出血風險高時，考慮改機械式預防（如 IPC）","懷疑 DVT：算 Wells score，與學長討論下肢超音波","鼓勵早期下床活動"],"callSenior":["突發喘、胸痛、SpO2 下降、心搏過速（懷疑 PE）","抗凝預防中出現明顯出血","懷疑 HIT"],"basis":["ACCP（CHEST）Antithrombotic Therapy and Prevention of Thrombosis 9th ed. 2012","ASH 2018 guideline：住院內科病人 VTE 預防","Padua score、Caprini score、IMPROVE bleeding score"]},{"id":"nutrition-glucose","name":"飲食、營養、血糖","where":"","normal":["飲食醫囑符合現況；NPO 有理由，也知道何時解除","進食量足夠（大致吃得下一半以上）","血糖大多落在 140–180 mg/dL（一般住院病人目標）"],"watch":["NPO 沒有明確理由或結束時間","進食量不到一半持續數天，或住院中體重下降","血糖 < 70 mg/dL，或持續 > 180 mg/dL","進食嗆咳、吃完聲音濕濕的、吞嚥困難","長期少吃後重新進食：注意 refeeding（低磷、低鉀、低鎂）"],"next":["釐清 NPO 能否解除、飲食質地是否合適","考慮會診營養師","吞嚥有疑慮時，考慮請語言治療師做吞嚥評估","血糖不穩先找原因（進食量、類固醇、感染），再與學長討論"],"callSenior":["血糖 < 54 mg/dL，或低血糖合併症狀、意識改變","高血糖合併意識改變、脫水、呼吸深快（懷疑 DKA/HHS）","嗆到後出現喘或 SpO2 下降（懷疑吸入）"],"basis":["ADA Standards of Care in Diabetes：Diabetes Care in the Hospital","ESPEN guideline on nutritional support for polymorbid medical inpatients","ASPEN Consensus Recommendations for Refeeding Syndrome 2020"]},{"id":"gi-bowel-sup","name":"腸胃（排便、壓力性潰瘍預防）","where":"","normal":["排便規律、性狀正常","腹部軟、不脹不痛、有排氣","SUP 用藥有明確適應症；沒有適應症就沒在用"],"watch":["≥ 3 天沒有解便","一天 ≥ 3 次水瀉，尤其近期用過抗生素（想 C. difficile）","黑便、血便，或咖啡色的嘔吐物、NG 引流液","腹脹、嘔吐、沒有排氣（想 ileus 或腸阻塞）","一般病房病人沒有危險因子卻一直用 PPI"],"next":["做腹部理學檢查，看藥單（opioid、抗膽鹼藥、鐵劑）","便祕：與學長討論處理方式","腹瀉：評估是否需要驗 C. difficile","SUP 沒有適應症時，評估停用"],"callSenior":["黑便或血便合併 Hb 下降、心跳變快或血壓下降","劇烈腹痛或腹膜炎徵象（板狀腹、反彈痛）","懷疑腸阻塞"],"basis":["ASHP Therapeutic Guidelines on Stress Ulcer Prophylaxis 1999","IDSA/SHEA C. difficile guideline 2017（2021 focused update）"]},{"id":"pain-sedation","name":"疼痛、鎮靜","where":"","normal":["疼痛 NRS ≤ 3，能睡、能咳、能活動","意識清楚，可以配合","使用鎮靜者維持在團隊訂的目標深度（多為淺鎮靜）"],"watch":["NRS ≥ 4，或疼痛影響睡眠、咳嗽、下床","新出現或性質改變的疼痛（先找原因，不只是止痛）","用 opioid 或鎮靜藥後變得嗜睡、呼吸變慢變淺","譫妄：注意力差、日夜顛倒、躁動或異常安靜","RASS 比目標深，或 ≥ +2 的躁動"],"next":["重新評估疼痛的位置、性質、誘因","譫妄先找誘因：感染、藥物、尿滯留、便祕、疼痛、睡眠","與學長討論止痛或鎮靜的調整","難控制的疼痛，考慮會診疼痛科或安寧共照"],"callSenior":["用 opioid 或鎮靜藥後叫不醒、呼吸變慢或 SpO2 下降","突發劇痛（胸痛、腹痛、頭痛，或肢體痛合併冰冷蒼白）","急性意識改變，或躁動到有自傷、自拔管路的風險"],"basis":["SCCM PADIS guideline 2018","WHO guidelines for cancer pain management 2018","Confusion Assessment Method（CAM）"]},{"id":"mobility-falls","name":"活動、復健、跌倒風險","where":"","normal":["活動醫囑符合現況，每天有下床或床上活動","跌倒風險已評估，且有對應的防跌措施","有需要的病人已會診復健"],"watch":["沒有禁忌卻整天臥床","Morse Fall Scale ≥ 45（高風險，以院內標準為準）","年長、譫妄、夜尿頻繁、步態不穩或曾經跌倒","正在用鎮靜安眠藥、opioid、降壓藥或利尿劑","站起 3 分鐘內 SBP 掉 ≥ 20 或 DBP 掉 ≥ 10 mmHg"],"next":["評估解除不必要的臥床限制、約束與管路","考慮會診復健科（PT/OT）","檢視會增加跌倒風險的藥物","與護理師確認防跌措施，並向家屬說明"],"callSenior":["病人跌倒，尤其撞到頭、使用抗凝或抗血小板藥","跌倒後意識改變，或肢體疼痛、變形、不能動","新出現的單側無力、口齒不清、臉歪"],"basis":["Morse Fall Scale（Morse 1989）","World Guidelines for Falls Prevention and Management for Older Adults 2022","SCCM PADIS guideline 2018（早期活動）"]},{"id":"skin-pressure-injury","name":"皮膚、壓傷","where":"","normal":["皮膚完整，骨突處（薦骨、足跟、髖部）沒有發紅","Braden score 已評估，並有對應措施（翻身、減壓）","既有的傷口乾淨，且逐漸縮小"],"watch":["Braden score ≤ 18（有風險），≤ 12（高風險）","骨突處出現壓了不會退的發紅","破皮、水泡、黑色焦痂，或深紫色的皮膚","管路與器材壓迫處（鼻翼、耳後、面罩邊緣）","傷口紅腫熱痛、流膿、有惡臭或範圍變大"],"next":["與護理師確認翻身與減壓措施","考慮會診傷口護理師","顧營養與失禁造成的潮濕，考慮會診營養師","傷口深或疑似感染時，與學長討論會診整形外科"],"callSenior":["傷口周圍紅腫快速擴散、劇痛、發紫或摸到捻髮音","壓傷合併發燒或敗血症徵象","傷口深可見骨、肌腱"],"basis":["NPIAP/EPUAP/PPPIA International Guideline 2019","Braden Scale（Bergstrom 1987）"]},{"id":"discharge-family","name":"出院規劃、家屬溝通","where":"","normal":["知道出院條件與預計出院日","知道出院後去哪裡、誰是主要照顧者","家屬了解目前病況與計畫，溝通的內容有紀錄"],"watch":["住院數天了，仍沒有預計出院日或出院條件","出院後的照顧需求還沒安排（管路、傷口、氧氣、灌食、復健）","獨居、沒有主要照顧者，或有經濟、安置問題","家屬對病情的認知與團隊落差大，或家屬間意見不一","病況嚴重或末期，卻還沒談過治療目標與 DNR"],"next":["與學長確認出院條件與預計日期","考慮會診出院準備服務或個管師","考慮會診社工","與學長討論安排家庭會議；末期考慮會診安寧共照"],"callSenior":["病人或家屬要求自動出院（AAD）","家屬強烈不滿、可能有醫療爭議或暴力徵兆","病況急轉直下，但急救意願不明","被問到病情或預後而自己沒把握：先找學長再回答"],"basis":["健保出院準備及追蹤管理（出院準備服務）","安寧緩和醫療條例、病人自主權利法","SPIKES protocol（Baile 2000）"]}];
+const PROBLEMS = [{"id":"pneumonia","name":"肺炎（CAP/HAP）","improving":["退燒、呼吸喘與咳嗽改善","氧氣需求下降","WBC、CRP 趨勢下降","食慾與精神恢復"],"worsening":["氧氣需求上升或呼吸變喘","治療 72h 後仍持續發燒","新出現意識改變或血壓下降","CXR 浸潤擴大或出現肋膜積液"],"followUps":[{"what":"體溫、RR、SpO2 與氧氣需求趨勢","when":"每日"},{"what":"吞嚥與嗆咳風險、床頭抬高、痰液清除","when":"每日"},{"what":"評估臨床穩定度（退燒、vitals 穩、可進食）→ 評估改口服","when":"+48h"},{"what":"未改善：重新評估診斷、併發症（膿胸、肺膿瘍）、抗藥性菌，考慮重照 CXR","when":"+72h"},{"what":"追 CBC、CRP 趨勢","when":"D3"},{"what":"確認臨床穩定、疫苗（流感、肺炎鏈球菌）、是否需門診追蹤 CXR","when":"出院前"}],"checklistLinks":["vitals-io","antibiotics","nutrition-glucose","dvt-prophylaxis","mobility","discharge"],"callSenior":["SpO2 掉或氧氣需求快速上升","RR > 30 或使用呼吸輔助肌","低血壓、意識改變、尿量減少（敗血症徵象）"],"basis":["ATS/IDSA CAP 2019","IDSA/ATS HAP/VAP 2016","台灣肺炎診治指引 2018"]},{"id":"uti","name":"泌尿道感染（UTI／APN）","improving":["退燒","腰痛、解尿不適改善","WBC、CRP 趨勢下降"],"worsening":["治療 72h 後仍發燒","腰痛加劇","血壓下降或意識改變","尿量減少或 Cr 上升"],"followUps":[{"what":"確認尿液與血液培養已在抗生素前送出","when":"D1"},{"what":"評估複雜因素（結石、水腎、尿滯留、導尿管），是否需要影像","when":"D1"},{"what":"體溫、腰痛／CVA 敲痛、尿量","when":"每日"},{"what":"有尿管者：評估能否拔除或更換","when":"每日"},{"what":"追 Cr 與發炎指數趨勢","when":"D3"},{"what":"仍發燒：安排影像找阻塞或膿瘍","when":"+72h"}],"checklistLinks":["vitals-io","lines","antibiotics","discharge"],"callSenior":["低血壓、意識改變等敗血性休克徵象","發燒合併水腎或結石阻塞（可能需緊急引流）","無尿或 Cr 快速上升"],"basis":["IDSA Uncomplicated Cystitis/Pyelonephritis 2010","IDSA CAUTI 2009","EAU Urological Infections Guidelines"]},{"id":"cellulitis","name":"蜂窩性組織炎（Cellulitis）","improving":["紅腫範圍不再擴大並開始縮小","熱、痛減輕","退燒"],"worsening":["紅腫超出標記線持續擴大","出現水泡、紫黑變色或壞死","疼痛與外觀不成比例","發燒不退或血壓下降"],"followUps":[{"what":"用筆標記紅腫邊界並記錄（拍照）","when":"D1"},{"what":"對照邊界；檢查有無波動感（膿瘍）、水泡","when":"每日"},{"what":"患肢抬高、疼痛控制","when":"每日"},{"what":"評估治療反應；未改善考慮膿瘍、抗藥性菌或非感染原因（DVT 等）","when":"+48h"},{"what":"臨床改善者評估改口服","when":"+72h"},{"what":"處理誘因（足癬、水腫、傷口）並衛教預防復發","when":"出院前"}],"checklistLinks":["skin","antibiotics","pain-sedation","nutrition-glucose","mobility","discharge"],"callSenior":["疼痛與外觀不成比例、範圍快速擴大","皮膚紫黑、出血性水泡、捻髮音或麻木（疑壞死性筋膜炎）","低血壓、意識改變"],"basis":["IDSA SSTI 2014"]},{"id":"sepsis","name":"敗血症（Sepsis）","improving":["血壓穩定、升壓劑需求下降","lactate 下降","尿量恢復","意識清楚"],"worsening":["輸液後仍低血壓","lactate 不降或上升","尿量持續偏少","出現新的器官功能異常"],"followUps":[{"what":"確認培養已送、抗生素已給、感染源已找到","when":"D1"},{"what":"lactate 偏高者當天重驗，確認有下降","when":"D1"},{"what":"vitals、MAP、尿量、I/O、意識","when":"每日"},{"what":"器官功能：Cr、bilirubin、platelet、凝血","when":"每日"},{"what":"重新評估容積狀態與輸液反應，避免輸液過量","when":"+24h"},{"what":"檢討 source control 是否足夠（引流、移除管路）","when":"+48h"}],"checklistLinks":["vitals-io","lines","antibiotics","dvt-prophylaxis","nutrition-glucose","gi","skin"],"callSenior":["MAP < 65 或 SBP < 90","意識改變或呼吸窘迫","尿量明顯減少","lactate 上升"],"basis":["Surviving Sepsis Campaign 2021","Sepsis-3 定義 2016"]},{"id":"aki","name":"急性腎損傷（AKI）","improving":["Cr 開始下降","尿量恢復","電解質與酸鹼回到正常"],"worsening":["Cr 持續上升","少尿或無尿","高血鉀、代謝性酸中毒","體液過多（喘、水腫）"],"followUps":[{"what":"分 prerenal／renal／postrenal：尿液常規、尿鈉、腎臟超音波排除阻塞","when":"D1"},{"what":"檢視藥單：避免腎毒性藥物與顯影劑，依腎功能調整劑量（找學長／藥師）","when":"D1"},{"what":"Cr、BUN、K、尿量、I/O、體重","when":"每日"},{"what":"評估容積狀態（太乾或太濕）","when":"每日"},{"what":"Cr 未改善：重新找原因，討論是否會診腎臟科","when":"+48h"},{"what":"安排腎功能門診追蹤，衛教避免 NSAID","when":"出院前"}],"checklistLinks":["vitals-io","lines","antibiotics","nutrition-glucose","discharge"],"callSenior":["高血鉀或 ECG 變化","無尿或尿量急遽減少","肺水腫、呼吸喘","嚴重酸中毒或尿毒症狀（意識改變、心包膜摩擦音）"],"basis":["KDIGO AKI 2012"]},{"id":"hypokalemia","name":"低血鉀（Hypokalemia）","improving":["K 回升至正常範圍","無力、抽筋改善","ECG 無異常"],"worsening":["補充後 K 仍持續下降","肌無力加重","ECG 變化（U 波、心律不整）"],"followUps":[{"what":"找原因：腹瀉嘔吐、利尿劑、攝取不足、insulin、refeeding","when":"D1"},{"what":"驗 Mg（低血鎂會讓 K 補不上來）","when":"D1"},{"what":"嚴重低血鉀、有心臟病或使用 digoxin：做 ECG","when":"D1"},{"what":"補充後複驗 K（嚴重者當天就要複驗，找學長確認時間）","when":"+24h"},{"what":"追 K 直到穩定；檢查 IV 補鉀部位有無靜脈炎","when":"每日"},{"what":"檢視利尿劑等致病藥物是否調整","when":"出院前"}],"checklistLinks":["vitals-io","lines","nutrition-glucose","gi"],"callSenior":["K < 2.5 或有肌無力、呼吸費力","ECG 變化或心律不整","開 IV 補鉀前：濃度與速度先找學長確認"],"basis":["無單一國際指引；依院內補鉀規範","AHA ACLS 電解質異常章節"]},{"id":"hyperkalemia","name":"高血鉀（Hyperkalemia）","improving":["K 下降至安全範圍","ECG 恢復正常","尿量足夠"],"worsening":["K 上升或治療後反彈","ECG 出現 peaked T、QRS 變寬","肌無力","少尿"],"followUps":[{"what":"立即做 12 導程 ECG","when":"D1"},{"what":"排除溶血造成的假性高血鉀，有疑慮就重抽","when":"D1"},{"what":"停含鉀輸液與補充；檢視升鉀藥物（ACEI/ARB、MRA、NSAID、TMP-SMX）","when":"D1"},{"what":"降鉀治療後當天複驗 K；用 insulin 者追血糖防低血糖","when":"D1"},{"what":"複驗 K、Cr，注意反彈","when":"+24h"},{"what":"藥物調整與低鉀飲食衛教","when":"出院前"}],"checklistLinks":["vitals-io","lines","nutrition-glucose"],"callSenior":["任何 ECG 變化","K ≥ 6.0","少尿或腎衰竭且 K 降不下來（可能需透析）"],"basis":["UK Kidney Association Hyperkalaemia Guideline 2023","KDIGO Potassium Controversies Conference 2020","AHA ACLS 電解質異常章節"]},{"id":"hyponatremia","name":"低血鈉（Hyponatremia）","improving":["Na 緩步回升","噁心、頭痛、嗜睡改善","意識清楚"],"worsening":["Na 持續下降","嗜睡、混亂或抽搐","Na 上升過快（有 ODS 風險，也算惡化）"],"followUps":[{"what":"評估症狀嚴重度與急性或慢性","when":"D1"},{"what":"評估容積狀態；送血清滲透壓、尿滲透壓、尿鈉","when":"D1"},{"what":"檢視藥物（thiazide、SSRI 等），視情況查甲狀腺與腎上腺功能","when":"D1"},{"what":"治療開始後密集追 Na，確認矯正速度在安全範圍內（頻率與上限找學長確認）","when":"D1"},{"what":"Na、I/O、尿量、意識；尿量突然變多要警覺矯正過快","when":"每日"},{"what":"確認病因已處理、致病藥物已調整，安排門診追 Na","when":"出院前"}],"checklistLinks":["vitals-io","lines","nutrition-glucose"],"callSenior":["抽搐、意識改變或嚴重嘔吐","Na 上升速度超過學長設定的上限","尿量突然大增","考慮使用高張食鹽水時（由學長決定）"],"basis":["歐洲低血鈉臨床指引 2014（ESE/ESICM/ERA-EDTA）","美國專家小組低血鈉建議 2013"]},{"id":"hyperglycemia","name":"高血糖（含 DKA/HHS 警訊）","improving":["血糖多數落在學長設定的目標範圍","沒有低血糖","anion gap 關閉、酮體消失（DKA）","進食穩定"],"worsening":["血糖持續偏高","出現低血糖","噁心嘔吐、腹痛、呼吸深快","意識改變或明顯脫水"],"followUps":[{"what":"看 finger sugar 紀錄（餐前、睡前）與有無低血糖","when":"每日"},{"what":"依進食狀況、NPO、類固醇使用，與學長討論降血糖藥調整","when":"每日"},{"what":"近 3 個月無資料者驗 HbA1c","when":"D1"},{"what":"血糖很高或有症狀：驗酮體、血液氣體、電解質、滲透壓排除 DKA/HHS","when":"D1"},{"what":"找誘因：感染、類固醇、漏用藥、心肌梗塞","when":"D1"},{"what":"確認出院用藥、低血糖衛教、門診追蹤","when":"出院前"}],"checklistLinks":["nutrition-glucose","vitals-io","lines","skin","discharge"],"callSenior":["疑似 DKA/HHS：酮體陽性、酸中毒、意識改變","低血糖合併意識改變，或反覆低血糖","DKA 治療中 K 偏低","血糖持續很高且有症狀"],"basis":["ADA Standards of Care（Diabetes Care in the Hospital）","ADA/EASD Hyperglycemic Crises 共識報告 2024","中華民國糖尿病學會糖尿病臨床照護指引"]},{"id":"adhf","name":"心衰竭急性惡化（ADHF）","improving":["體重下降、尿量足夠","喘與端坐呼吸改善","水腫、JVP、囉音減少","氧氣需求下降"],"worsening":["利尿反應差、體重不降","Cr 上升或 K 異常","低血壓、四肢冰冷（低灌流）","氧氣需求上升"],"followUps":[{"what":"找誘因（感染、ACS、心律不整、藥物或飲食未遵從、NSAID）；ECG、troponin","when":"D1"},{"what":"近期無心臟超音波者安排檢查","when":"D2"},{"what":"體重（同時間同磅秤）、I/O、尿量","when":"每日"},{"what":"鬱血徵象（JVP、囉音、水腫）與 Cr、K、Na","when":"每日"},{"what":"評估利尿反應；鬱血改善者評估改口服利尿劑","when":"+48h"},{"what":"檢視 GDMT、記錄乾體重、衛教限鹽與每日量體重、安排早期回診","when":"出院前"}],"checklistLinks":["vitals-io","lines","dvt-prophylaxis","nutrition-glucose","mobility","discharge"],"callSenior":["呼吸窘迫或 SpO2 下降（急性肺水腫）","低血壓、四肢冰冷、尿少、意識變差（心因性休克）","新發心律不整或胸痛"],"basis":["ESC HF 2021（含 2023 Focused Update）","AHA/ACC/HFSA HF 2022","台灣心臟學會心衰竭指引 2019"]},{"id":"aecopd","name":"COPD 急性惡化（AECOPD）","improving":["喘與 wheezing 改善","氧氣需求下降","痰量減少、痰色變淡","支氣管擴張劑需求間隔拉長"],"worsening":["呼吸更喘、使用呼吸輔助肌","嗜睡或意識變差（CO2 滯留）","氧氣需求上升或 SpO2 達不到目標"],"followUps":[{"what":"ABG/VBG 看 CO2 滯留與酸中毒；CXR 排除肺炎、氣胸；ECG","when":"D1"},{"what":"評估是否需要抗生素（更喘、痰量增加、痰變膿）","when":"D1"},{"what":"RR、意識、SpO2 是否在學長設定的目標範圍（避免過度給氧）","when":"每日"},{"what":"使用類固醇期間追血糖","when":"每日"},{"what":"檢討全身性類固醇療程與停藥日（天數找學長確認）","when":"+48h"},{"what":"吸入器技巧、維持吸入藥物、戒菸、疫苗、肺復原、安排回診","when":"出院前"}],"checklistLinks":["vitals-io","antibiotics","nutrition-glucose","dvt-prophylaxis","mobility","discharge"],"callSenior":["嗜睡、意識變差","呼吸窘迫、無法說完整句子","血液氣體顯示呼吸性酸中毒（評估 NIV）","給氧後 SpO2 仍達不到目標"],"basis":["GOLD 2024","台灣胸腔暨重症加護醫學會 COPD 診治指引"]}];
+</script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const today = () => ymd(new Date());
+const parseD = s => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, m - 1, d); };
+const addDays = (s, n) => { const d = parseD(s); d.setDate(d.getDate() + n); return ymd(d); };
+const diffDays = (a, b) => Math.round((parseD(b) - parseD(a)) / 864e5);
+const md = s => s ? s.slice(5).replace('-', '/') : '';
+const at8 = s => { const d = parseD(s); d.setHours(8, 0, 0, 0); return d.getTime(); };
+const get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const set = (k, v) => { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } };
+
+const CK = Object.fromEntries(CHECKLIST.map(c => [c.id, c]));
+
+// ── 檢驗項目：數值範圍（成人、常見單位；性別差異取較寬的範圍）。名稱比對用別名，大小寫不分。
+const LABS = [
+  ['WBC', ['WBC'], 4, 10, '×10³/μL'],
+  ['Hb', ['Hb', 'HGB', 'Hgb', 'Hemoglobin'], 12, 17.5, 'g/dL'],
+  ['Plt', ['Plt', 'PLT', 'Platelet'], 150, 400, '×10³/μL'],
+  ['Na', ['Na', 'Sodium'], 135, 145, 'mEq/L'],
+  ['K', ['K', 'Potassium'], 3.5, 5.0, 'mEq/L'],
+  ['Cl', ['Cl', 'Chloride'], 98, 107, 'mEq/L'],
+  ['HCO3', ['HCO3', 'HCO3-', 'Bicarbonate', 'TCO2'], 22, 26, 'mEq/L'],
+  ['BUN', ['BUN', 'Urea'], 7, 20, 'mg/dL'],
+  ['Cr', ['Cr', 'Creatinine', 'CRE', 'Crea'], 0.6, 1.3, 'mg/dL'],
+  ['eGFR', ['eGFR', 'GFR'], 60, null, 'mL/min'],
+  ['Ca', ['Ca', 'Calcium'], 8.6, 10.4, 'mg/dL'],
+  ['Mg', ['Mg', 'Magnesium'], 1.7, 2.4, 'mg/dL'],
+  ['P', ['P', 'IP', 'Phosphate', 'Phosphorus'], 2.5, 4.5, 'mg/dL'],
+  ['Glu', ['Glucose', 'Glu', 'Sugar', 'GLU-AC', 'Glucose AC', 'Glucose PC', 'Glu AC', 'Sugar AC', 'BS'], 70, 180, 'mg/dL'],
+  ['AST', ['AST', 'GOT'], null, 40, 'U/L'],
+  ['ALT', ['ALT', 'GPT'], null, 40, 'U/L'],
+  ['ALP', ['ALP', 'Alk-P', 'ALK-P'], 40, 130, 'U/L'],
+  ['T-bil', ['T-bil', 'T-Bil', 'TBIL', 'T.Bil', 'Total bilirubin', 'Bil-T'], null, 1.2, 'mg/dL'],
+  ['Alb', ['Albumin', 'Alb'], 3.5, 5.0, 'g/dL'],
+  ['CRP', ['CRP', 'hs-CRP'], null, 0.5, 'mg/dL'],
+  ['PCT', ['PCT', 'Procalcitonin'], null, 0.5, 'ng/mL'],
+  ['Lactate', ['Lactate', 'Lactic acid', 'Lac'], null, 2.0, 'mmol/L'],
+  ['INR', ['INR', 'PT-INR'], 0.8, 1.2, ''],
+  ['pH', ['pH'], 7.35, 7.45, ''],
+  ['PaCO2', ['PaCO2', 'pCO2', 'PCO2'], 35, 45, 'mmHg'],
+  ['PaO2', ['PaO2', 'pO2', 'PO2'], 80, null, 'mmHg'],
+  ['Lipase', ['Lipase'], null, 60, 'U/L'],
+  ['BNP', ['BNP'], null, 100, 'pg/mL'],
+  ['NT-proBNP', ['NT-proBNP', 'NT-pro BNP', 'NTproBNP'], null, 300, 'pg/mL'],
+].map(([id, al, lo, hi, u]) => ({ id, al, lo, hi, u }));
+const LAB = Object.fromEntries(LABS.map(l => [l.id, l]));
+// 有填性別時，Hb、Cr 用性別範圍；沒填就用較寬的範圍。PaO2 只標偏低（給氧時偏高是正常的）
+const SEXR = { Hb: { M: [13.5, 17.5], F: [12, 16] }, Cr: { M: [0.7, 1.3], F: [0.5, 1.1] } };
+const lim = (id, sex) => { const l = LAB[id]; if (!l) return null; const r = SEXR[id] && SEXR[id][sex]; return r ? { ...l, lo: r[0], hi: r[1] } : l; };
+const flag = (id, v, sex) => { const l = lim(id, sex); if (!l || v == null || isNaN(v)) return ''; if (l.lo != null && v < l.lo) return 'L'; if (l.hi != null && v > l.hi) return 'H'; return ''; };
+const rangeTxt = (id, sex) => { const l = lim(id, sex); if (!l) return ''; return (l.lo != null && l.hi != null ? `${l.lo}–${l.hi}` : l.lo != null ? `≥ ${l.lo}` : `≤ ${l.hi}`) + (l.u ? ' ' + l.u : ''); };
+
+// 從貼上或 OCR 的文字抓「項目 數值」。長的別名先比對（NT-proBNP 先於 BNP、eGFR 先於 GFR）；
+// 名稱前後不能緊貼英文字母（避免 K 吃到 CK、P 吃到 PT），每個項目只取第一次出現的數值。
+const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const ALIASES = LABS.flatMap(l => l.al.map(a => [a, l.id])).sort((a, b) => b[0].length - a[0].length);
+function parseLabs(text) {
+  const out = {}, taken = [];
+  const src = String(text).replace(/[，：]/g, ' ').replace(/ /g, ' ');
+  for (const [a, id] of ALIASES) {
+    if (out[id] != null) continue;
+    // 名稱和數值之間只允許空白、冒號、旗標符號或一個括號註記（例如 Na(B)），不能夾別的英文字，避免「K/uL Hb 12」被當成 K 12
+    const re = new RegExp('(?<![A-Za-z])' + reEsc(a) + '(?![A-Za-z])[\\s:=*#<>]*(?:\\([^)\\n]{0,15}\\))?[\\s:=*#<>]*(?:[\\u4e00-\\u9fff]{1,6}[\\s:=*#<>]*)?(-?\\d+(?:\\.\\d+)?)', a.length <= 2 ? 'g' : 'gi');
+    let m;
+    while ((m = re.exec(src))) {
+      const s = m.index, e = s + a.length;
+      if (taken.some(([x, y]) => s < y && e > x)) continue;
+      const v = parseFloat(m[1]);
+      if (isNaN(v)) continue;
+      out[id] = v; taken.push([s, e]); break;
+    }
+  }
+  return out;
+}
+
+// ── 狀態
+const KEY = 'rounds.v1', TODO = 'shiftboard.v1';
+function blank() { return { beds: [], lastExport: 0, hidden: [], where: {}, v: 1 }; }
+function load() {
+  try { const s = JSON.parse(get(KEY) || 'null'); if (s && Array.isArray(s.beds)) return { ...blank(), ...s }; } catch (e) {}
+  return blank();
+}
+let S = load();
+let dirty = false;
+function save(quiet) {
+  S.mtime = Date.now();
+  if (!set(KEY, JSON.stringify(S))) toast('存不進去：瀏覽器空間不足或被限制');
+  dirty = true; snapSoon();
+  if (!quiet) render();
+}
+const newBed = (bed, code) => ({ id: uid(), bed: String(bed || '').trim(), code: String(code || '').trim(), dx: '', hx: '', dnr: '', io: '', lines: [], abx: [], problems: [], pending: [], labs: {}, checks: {}, note: '', hand: '', learned: [], rounded: '', created: today() });
+const bedById = id => S.beds.find(b => b.id === id);
+const sortBeds = () => S.beds.sort((a, b) => String(a.bed).localeCompare(String(b.bed), 'zh-Hant', { numeric: true }));
+const label = b => `${b.bed || '?'}床${b.code ? ' ' + b.code : ''}`;
+
+// ── 待辦表（總站共用 shiftboard.v1）：p 1 立即／2 緊急／3 待辦／4 有空；due = 0 不計時
+function todoAdd(bed, text, p = 3, due = 0, src = '查房板') {
+  let st = null;
+  try { st = JSON.parse(get(TODO) || 'null'); } catch (e) {}
+  if (!st || !Array.isArray(st.items)) st = { items: [], done: [] };
+  if (st.seeded) { st.items = st.items.filter(i => !i.ex); st.done = (st.done || []).filter(i => !i.ex); st.seeded = false; }
+  const now = Date.now(), id = now.toString(36) + Math.random().toString(36).slice(2, 5);
+  st.items.push({ id, bed: String(bed || ''), text, p, due, start: now, src });
+  if (!set(TODO, JSON.stringify(st))) { toast('存不進待辦表'); return null; }
+  if (bed) set('hub.lastBed', String(bed));
+  try { parent !== window && parent.postMessage({ hub: 'todo-add', id, text, bed: String(bed || ''), n: 0 }, '*'); } catch (e) {}
+  return id;
+}
+function todosOf(bed) {
+  try { const st = JSON.parse(get(TODO) || 'null'); if (st && Array.isArray(st.items)) return st.items.filter(i => !i.ex && String(i.bed) === String(bed)); } catch (e) {}
+  return [];
+}
+// 交班用：沒設時間的，或 24 小時內到期（含已過期）的
+const todosSoon = bed => todosOf(bed).filter(i => !i.due || i.due <= Date.now() + 24 * 3600e3);
+
+// problem 追蹤點：到期（含今天）的自動進待辦，一次就好
+function whenToDue(w, since) {
+  const m = /^D(\d+)$/.exec(w); if (m) return addDays(since, +m[1] - 1);
+  const h = /^\+(\d+)h$/.exec(w); if (h) return addDays(since, Math.round(+h[1] / 24));
+  if (w === '每日') return 'daily';
+  return '';
+}
+function sweep() {
+  const t = today(); let ch = false;
+  for (const b of S.beds) for (const p of b.problems) {
+    if (p.status === 'resolved') continue;
+    for (const f of p.fus) {
+      if (f.due === 'daily') {
+        // 每日：今天還沒確認、今天還沒送 → 送一項（不計時，免得一打開就「已到時」響鈴）；昨天沒做完的那項直接換掉
+        if (fuIsDone(f) || f.pushedOn === t) continue;
+        if (f.todoId) { const st = readTodo(), n = st.items.length; st.items = st.items.filter(i => i.id !== f.todoId); if (st.items.length !== n) set(TODO, JSON.stringify(st)); }
+        const did = todoAdd(b.bed, `${p.name}：${f.what}（每日）`, 3, 0);
+        if (did) { f.todoId = did; f.pushedOn = t; ch = true; }
+        continue;
+      }
+      if (f.done || f.pushed || !f.due || f.due > t) continue;
+      const id = todoAdd(b.bed, `${p.name}：${f.what}`, 3, at8(f.due));
+      if (id) { f.pushed = true; f.todoId = id; ch = true; }
+    }
+  }
+  if (ch) save(true);
+  syncFromTodo();
+}
+
+// ── 追蹤點 ↔ 待辦 雙向同步
+// 每個送進待辦表的追蹤點記住那項待辦的 id（舊資料沒有 id 的，用床號＋文字找回來）。
+// 查房板勾選 → 待辦移到「已完成」；取消勾選 → 移回待辦。待辦表按完成 → 追蹤點自動打勾。
+function readTodo() {
+  let st = null;
+  try { st = JSON.parse(get(TODO) || 'null'); } catch (e) {}
+  if (!st || !Array.isArray(st.items)) st = { items: [], done: [] };
+  st.done = st.done || [];
+  return st;
+}
+function linkTodo(st, b, p, f) {
+  if (isDaily(f)) return f.pushedOn === today() ? (f.todoId || '') : '';
+  if (f.todoId) return f.todoId;
+  if (!f.pushed) return '';
+  const text = `${p.name}：${f.what}`;
+  const hit = [...st.items, ...st.done].find(i => String(i.bed) === String(b.bed) && i.text === text);
+  if (hit) f.todoId = hit.id;
+  return f.todoId || '';
+}
+// 查房板這邊改了勾選 → 改待辦表；回傳有沒有動到待辦
+function todoFollowFu(b, p, f) {
+  const st = readTodo(), id = linkTodo(st, b, p, f);
+  if (!id) return false;
+  if (fuIsDone(f)) {
+    const it = st.items.find(i => i.id === id); if (!it) return false;
+    st.items = st.items.filter(i => i !== it); st.done.push({ ...it, doneAt: Date.now() });
+  } else {
+    const d = st.done.find(i => i.id === id); if (!d) return false;
+    st.done = st.done.filter(i => i !== d); delete d.doneAt; st.items.push(d);
+  }
+  return set(TODO, JSON.stringify(st));
+}
+// 待辦表那邊按了完成 → 追蹤點打勾
+function syncFromTodo() {
+  const st = readTodo(), doneIds = new Set(st.done.map(i => i.id)); let ch = false;
+  for (const b of S.beds) for (const p of b.problems) for (const f of p.fus) {
+    if (fuIsDone(f)) continue;
+    const id = linkTodo(st, b, p, f);
+    if (id && doneIds.has(id)) { if (isDaily(f)) f.doneOn = today(); else f.done = true; ch = true; }
+  }
+  if (ch) { save(true); render(); }
+}
+
+// ── 快照（IndexedDB）：變更後最多每 10 分鐘一份，留 3 天、最多 50 份
+const SNAP_EVERY = 10 * 60e3;
+let lastSnap = 0, snapT = 0;
+function idb() {
+  return new Promise((res, rej) => {
+    try {
+      const r = indexedDB.open('rounds-snap', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('s', { keyPath: 'ts' });
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    } catch (e) { rej(e); }
+  });
+}
+async function snap() {
+  if (!dirty) return;
+  try {
+    const db = await idb(), now = Date.now();
+    await new Promise((res, rej) => { const tx = db.transaction('s', 'readwrite'); tx.objectStore('s').put({ ts: now, n: S.beds.length, data: JSON.stringify(S) }); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+    const all = await snaps(db);
+    const drop = all.filter((s, i) => s.ts < now - 3 * 864e5 || i >= 50);
+    if (drop.length) await new Promise(res => { const tx = db.transaction('s', 'readwrite'); drop.forEach(s => tx.objectStore('s').delete(s.ts)); tx.oncomplete = res; tx.onerror = res; });
+    lastSnap = now; dirty = false;
+  } catch (e) {}
+}
+function snaps(db) {
+  return new Promise(res => { const tx = db.transaction('s', 'readonly'); const r = tx.objectStore('s').getAll(); r.onsuccess = () => res((r.result || []).sort((a, b) => b.ts - a.ts)); r.onerror = () => res([]); });
+}
+function snapSoon() {
+  const wait = Math.max(0, lastSnap + SNAP_EVERY - Date.now());
+  if (snapT) return;
+  snapT = setTimeout(() => { snapT = 0; snap(); }, Math.max(wait, 3000));
+}
+// 重新載入頁面後接續上次快照的時間，避免每開一次就多一份
+idb().then(snaps).then(l => { if (l[0]) lastSnap = Math.max(lastSnap, l[0].ts); }).catch(() => {});
+setInterval(() => { if (dirty) snap(); }, SNAP_EVERY);
+addEventListener('pagehide', () => { if (dirty) snap(); });
+
+// ── 畫面切換
+let view = 'list', curBed = null, round = null; // round = { ids:[], i, step }
+function go(v) {
+  view = v;
+  document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === 'v-' + v));
+  scrollTo(0, 0); render();
+}
+function render() {
+  if (view === 'list') renderList();
+  else if (view === 'bed') renderBed();
+  else if (view === 'hand') renderHand();
+  else if (view === 'imp') renderImp();
+  else if (view === 'set') renderSet();
+  else if (view === 'send') renderSend();
+}
+
+// ── 存檔提示
+function ago(ts) {
+  if (!ts) return null;
+  const m = Math.round((Date.now() - ts) / 60e3);
+  return m < 60 ? `${m} 分鐘前` : m < 48 * 60 ? `${Math.round(m / 60)} 小時前` : `${Math.round(m / 1440)} 天前`;
+}
+function renderSave() {
+  const el = $('save'), a = ago(S.lastExport), n = S.beds.length;
+  const hot = n && (!S.lastExport || Date.now() - S.lastExport > 24 * 3600e3);
+  el.className = 'save' + (hot ? ' hot' : '');
+  el.innerHTML = `<span>💾 ${a ? `上次存檔：${a}` : '還沒存檔過'}</span><button class="btn sm" data-act="export">存檔</button>`;
+  // 最近 24 小時內存過就不顯示，把位置留給病人；上次存檔時間在「⋯」裡看得到
+  el.hidden = !hot;
+}
+
+// ── 床卡列表
+function bedFlags(b) {
+  const t = today(), out = [];
+  const ab = latestAbn(b);
+  if (ab.length) out.push(['bad', `異常 ${ab.length}`]);
+  const nofu = b.problems.filter(p => p.status !== 'resolved' && !hasNext(p)).length;
+  const dailyLeft = b.problems.filter(p => p.status !== 'resolved').reduce((n, p) => n + p.fus.filter(f => isDaily(f) && !fuIsDone(f)).length, 0);
+  if (nofu) out.push(['bad', `${nofu} 個 problem 缺追蹤點`]);
+  if (dailyLeft) out.push(['warn', `每日待確認 ${dailyLeft}`]);
+  const over = b.pending.filter(p => !p.done && p.expect && p.expect < t).length;
+  if (over) out.push(['bad', `等結果逾期 ${over}`]);
+  const wait = b.pending.filter(p => !p.done).length - over;
+  if (wait > 0) out.push(['warn', `等結果 ${wait}`]);
+  b.abx.forEach(a => out.push(['ac', `${a.name} D${diffDays(a.start, t) + 1}${a.days ? '/' + a.days : ''}`]));
+  if (b.dnr) out.push(['', b.dnr]);
+  return out;
+}
+function renderList() {
+  sortBeds(); renderSave();
+  const t = today(), done = S.beds.filter(b => b.rounded === t).length;
+  $('prog').innerHTML = S.beds.length ? `今天已過 <b>${done}/${S.beds.length}</b> 床` : '';
+  $('beds').innerHTML = S.beds.length ? S.beds.map(b => `
+    <button class="bed" data-act="open" data-id="${b.id}">
+      <span class="no">${esc(b.bed || '?')}</span>
+      <span class="nm">${esc(b.code || '（無代號）')}</span>
+      <span class="dx">${esc(b.dx || '還沒寫 Dx')}</span>
+      ${b.rounded === t ? '<span class="ok">✓ 今天過了</span>' : ''}
+      <span class="tags">${bedFlags(b).map(([c, x]) => `<span class="tag ${c}">${esc(x)}</span>`).join('')}</span>
+    </button>`).join('') : '<p class="empty">還沒有病人。在下面輸入床號和代號新增。</p>';
+}
+
+// ── 單床
+function latestAbn(b) {
+  const out = [];
+  for (const [id, arr] of Object.entries(b.labs || {})) {
+    if (!arr.length) continue;
+    const last = arr[arr.length - 1], f = flag(id, last.v, b.sex);
+    if (f) out.push({ id, v: last.v, f, d: last.d, prev: arr.length > 1 ? arr[arr.length - 2] : null });
+  }
+  return out;
+}
+const STEPS = ['新異常值', 'Problem', '每日清單', '等待中結果', '待辦與學到'];
+const ST = [['new', '新'], ['better', '改善'], ['same', '持平'], ['worse', '惡化'], ['resolved', '已解決']];
+const STN = Object.fromEntries(ST);
+const CHIPS = ['f/u lab', '開 order', '會診', '家屬說明', '換藥', 'D/C 管路', '看片子', '改口服'];
+let openHow = null, openTpl = false;
+
+function renderBed() {
+  const b = bedById(curBed); if (!b) { go('list'); return; }
+  const t = today();
+  $('bedTitle').textContent = label(b) + (b.dx ? '・' + b.dx : '');
+  const inRound = !!round;
+  $('roundBar').hidden = !inRound;
+  $('stepper').hidden = !inRound;
+  $('roundProg').textContent = inRound ? `${round.i + 1}/${round.ids.length}` : '';
+  if (inRound) $('stepper').innerHTML = round.ids.map((id, i) => `<i class="${i <= round.i ? 'on' : ''}"></i>`).join('');
+  const sec = {
+    basic: secBasic(b),
+    labs: secLabs(b),
+    prob: secProb(b),
+    check: secCheck(b, t),
+    pend: secPend(b, t),
+    order: secOrder(b),
+    abx: secAbx(b, t),
+    lines: secLines(b, t),
+    notes: secNotes(b),
+    learn: secLearn(b, t),
+    send: `<h2>傳到手機</h2><div class="sec"><div class="row"><button class="btn pri" data-act="sendBed" style="flex:1">📱 整床傳到手機（QR）</button></div>
+      <p class="muted" style="margin-bottom:0">在院內電腦把這床打好，按這裡產生 QR；手機查房板「匯入 → 📷 掃 QR」拍下來。基本資料、problem、檢驗、抗生素、管路、等待中結果、筆記、今天的清單和這床的待辦都會一起傳。</p></div>`,
+    del: `<div class="sec"><div class="row"><button class="btn bad" data-act="discharge">出院／移除這床（刪除資料）</button></div></div>`,
+  };
+  const order = inRound
+    ? ['labs', 'prob', 'check', 'pend', 'order', 'learn', 'abx', 'lines', 'notes', 'basic']
+    : ['basic', 'order', 'prob', 'labs', 'abx', 'lines', 'check', 'pend', 'notes', 'learn', 'send', 'del'];
+  $('bedBody').innerHTML = order.map(k => sec[k]).join('');
+}
+const fld = (b, k, lab, ph = '', w = '') => `<label class="fld" ${w ? `style="flex:${w}"` : ''}><span>${lab}</span><input type="text" data-f="${k}" value="${esc(b[k])}" placeholder="${esc(ph)}" autocomplete="off"></label>`;
+function secBasic(b) {
+  return `<h2>基本資料</h2><div class="sec">
+    <div class="row">${fld(b, 'bed', '床號', '', '0 0 6em')}${fld(b, 'code', '代號', '姓氏縮寫等，不寫全名')}${fld(b, 'dnr', 'DNR／code status', '例：DNR 全簽')}</div>
+    <div class="row">${fld(b, 'dx', 'Dx 一句話', '例：CAP with sepsis')}<label class="fld" style="flex:0 0 8em"><span>性別（Hb、Cr 範圍）</span><select data-f="sex"><option value="">未填</option><option value="M" ${b.sex === 'M' ? 'selected' : ''}>男</option><option value="F" ${b.sex === 'F' ? 'selected' : ''}>女</option></select></label></div>
+    <div class="row">${fld(b, 'hx', '重要病史', '例：DM、CKD3b、AF on DOAC')}</div>
+    <div class="row">${fld(b, 'io', 'I/O', '例：I 1800／O 1200，UO 0.6 mL/kg/h')}</div>
+  </div>`;
+}
+function secLabs(b) {
+  const ids = Object.keys(b.labs || {}).filter(id => b.labs[id].length);
+  const abn = latestAbn(b);
+  const lastDays = [...new Set(ids.map(id => b.labs[id][b.labs[id].length - 1].d))].sort();
+  const rows = ids.map(id => {
+    const arr = b.labs[id], last = arr[arr.length - 1], prev = arr.length > 1 ? arr[arr.length - 2] : null;
+    const f = flag(id, last.v, b.sex);
+    let tr = '';
+    if (prev) { const ar = last.v > prev.v ? '↑' : last.v < prev.v ? '↓' : '→'; tr = `前 ${prev.v} ${ar}`; }
+    return { f, html: `<span class="n">${esc(id)}</span><span class="v ${f}">${last.v}${f ? (f === 'H' ? ' H' : ' L') : ''}</span><span class="tr">${tr}</span><span class="rg">${esc(rangeTxt(id, b.sex))}</span>` };
+  }).sort((x, y) => (y.f ? 1 : 0) - (x.f ? 1 : 0));
+  return `<h2>${round ? '① 新異常值' : '檢驗值與趨勢'} <button class="btn sm" data-act="impFor">匯入</button></h2><div class="sec">
+    ${rows.length ? `<div class="lab">${rows.map(r => r.html).join('')}</div>` : '<p class="empty">還沒有檢驗值。按「匯入」貼上 HIS 的文字或截圖，或從電腦掃 QR。</p>'}
+    ${rows.length ? `<p class="sub" style="margin:8px 0 0">最新一次：${lastDays.map(md).join('、')}${abn.length ? `・異常 ${abn.length} 項排在最上面` : ''}・「前 x ↑」是這次比前一次高</p>` : ''}
+  </div>`;
+}
+// 每日追蹤點：只記「哪一天確認過」（doneOn），今天勾了才算完成，隔天自動回到未勾選。
+// 每日追蹤點是持續性的，永遠算「這個 problem 有下一步」，勾了也不會讓 problem 變紅。
+const isDaily = f => f.due === 'daily';
+const fuIsDone = f => isDaily(f) ? f.doneOn === today() : !!f.done;
+const hasNext = p => p.fus.some(f => isDaily(f) || !f.done);
+function fuWhen(f) {
+  if (isDaily(f)) return `<span class="w">每日${f.doneOn === today() ? ' ✓今天' : ''}</span>`;
+  if (!f.due) return `<span class="w">${esc(f.when || '—')}</span>`;
+  const over = !f.done && f.due < today();
+  return `<span class="w ${over ? 'over' : ''}">${md(f.due)}${f.due === today() ? ' 今天' : ''}</span>`;
+}
+function secProb(b) {
+  const list = b.problems.map(p => {
+    const red = p.status !== 'resolved' && !hasNext(p);
+    const tpl = PROBLEMS.find(x => x.id === p.tpl);
+    return `<div class="item ${red ? 'red' : ''} ${p.status === 'resolved' ? 'done' : ''}">
+      <div class="row"><input type="text" data-p="${p.id}" data-pf="name" value="${esc(p.name)}" style="flex:1;font-weight:700"><span class="muted">${md(p.since)} 起</span></div>
+      <div class="seg" style="margin-top:6px">${ST.map(([k, n]) => `<button data-act="pStatus" data-p="${p.id}" data-v="${k}" class="st-${k}" aria-pressed="${p.status === k}">${n}</button>`).join('')}</div>
+      ${tpl ? `<details style="margin-top:6px"><summary class="sub">怎麼判斷改善／惡化、什麼時候找學長</summary><div class="howto" style="border:0;padding-left:0">
+        <h4>改善</h4><ul>${tpl.improving.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+        <h4>惡化</h4><ul>${tpl.worsening.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+        <h4 class="red">🔴 立刻找學長</h4><ul>${tpl.callSenior.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+        <div class="src">依據：${tpl.basis.map(esc).join('；')}</div><div class="draft">Fable 起草的建議，需和學長確認</div></div></details>` : ''}
+      <label class="fld" style="margin-top:6px"><span>計畫</span><textarea data-p="${p.id}" data-pf="plan" rows="2" placeholder="例：續用 abx，追 CXR">${esc(p.plan)}</textarea></label>
+      <div class="sub" style="margin-top:6px;font-weight:600;color:${red ? 'var(--hub-bad)' : 'inherit'}">${red ? '⚠ 沒有追蹤點：下一步看什麼、哪一天看？' : '追蹤點'}</div>
+      ${p.fus.map(f => `<div class="fu ${fuIsDone(f) ? 'done' : ''}"><input type="checkbox" data-act="fuDone" data-p="${p.id}" data-fu="${f.id}" ${fuIsDone(f) ? 'checked' : ''}>${fuWhen(f)}<span style="flex:1;min-width:0;${fuIsDone(f) ? 'text-decoration:line-through' : ''}">${esc(f.what)}</span><button class="x" data-act="fuDel" data-p="${p.id}" data-fu="${f.id}" aria-label="刪除">×</button></div>`).join('')}
+      <div class="form"><input type="text" placeholder="新增追蹤點，例：看 BCx" data-fuin="${p.id}" autocomplete="off">
+        <div class="f2"><label class="fld"><span>哪天看</span><input type="date" data-fudate="${p.id}" value="${addDays(today(), 1)}"></label><label class="fu-daily"><input type="checkbox" data-fudaily="${p.id}">每天</label><button class="btn add" data-act="fuAdd" data-p="${p.id}">新增追蹤點</button></div></div>
+      <div class="row" style="margin-top:6px;justify-content:flex-end"><button class="lnk" data-act="pDel" data-p="${p.id}">刪除這個 problem</button></div>
+    </div>`;
+  }).join('');
+  const tplList = openTpl ? `<div class="item" style="margin-top:6px"><div class="sub" style="margin-bottom:6px">選範本會自動帶入建議的追蹤點（Fable 起草，需和學長確認），之後可以改。</div>
+      <div class="chips" style="flex-wrap:wrap">${PROBLEMS.map(x => `<button class="chip" data-act="pAddTpl" data-tpl="${x.id}">${esc(x.name)}</button>`).join('')}</div>
+      <div class="form"><input type="text" id="pFree" placeholder="或自己寫 problem 名稱" autocomplete="off"><div class="f2"><button class="btn add" data-act="pAddFree">新增 problem</button></div></div></div>` : '';
+  return `<h2>${round ? '② Problem 狀態' : 'Problem list'} <button class="btn sm" data-act="pToggle">${openTpl ? '收起' : '＋ problem'}</button></h2>
+    ${tplList}<div class="list" style="margin-top:6px">${list || '<p class="empty">還沒有 problem。每個 active problem 都要有追蹤點，沒有會標紅。</p>'}</div>`;
+}
+function secCheck(b, t) {
+  const day = b.checks[t] || {};
+  const items = CHECKLIST.filter(c => !S.hidden.includes(c.id));
+  const n = items.filter(c => day[c.id]).length;
+  return `<h2>${round ? '③ 每日清單' : '每日清單'} <span class="muted" style="letter-spacing:0">${n}/${items.length}・今天</span></h2>
+  ${items.map(c => {
+    const v = day[c.id], st = v ? v.s : '', open = openHow === c.id;
+    const wh = S.where[c.id] || '';
+    return `<div class="ck ${st}">
+      <div class="ck-h"><span class="nm">${esc(c.name)}</span>
+        <button class="how" data-act="how" data-c="${c.id}">${open ? '收起' : '怎麼看'}</button>
+        <button class="bt k ${st === 'k' ? 'on' : ''}" data-act="ck" data-c="${c.id}" data-v="k" aria-label="沒問題">✓</button>
+        <button class="bt w ${st === 'w' ? 'on' : ''}" data-act="ck" data-c="${c.id}" data-v="w" aria-label="有問題">!</button></div>
+      ${st === 'w' ? `<div class="note"><input type="text" data-ck="${c.id}" value="${esc(v.note || '')}" placeholder="哪裡有問題？（一句話）"></div>` : ''}
+      ${open ? `<div class="howto">
+        <h4>看哪裡</h4><div class="wh"><input type="text" data-where="${c.id}" value="${esc(wh)}" placeholder="自己填：HIS 哪個畫面、問誰"></div>
+        <h4>怎樣算沒問題</h4><ul>${c.normal.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+        <h4>要注意</h4><ul>${c.watch.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+        <h4>常見的下一步</h4><ul>${c.next.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+        <h4 class="red">🔴 立刻找學長</h4><ul>${c.callSenior.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+        <div class="src">依據：${c.basis.map(esc).join('；')}</div><div class="draft">Fable 起草，需和學長確認後才算正式內容</div></div>` : ''}
+    </div>`;
+  }).join('')}`;
+}
+const PTYPE = ['培養', '影像', '會診', '病理', '其他'];
+function secPend(b, t) {
+  const act = b.pending.filter(p => !p.done), fin = b.pending.filter(p => p.done).slice(-3);
+  return `<h2>${round ? '④ 等待中結果' : '等待中結果'}</h2><div class="sec">
+    <div class="list">${act.map(p => {
+      const over = p.expect && p.expect < t;
+      return `<div class="item ${over ? 'red' : ''}"><div class="row"><span class="tag ${over ? 'bad' : ''}">${esc(p.type)}</span><span class="t" style="flex:1">${esc(p.what)}</span><span class="w ${over ? 'over' : ''}" style="font:12px var(--hub-mono)">${p.expect ? md(p.expect) + (over ? ' 逾期' : '') : ''}</span></div>
+        ${p.resolving ? `<div class="row" style="margin-top:6px"><input type="text" data-res="${p.id}" placeholder="結果一句話，例：BCx MSSA" style="flex:1 1 12em">
+          <select data-resp="${p.id}" style="flex:1 1 9em"><option value="">影響哪個 problem？</option>${b.problems.filter(x => x.status !== 'resolved').map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select>
+          <button class="btn sm pri" data-act="pendDone" data-id="${p.id}">結果回來了</button></div>`
+        : `<div class="row" style="margin-top:10px;justify-content:flex-end"><button class="btn sm ghost" data-act="pendDel" data-id="${p.id}">刪除</button><button class="btn sm" data-act="pendRes" data-id="${p.id}">結果回來了（填結果）</button></div>`}
+      </div>`;
+    }).join('') || '<p class="empty">沒有等待中的結果。</p>'}</div>
+    ${fin.length ? `<div class="sub" style="margin-top:8px">最近回來：${fin.map(p => `${esc(p.what)} → ${esc(p.result || '—')}`).join('；')}</div>` : ''}
+    <div class="form"><p class="form-t">新增等待中的結果</p><input type="text" id="pdWhat" placeholder="例：BCx ×2、CT A+P、腎臟科會診" autocomplete="off">
+      <div class="f2"><label class="fld" style="flex:0 1 7em"><span>類別</span><select id="pdType">${PTYPE.map(x => `<option>${x}</option>`).join('')}</select></label>
+        <label class="fld"><span>預計回來</span><input type="date" id="pdDate" value="${addDays(t, 2)}"></label><button class="btn add" data-act="pendAdd">新增</button></div></div>
+  </div>`;
+}
+function secOrder(b) {
+  const td = todosOf(b.bed);
+  return `<h2>${round ? '⑤ 主治交代 → 待辦' : '主治交代 → 待辦'}</h2><div class="sec">
+    <div class="chips">${CHIPS.map(c => `<button class="chip" data-act="chip" data-v="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+    <div class="form" style="border-top:0;padding-top:0;margin-top:10px"><input type="text" id="ordIn" placeholder="例：f/u lab K 明早" autocomplete="off">
+      <div class="f2"><label class="fld" style="flex:0 1 8em"><span>優先度</span><select id="ordP"><option value="3">待辦</option><option value="2">緊急</option><option value="1">立即</option><option value="4">有空</option></select></label>
+      <button class="btn pri add" data-act="ordAdd">加入待辦</button></div></div>
+    <div class="sub" style="margin-top:6px">${td.length ? `這床還沒完成的待辦 ${td.length} 項：${td.slice(0, 6).map(i => esc(i.text)).join('；')}${td.length > 6 ? '…' : ''}` : '這床在待辦表裡沒有未完成的事。'}</div>
+  </div>`;
+}
+function secAbx(b, t) {
+  return `<h2>抗生素</h2><div class="sec">
+    <div class="list">${b.abx.map(a => {
+      const d = diffDays(a.start, t) + 1;
+      return `<div class="item"><div class="row"><span class="t" style="flex:1">${esc(a.name)}</span><span class="tag ac">D${d}${a.days ? '/' + a.days : ''}</span><button class="x lnk" data-act="abxDel" data-id="${a.id}">停用／刪除</button></div>
+        <div class="sub">${md(a.start)} 開始${a.days ? `・預計 ${md(addDays(a.start, a.days - 1))} 最後一天` : ''}${a.cx ? `・對應培養：${esc(a.cx)}` : ''}</div></div>`;
+    }).join('') || '<p class="empty">沒有使用中的抗生素。</p>'}</div>
+    <div class="form"><p class="form-t">新增抗生素</p><input type="text" id="abName" placeholder="藥名，例：Ceftriaxone" autocomplete="off">
+      <div class="f2"><label class="fld"><span>開始日（D1）</span><input type="date" id="abStart" value="${t}"></label>
+        <label class="fld" style="flex:1 1 7em"><span>預計幾天（可空白）</span><input type="number" id="abDays" inputmode="numeric" placeholder="例：7"></label></div>
+      <label class="fld"><span>對應培養（可空白）</span><input type="text" id="abCx" placeholder="例：UCx、BCx ×2" autocomplete="off"></label>
+      <div class="f2"><button class="btn pri add" data-act="abxAdd">新增抗生素</button></div></div>
+    <p class="muted">新增時會自動在待辦表加：D3 看培養考慮降階；有填天數的話，停藥日前一天確認是否停。</p>
+  </div>`;
+}
+const LINES = ['Foley', 'CVC', 'PICC', 'Port-A', '周邊 IV', 'NG', 'Endo', '胸管', '引流管', 'A-line', 'Double lumen'];
+function secLines(b, t) {
+  return `<h2>管路</h2><div class="sec">
+    <div class="list">${b.lines.map(l => `<div class="fu"><span class="t" style="flex:1;font-weight:600">${esc(l.t)}</span><span class="w">${md(l.since)}・D${diffDays(l.since, t) + 1}</span><button class="x" data-act="lineDel" data-id="${l.id}" aria-label="移除">×</button></div>`).join('') || '<p class="empty">沒有管路。</p>'}</div>
+    <div class="chips" style="margin-top:6px">${LINES.map(x => `<button class="chip" data-act="lineQuick" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+    <div class="form" style="border-top:0;padding-top:0;margin-top:10px"><input type="text" id="lnName" placeholder="管路名稱（點上面的按鈕可快速帶入）" autocomplete="off">
+      <div class="f2"><label class="fld"><span>放置日</span><input type="date" id="lnDate" value="${t}"></label><button class="btn add" data-act="lineAdd">新增管路</button></div></div>
+  </div>`;
+}
+function secNotes(b) {
+  return `<h2>筆記與交班重點</h2><div class="sec">
+    <label class="fld"><span>自由筆記</span><textarea data-f="note" rows="3">${esc(b.note)}</textarea></label>
+    <label class="fld" style="margin-top:6px"><span>交班重點（會進 ISBAR 的 R）</span><textarea data-f="hand" rows="2" placeholder="例：今晚注意血壓，SBP < 90 先 fluid challenge 再 call">${esc(b.hand)}</textarea></label>
+  </div>`;
+}
+function secLearn(b, t) {
+  const tl = b.learned.filter(x => x.d === t);
+  return `<h2>今天學到</h2><div class="sec">
+    ${tl.map((x, i) => `<div class="fu"><span style="flex:1">${esc(x.t)}</span></div>`).join('')}
+    <div class="form" style="border-top:0;padding-top:0;margin-top:${tl.length ? 10 : 0}px"><input type="text" id="lrIn" placeholder="主治今天教的一句話（不進交班）" autocomplete="off"><div class="f2"><button class="btn add" data-act="learnAdd">記下來</button></div></div>
+    ${b.learned.length > tl.length ? `<p class="muted">之前還有 ${b.learned.length - tl.length} 則，在「設定與存檔」可以一起匯出。</p>` : ''}
+  </div>`;
+}
+
+// ── 交班產生器
+let hFmt = 'isbar', hSel = null;
+function stLine(p) { return `${p.name}（${STN[p.status] || '—'}）`; }
+function isbar(b) {
+  const t = today(), act = b.problems.filter(p => p.status !== 'resolved');
+  const abn = latestAbn(b).map(a => `${a.id} ${a.v}${a.f === 'H' ? '↑' : '↓'}${a.prev ? `（前 ${a.prev.v}）` : ''}`);
+  const abx = b.abx.map(a => `${a.name} D${diffDays(a.start, t) + 1}${a.days ? '/' + a.days : ''}`);
+  const lines = b.lines.map(l => `${l.t} D${diffDays(l.since, t) + 1}`);
+  const warns = Object.entries(b.checks[t] || {}).filter(([, v]) => v.s === 'w').map(([k, v]) => `${(CK[k] || {}).name ? CK[k].name.replace(/（.*/, '') : k}${v.note ? '：' + v.note : ''}`);
+  const td = todosSoon(b.bed).map(i => i.text);
+  const pend = b.pending.filter(p => !p.done).map(p => `${p.what}${p.expect ? `（${md(p.expect)}）` : ''}`);
+  const L = [];
+  L.push(`【${label(b)}】${b.dnr ? ' ' + b.dnr : ''}`);
+  L.push(`I：${label(b)}${b.dx ? '，' + b.dx : ''}`);
+  L.push(`S：${act.length ? act.map(stLine).join('、') : '—'}`);
+  const B = [b.hx, abx.length && '抗生素 ' + abx.join('、'), lines.length && '管路 ' + lines.join('、'), b.io && 'I/O ' + b.io].filter(Boolean);
+  L.push(`B：${B.join('；') || '—'}`);
+  const A = [abn.length && '異常 ' + abn.join('、'), ...act.filter(p => p.plan).map(p => `${p.name}：${p.plan}`), warns.length && '清單注意 ' + warns.join('、')].filter(Boolean);
+  L.push(`A：${A.join('；') || '—'}`);
+  const R = [td.length && '待辦 ' + td.join('、'), pend.length && '等結果 ' + pend.join('、'), b.hand].filter(Boolean);
+  L.push(`R：${R.join('；') || '—'}`);
+  return L.join('\n');
+}
+function oral(b) {
+  const t = today(), act = b.problems.filter(p => p.status !== 'resolved');
+  const L = [`${b.bed} 床${b.code ? ' ' + b.code : ''}，${b.dx || '（Dx）'}${b.hx ? `，病史有 ${b.hx}` : ''}。`];
+  act.forEach((p, i) => {
+    // 口頭報告只講最近的兩個追蹤點
+    const nx = p.fus.filter(f => !f.done && f.due && f.due !== 'daily').sort((x, y) => x.due < y.due ? -1 : 1).slice(0, 2).map(f => `${f.what}（${md(f.due)}）`);
+    L.push(`問題${i + 1}，${p.name}，目前${STN[p.status] || '—'}。${p.plan ? p.plan + '。' : ''}${nx.length ? '下一步：' + nx.join('、') + '。' : ''}`);
+  });
+  const abn = latestAbn(b);
+  if (abn.length) L.push(`今天的異常值：${abn.map(a => `${a.id} ${a.v}${a.prev ? `，前一次 ${a.prev.v}` : ''}`).join('；')}。`);
+  if (b.abx.length) L.push(`抗生素：${b.abx.map(a => `${a.name} 第 ${diffDays(a.start, t) + 1} 天${a.days ? `，預計 ${a.days} 天` : ''}`).join('；')}。`);
+  if (b.lines.length) L.push(`管路：${b.lines.map(l => `${l.t} 第 ${diffDays(l.since, t) + 1} 天`).join('、')}。`);
+  const pend = b.pending.filter(p => !p.done);
+  if (pend.length) L.push(`還在等：${pend.map(p => p.what).join('、')}。`);
+  const td = todosSoon(b.bed);
+  if (td.length) L.push(`今天要做：${td.map(i => i.text).join('、')}。`);
+  return L.join('\n');
+}
+function genHand() {
+  sortBeds();
+  const beds = S.beds.filter(b => hSel.has(b.id));
+  return beds.map(hFmt === 'isbar' ? isbar : oral).join('\n\n');
+}
+function renderHand() {
+  if (!hSel) hSel = new Set(S.beds.map(b => b.id));
+  document.querySelectorAll('#hFmt button').forEach(x => x.setAttribute('aria-pressed', x.dataset.fmt === hFmt));
+  $('hBeds').innerHTML = S.beds.map(b => `<button data-act="hBed" data-id="${b.id}" aria-pressed="${hSel.has(b.id)}">${esc(label(b))}</button>`).join('') || '<span class="empty">沒有病人</span>';
+  $('hOut').value = genHand();
+}
+
+// ── 匯入站
+// imp = { stage:'in'|'ok'|'qr', bed, date, vals:{id:v}, busy, msg, scanned }
+let imp = null;
+function impReset(bedId) {
+  const b = bedId && bedById(bedId);
+  imp = { stage: 'in', bed: b ? b.bed : '', date: today(), vals: {}, busy: '', msg: '', text: '' };
+}
+function renderImp() {
+  if (!imp) impReset();
+  const el = $('impBody');
+  const bedOpts = S.beds.map(b => `<option value="${esc(b.bed)}">${esc(label(b))}</option>`).join('');
+  if (imp.stage === 'qr') {
+    el.innerHTML = `<h2>用手機的查房板掃這個 QR</h2>
+      <div class="qr" id="qrBox"></div>
+      <p class="sub">內容只有床號 ${esc(imp.bed)}、日期 ${esc(imp.date)} 和 ${Object.keys(imp.vals).length} 項數值，不含代號或姓名。手機：查房板 → 匯入 → 掃 QR。</p>
+      <div class="row"><button class="btn pri" data-act="impNew" style="flex:1">下一床</button><button class="btn" data-act="impBack">回去修改</button></div>`;
+    drawQR(qrPayload());
+    return;
+  }
+  if (imp.stage === 'bed') {
+    const inc = imp.whole.bed, tgt = findTarget(inc), t = today();
+    const labN = Object.values(inc.labs || {}).reduce((s, a) => s + a.length, 0);
+    const act = (inc.problems || []).filter(p => p.status !== 'resolved');
+    el.innerHTML = `<h2>收到整床資料</h2>
+      <div class="sec"><div class="t" style="font-size:17px">${esc(label(inc))}${inc.dx ? '・' + esc(inc.dx) : ''}</div>
+        <ul class="sub" style="margin:6px 0 0;padding-left:1.2em">
+          <li>Problem ${act.length} 個${act.length ? `：${act.map(p => esc(p.name)).join('、')}` : ''}</li>
+          <li>檢驗 ${labN} 筆、抗生素 ${(inc.abx || []).length} 種${(inc.abx || []).length ? `（${inc.abx.map(a => `${esc(a.name)} D${diffDays(a.start, t) + 1}`).join('、')}）` : ''}、管路 ${(inc.lines || []).length} 條</li>
+          <li>等待中結果 ${(inc.pending || []).filter(p => !p.done).length} 項、待辦 ${(imp.whole.todos || []).length} 項</li>
+          ${inc.hx || inc.note || inc.hand ? '<li>含病史、筆記或交班重點</li>' : ''}
+        </ul></div>
+      ${tgt ? `<div class="sec"><div class="sub" style="font-weight:600">手機上已經有 ${esc(label(tgt))}</div>
+        <div class="seg" style="margin-top:6px">
+          <button data-act="wMode" data-v="merge" aria-pressed="${imp.wmode !== 'replace'}">合併（新的優先，舊的保留）</button>
+          <button data-act="wMode" data-v="replace" aria-pressed="${imp.wmode === 'replace'}">取代整床</button></div>
+        <p class="muted" style="margin-bottom:0">${imp.wmode === 'replace' ? '手機上這床原本的內容會被電腦版整個蓋掉（3 天內的自動快照還找得回來）。' : '有填的欄位用電腦版；problem、檢驗、抗生素、管路、等待中結果兩邊都留，同一項以電腦版為準。'}</p></div>` : '<p class="sub">手機上還沒有這床，會新增。</p>'}
+      <div class="row" style="margin-top:8px"><button class="btn pri" data-act="wSave" style="flex:1">存入</button><button class="btn" data-act="wCancel">取消</button></div>`;
+    return;
+  }
+  if (imp.stage === 'ok') {
+    const ids = LABS.map(l => l.id).filter(id => imp.vals[id] != null);
+    const extra = LABS.filter(l => imp.vals[l.id] == null);
+    const ib = S.beds.find(x => String(x.bed) === String(imp.bed)), isex = ib && ib.sex;
+    const dupN = ib ? ids.filter(id => (ib.labs[id] || []).some(x => x.d === imp.date && x.v !== imp.vals[id])).length : 0;
+    el.innerHTML = `<h2>核對數值（一定要看過再存）</h2>
+      <div class="row"><label class="fld" style="flex:0 0 7em"><span>床號</span><input type="text" id="impBed" value="${esc(imp.bed)}" list="bedList"></label>
+        <label class="fld" style="flex:0 0 10em"><span>檢驗日期</span><input type="date" id="impDate" value="${esc(imp.date)}"></label></div>
+      <datalist id="bedList">${bedOpts}</datalist>
+      ${imp.scanned ? '<p class="sub">從 QR 讀到的數值，已在電腦上核對過；確認床號後存入。</p>' : ''}
+      <div class="sec"><div class="imp">
+        ${ids.map(id => { const f = flag(id, imp.vals[id], isex), dp = decimalSuspect(id, imp.vals[id]); return `<input type="checkbox" data-iok="${id}" checked style="width:20px;height:20px"><b>${esc(id)}</b><input type="number" step="any" inputmode="decimal" data-iv="${id}" value="${imp.vals[id]}"><span><span class="fl">${f ? (f === 'H' ? 'H ↑' : 'L ↓') : ''}</span> <span class="rg">${esc(rangeTxt(id, isex))}</span>${dp != null ? `<br><button class="btn sm bad" data-act="impFix" data-id="${id}" data-v="${dp}">⚠ 可能少了小數點，是 ${dp} 嗎？</button>` : ''}</span>`; }).join('') || '<span class="empty" style="grid-column:1/-1">沒有抓到任何項目。可以用下面手動加，或回去換一張更清楚的截圖。</span>'}
+      </div>
+      <div class="row" style="margin-top:8px"><select id="impAddId" style="flex:1 1 8em"><option value="">＋ 手動加項目</option>${extra.map(l => `<option>${esc(l.id)}</option>`).join('')}</select><input type="number" step="any" inputmode="decimal" id="impAddV" placeholder="數值" style="flex:0 0 6em"><button class="btn sm" data-act="impAdd">加</button></div></div>
+      ${dupN ? `<div class="sec"><div class="sub" style="font-weight:600">這天已經有 ${dupN} 項不同的數值</div><div class="seg" style="margin-top:6px"><button data-act="impMode" data-v="add" aria-pressed="${imp.mode !== 'replace'}">當成重驗（保留兩筆）</button><button data-act="impMode" data-v="replace" aria-pressed="${imp.mode === 'replace'}">取代舊值（修正錯誤）</button></div></div>` : ''}
+      <p class="sub">⚠ OCR 最常錯在小數點和 1／7、0／8。紅字是超出範圍，請特別對照原畫面。</p>
+      <div class="row" style="margin-top:8px"><button class="btn pri" data-act="impSave" style="flex:1">存入這支裝置</button><button class="btn" data-act="impQR" style="flex:1">產生 QR 給手機掃</button></div>
+      <div class="row" style="margin-top:6px"><button class="btn ghost" data-act="impBack">← 重新貼</button></div>`;
+    return;
+  }
+  el.innerHTML = `<h2>1. 哪一床、哪一天</h2>
+    <div class="row"><label class="fld" style="flex:0 0 7em"><span>床號</span><input type="text" id="impBed" value="${esc(imp.bed)}" list="bedList" placeholder="例：18"></label>
+      <label class="fld" style="flex:0 0 10em"><span>檢驗日期</span><input type="date" id="impDate" value="${esc(imp.date)}"></label></div>
+    <datalist id="bedList">${bedOpts}</datalist>
+    <h2>2. 給我數值（三種方式擇一）</h2>
+    <div class="sec">
+      <div class="sub" style="font-weight:600">A. 貼上 HIS 複製出來的文字（最準）</div>
+      <textarea id="impText" rows="5" placeholder="在 HIS 選取檢驗結果 → Ctrl+C → 這裡 Ctrl+V&#10;也可以直接在這裡 Ctrl+V 貼上截圖">${esc(imp.text)}</textarea>
+      <div class="row" style="margin-top:6px"><button class="btn pri" data-act="impParse" style="flex:1">抓數值</button></div>
+    </div>
+    <div class="sec">
+      <div class="sub" style="font-weight:600">B. 截圖或照片 → 在本機辨識（不上傳）</div>
+      <div class="drop" id="drop">把截圖拖到這裡、在上面的框按 Ctrl+V，或<br><button class="btn" data-act="impPick" style="margin-top:6px">選擇圖片／拍照</button></div>
+      <p class="muted">第一次用要下載辨識引擎（約 10 MB），之後會快很多。電腦截圖比用手機拍螢幕準很多。</p>
+    </div>
+    <div class="sec">
+      <div class="sub" style="font-weight:600">C. 手機：掃電腦產生的 QR（檢驗值，或整床）</div>
+      ${imp.rx ? `<div class="item" style="margin-top:6px;border-color:var(--ac)"><div class="t">整床傳送：已收到 ${Object.keys(imp.rx.parts).length} / ${imp.rx.n} 張</div>
+        <div class="seg" style="margin-top:6px">${Array.from({ length: imp.rx.n }, (_, i) => `<button aria-pressed="${imp.rx.parts[i + 1] != null}" tabindex="-1">${imp.rx.parts[i + 1] != null ? '✓ ' : ''}第 ${i + 1} 張</button>`).join('')}</div>
+        <p class="sub" style="margin:6px 0 0">${esc(imp.note || '')}在電腦按「下一張」，再按下面的 📷 掃 QR。</p></div>` : ''}
+      <div class="row" style="margin-top:6px"><button class="btn ${imp.rx ? 'pri' : ''}" data-act="impScan" style="flex:1">📷 掃 QR${imp.rx ? '（下一張）' : ''}</button></div>
+    </div>
+    <p id="impBusy" class="sub" style="color:var(--ac);font-weight:700" ${imp.busy ? '' : 'hidden'}>${esc(imp.busy)}</p>
+    ${imp.msg ? `<p class="sub" style="color:var(--hub-bad);font-weight:600">${esc(imp.msg)}</p>` : ''}`;
+  bindDrop();
+  if (imp.busy || imp.msg) setTimeout(() => ($('impBusy').hidden ? $('impBusy').nextElementSibling : $('impBusy'))?.scrollIntoView({ block: 'center' }), 0);
+}
+// OCR 最常見的致命錯：小數點不見（K 2.9 → 29、Mg 1.5 → 15）。
+// 只在「整數、而且超過這個項目生理上可能的最大值」時才提醒（Cr 5.0、BUN 60、AST 120 這類真的會出現的值不會被問）；
+// ÷10 後要落在合理範圍內才給建議值。
+const PLAUS = { WBC: 60, Hb: 25, K: 9, Mg: 8, Ca: 16, P: 20, Cr: 25, Alb: 6.5, INR: 10 };
+function decimalSuspect(id, v) {
+  const l = LAB[id], mx = PLAUS[id]; if (!l || !mx || !Number.isInteger(v) || v <= mx) return null;
+  const s = v / 10, lo = l.lo != null ? l.lo * 0.5 : 0;
+  return s >= lo && s <= mx ? s : null;
+}
+function impSync() {
+  const bi = $('impBed'), di = $('impDate'), tx = $('impText');
+  if (bi) imp.bed = bi.value.trim();
+  if (di) imp.date = di.value || today();
+  if (tx) imp.text = tx.value;
+  document.querySelectorAll('[data-iv]').forEach(i => { const v = parseFloat(i.value); if (!isNaN(v)) imp.vals[i.dataset.iv] = v; });
+  document.querySelectorAll('[data-iok]').forEach(c => { if (!c.checked) delete imp.vals[c.dataset.iok]; });
+}
+function impParsed(text) {
+  const v = parseLabs(text);
+  imp.vals = v; imp.text = text; imp.msg = '';
+  if (!Object.keys(v).length) { imp.msg = '沒有認出任何檢驗項目。可以把原文貼給 Claude 調整解析規則，或改用手動加。'; }
+  imp.stage = 'ok'; render();
+}
+function qrPayload() { return `RB2|${imp.bed.replace(/[|;=]/g, '')}|${imp.date}|` + Object.entries(imp.vals).map(([k, v]) => `${k}=${v}`).join(';'); }
+function drawQR(text) {
+  const box = $('qrBox'); if (!box) return;
+  loadLib('qr').then(() => {
+    // 錯誤修正 L：格子最少、每格最大，手機拍螢幕最好掃
+    const q = qrcode(0, 'L'); q.addData(text, 'Byte'); q.make();
+    box.innerHTML = q.createImgTag(12, 48);
+  }).catch(() => { box.innerHTML = '<p class="sub" style="color:#B3261E">QR 產生器載入失敗（可能網路被擋）。改用「存入這支裝置」或手動在手機輸入。</p>'; });
+}
+async function impCommit() {
+  impSync();
+  if (!imp.bed) { toast('請填床號'); return; }
+  let b = S.beds.find(x => String(x.bed) === String(imp.bed));
+  if (!b) { if (!(await ask(`還沒有 ${imp.bed} 床，要新增嗎？`, { ok: '新增' }))) return; b = newBed(imp.bed, ''); S.beds.push(b); }
+  const n = Object.keys(imp.vals).length;
+  // 同一天可以有多筆：預設「不同的值 = 重驗，保留兩筆」、一樣的值略過；選「取代舊值」才覆蓋
+  const now = Date.now(); let add = 0, re = 0;
+  for (const [id, v] of Object.entries(imp.vals)) {
+    let arr = b.labs[id] = b.labs[id] || [];
+    const same = arr.filter(x => x.d === imp.date);
+    if (imp.mode === 'replace') arr = b.labs[id] = arr.filter(x => x.d !== imp.date);
+    else if (same.length) { if (same.some(x => x.v === v)) continue; re++; }
+    arr.push({ d: imp.date, v, ts: now }); add++;
+    arr.sort((x, y) => x.d < y.d ? -1 : x.d > y.d ? 1 : (x.ts || 0) - (y.ts || 0));
+    if (arr.length > 40) arr.splice(0, arr.length - 40);
+  }
+  save(true); toast(`已存入 ${label(b)}：${add} 項${re ? `（${re} 項是同日重驗，保留兩筆）` : ''}${add < n ? `；${n - add} 項與已有的相同，略過` : ''}`);
+  curBed = b.id; imp = null; go('bed');
+}
+
+// 外部程式庫：用到才載入
+const LIBS = {
+  qr: ['https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js', () => window.qrcode],
+  jsqr: ['https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js', () => window.jsQR],
+  tess: ['https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js', () => window.Tesseract],
+};
+const libP = {};
+function loadLib(k) {
+  if (LIBS[k][1]()) return Promise.resolve();
+  return libP[k] || (libP[k] = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = LIBS[k][0]; s.async = true;
+    s.onload = () => LIBS[k][1]() ? res() : rej(new Error('lib')); s.onerror = () => { delete libP[k]; rej(new Error('load')); };
+    document.head.appendChild(s);
+  }));
+}
+function fileToCanvas(file, scale) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const s = scale || 1, c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+      const x = c.getContext('2d', { willReadFrequently: true }); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); res(c);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('img')); };
+    img.src = url;
+  });
+}
+let worker = null;
+async function ocr(file) {
+  imp.busy = '載入辨識引擎…'; imp.msg = ''; render();
+  try {
+    await loadLib('tess');
+    if (!worker) {
+      // 語言檔放在 artifact 自己的檔案裡（gzip，存成 .wasm 才能上傳）：artifact 的 connect-src 不允許從 CDN fetch 資料。
+      // 自己包一層 worker：把 Tesseract 要抓的 eng.traineddata.gz 導到同網域的 .wasm 檔，再載入官方 worker。
+      const langURL = new URL('tess/eng.traineddata.gz.wasm', location.href).href;
+      const shim = `const _f=self.fetch.bind(self);self.fetch=(u,o)=>_f(/eng\\.traineddata/.test(String(u))?${JSON.stringify(langURL)}:u,o);importScripts('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js');`;
+      worker = await Tesseract.createWorker('eng', 1, {
+        workerPath: URL.createObjectURL(new Blob([shim], { type: 'application/javascript' })),
+        workerBlobURL: false,
+        corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
+        langPath: new URL('tess', location.href).href,
+        logger: m => { if (m.status === 'recognizing text') { imp.busy = `辨識中 ${Math.round(m.progress * 100)}%`; const p = $('impBusy'); if (p) p.textContent = imp.busy; } },
+      });
+    }
+    imp.busy = '前處理圖片…'; render();
+    // 小圖放大到寬 ≥ 2000px、轉灰階，對螢幕截圖的小字幫助很大
+    const probe = await fileToCanvas(file, 1);
+    const sc = Math.min(3, Math.max(1, 2000 / probe.width));
+    const c = sc > 1 ? await fileToCanvas(file, sc) : probe;
+    const x = c.getContext('2d'), d = x.getImageData(0, 0, c.width, c.height), a = d.data;
+    for (let i = 0; i < a.length; i += 4) { const g = a[i] * .299 + a[i + 1] * .587 + a[i + 2] * .114; a[i] = a[i + 1] = a[i + 2] = g; }
+    x.putImageData(d, 0, 0);
+    imp.busy = '辨識中…'; render();
+    const { data } = await worker.recognize(c);
+    imp.busy = '';
+    impParsed(data.text || '');
+  } catch (e) {
+    imp.busy = ''; imp.msg = '辨識引擎載不進來或辨識失敗（可能被網路或瀏覽器擋住）。請改用 A：在 HIS 複製文字貼上。';
+    render();
+  }
+}
+// 手機照片動輒 4000×3000：直接丟給 jsQR 會卡死主執行緒，大圖還會超過 iPhone 的 canvas 上限。
+// 做法：先試系統內建的 BarcodeDetector（Android Chrome 有），再把照片「縮小」到幾個固定尺寸，
+// 每個尺寸先掃整張、再掃中央 60%（QR 通常拍在中間），每次之間讓出主執行緒，畫面才不會凍住。
+function loadImg(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); res(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('img')); };
+    img.src = url;
+  });
+}
+function drawPart(img, maxDim, crop) {
+  const W = img.naturalWidth, H = img.naturalHeight;
+  const sw = W * crop, sh = H * crop, sx = (W - sw) / 2, sy = (H - sh) / 2;
+  const s = Math.min(1, maxDim / Math.max(sw, sh));
+  const c = document.createElement('canvas'); c.width = Math.round(sw * s); c.height = Math.round(sh * s);
+  const x = c.getContext('2d', { willReadFrequently: true }); x.imageSmoothingQuality = 'high';
+  x.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  return x.getImageData(0, 0, c.width, c.height);
+}
+const yieldUI = () => new Promise(r => setTimeout(r, 0));
+async function decodeQR(file) {
+  if ('BarcodeDetector' in window) {
+    try {
+      const bd = new BarcodeDetector({ formats: ['qr_code'] });
+      const r = await bd.detect(await createImageBitmap(file));
+      if (r && r[0] && r[0].rawValue) return r[0].rawValue;
+    } catch (e) {}
+  }
+  await loadLib('jsqr');
+  const img = await loadImg(file);
+  // 小尺寸先試（快）；整床傳送的 QR 格子比較密，最後幾個用大尺寸
+  const tries = [[800, 1], [800, 0.6], [1200, 0.6], [1200, 1], [1600, 0.6], [500, 0.6], [2000, 0.75], [1600, 0.45]];
+  for (let i = 0; i < tries.length; i++) {
+    const [dim, crop] = tries[i];
+    imp.busy = `辨識 QR…（${i + 1}/${tries.length}）`; const p = $('impBusy'); if (p) p.textContent = imp.busy;
+    await yieldUI();
+    const d = drawPart(img, dim, crop);
+    const r = jsQR(d.data, d.width, d.height, { inversionAttempts: 'dontInvert' });
+    if (r && r.data) return r.data;
+  }
+  return null;
+}
+// RB2|床號|日期|K=2.9;Na=131（比 JSON 短，QR 格子少、比較好掃）；RB1 是舊格式（JSON），照樣讀得懂
+function parsePayload(txt) {
+  if (txt.startsWith('RB2|')) {
+    const [, b, d, l] = txt.split('|');
+    const vals = {};
+    (l || '').split(';').forEach(kv => { const [k, v] = kv.split('='); const n = parseFloat(v); if (LAB[k] && !isNaN(n)) vals[k] = n; });
+    return { b, d, vals };
+  }
+  if (txt.startsWith('RB1')) {
+    const o = JSON.parse(txt.slice(3));
+    return { b: o.b, d: o.d, vals: Object.fromEntries((o.l || []).filter(x => typeof x[1] === 'number' && LAB[x[0]])) };
+  }
+  return null;
+}
+// ── 整床傳送：JSON → deflate 壓縮 → Base45（只用 QR 英數模式的字元，同樣資料量格子最少）→ 每 380 字一張 QR
+// 每張開頭 RB3:批次代號:第幾張/共幾張:，手機一張一張拍、收齊才解碼。
+const B45 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
+function b45enc(u8) {
+  let s = '';
+  for (let i = 0; i < u8.length; i += 2) {
+    if (i + 1 < u8.length) { const n = u8[i] * 256 + u8[i + 1]; s += B45[n % 45] + B45[Math.floor(n / 45) % 45] + B45[Math.floor(n / 2025)]; }
+    else { const n = u8[i]; s += B45[n % 45] + B45[Math.floor(n / 45)]; }
+  }
+  return s;
+}
+function b45dec(s) {
+  const out = [];
+  for (let i = 0; i < s.length; i += 3) {
+    const c = [...s.slice(i, i + 3)].map(ch => { const k = B45.indexOf(ch); if (k < 0) throw new Error('b45'); return k; });
+    if (c.length === 3) { const n = c[0] + c[1] * 45 + c[2] * 2025; if (n > 65535) throw new Error('b45'); out.push(n >> 8, n & 255); }
+    else { const n = c[0] + c[1] * 45; if (n > 255) throw new Error('b45'); out.push(n); }
+  }
+  return new Uint8Array(out);
+}
+async function pipeBytes(u8, Stream) { return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new Stream('deflate'))).arrayBuffer()); }
+async function packBed(obj) {
+  const raw = new TextEncoder().encode(JSON.stringify(obj));
+  if (window.CompressionStream) { try { return 'Z' + b45enc(await pipeBytes(raw, CompressionStream)); } catch (e) {} }
+  return 'U' + b45enc(raw);
+}
+async function unpackBed(str) {
+  let u8 = b45dec(str.slice(1));
+  if (str[0] === 'Z') { if (!window.DecompressionStream) throw new Error('這支手機的瀏覽器太舊，不能解壓縮（需要 iOS 16.4 以上）'); u8 = await pipeBytes(u8, DecompressionStream); }
+  return JSON.parse(new TextDecoder().decode(u8));
+}
+// 每張 850 字 ≈ QR 第 16 版（81×81 格）：手機拍電腦螢幕還拍得清楚的上限附近
+const CHUNK = 850;
+function splitParts(str) {
+  const id = Math.random().toString(36).slice(2, 6).toUpperCase().padEnd(4, '0');
+  const n = Math.ceil(str.length / CHUNK);
+  return Array.from({ length: n }, (_, i) => `RB3:${id}:${i + 1}/${n}:` + str.slice(i * CHUNK, (i + 1) * CHUNK));
+}
+// 要傳的內容：整床（清單只帶今天）＋待辦表裡這床還沒完成的待辦。
+// 為了少拍幾張 QR：範本帶入、沒改過的追蹤點只傳「第幾條」（手機有同一份範本，自己還原）；
+// 追蹤點本身的 id 不傳（手機重新編）；由追蹤點產生的待辦只傳「哪個 problem 第幾個追蹤點」。
+function bedPayload(b) {
+  const c = JSON.parse(JSON.stringify(b)), t = today();
+  c.checks = c.checks && c.checks[t] ? { [t]: c.checks[t] } : {};
+  const fuText = new Map();
+  c.problems.forEach((p, pi) => {
+    const tpl = PROBLEMS.find(x => x.id === p.tpl);
+    p.fus = p.fus.map((f, fi) => {
+      fuText.set(`${p.name}：${f.what}`, [pi, fi]);
+      const j = tpl ? tpl.followUps.findIndex(x => x.what === f.what && x.when === f.when) : -1;
+      const o = { due: f.due };
+      if (j >= 0) o.j = j; else { o.what = f.what; if (f.when) o.when = f.when; }
+      if (f.done) o.done = 1; if (f.pushed) o.pushed = 1; if (f.todoId) o.t = f.todoId; if (f.doneOn) o.on = f.doneOn; if (f.pushedOn) o.po = f.pushedOn;
+      return o;
+    });
+  });
+  const todos = todosOf(b.bed).map(({ id, text, p, due, start, src, subs }) => {
+    const o = { id, p, due, start }; const ref = fuText.get(text);
+    if (ref) o.fu = ref; else o.text = text;
+    if (src && src !== '查房板') o.src = src; if (subs) o.subs = subs;
+    return o;
+  });
+  return { v: 3, bed: c, todos };
+}
+// 手機端：把上面壓縮過的寫法還原
+function expandPayload(o) {
+  const b = o.bed;
+  (b.problems || []).forEach(p => {
+    const tpl = PROBLEMS.find(x => x.id === p.tpl);
+    p.fus = (p.fus || []).map(f => {
+      const base = f.j != null && tpl && tpl.followUps[f.j] ? { what: tpl.followUps[f.j].what, when: tpl.followUps[f.j].when } : { what: f.what || '', when: f.when || '' };
+      return { id: uid(), ...base, due: f.due || '', done: !!f.done, pushed: !!f.pushed, ...(f.t ? { todoId: f.t } : {}), ...(f.on ? { doneOn: f.on } : {}), ...(f.po ? { pushedOn: f.po } : {}) };
+    });
+  });
+  o.todos = (o.todos || []).map(t => {
+    let text = t.text;
+    if (t.fu) { const p = b.problems[t.fu[0]], f = p && p.fus[t.fu[1]]; text = p && f ? `${p.name}：${f.what}` : '（追蹤點）'; }
+    return { id: t.id, text, p: t.p, due: t.due || 0, start: t.start || Date.now(), src: t.src || '查房板', ...(t.subs ? { subs: t.subs } : {}) };
+  });
+  return o;
+}
+
+// 電腦端畫面
+let send = null; // { bedId, parts, i }
+function renderSend() {
+  const el = $('sendBody'), b = send && bedById(send.bedId);
+  if (!b) { go('list'); return; }
+  if (!send.parts) { el.innerHTML = '<p class="sub">產生中…</p>'; return; }
+  const n = send.parts.length, i = send.i;
+  const todoN = todosOf(b.bed).length, labN = Object.values(b.labs || {}).reduce((s, a) => s + a.length, 0);
+  el.innerHTML = `<h2>${esc(label(b))}・第 ${i + 1} / ${n} 張</h2>
+    <div class="qr" id="sendQR"></div>
+    <div class="row" style="margin-top:8px"><button class="btn" data-act="sendPrev" style="flex:1" ${i ? '' : 'disabled'}>← 上一張</button><button class="btn pri" data-act="sendNext" style="flex:1" ${i < n - 1 ? '' : 'disabled'}>下一張 →</button></div>
+    <div class="sec"><p class="sub" style="margin:0">手機：查房板 → 匯入 → 📷 掃 QR，<b>每張拍一次</b>（順序不拘），收齊 ${n} 張會自動合成。<br>
+      內容：${b.problems.length} 個 problem、${labN} 筆檢驗、${b.abx.length} 種抗生素、${b.lines.length} 條管路、${b.pending.filter(p => !p.done).length} 項等待中結果、${todoN} 項待辦，以及基本資料和筆記。</p></div>
+    <h2>手機收到之後</h2>
+    <div class="sec"><p class="sub" style="margin-top:0">這是院內電腦的話，病人資料不要留在這裡。</p>
+      <div class="row"><button class="btn bad" data-act="sendDel" style="flex:1">手機收到了，從這台電腦刪除這床</button></div></div>`;
+  const box = $('sendQR');
+  loadLib('qr').then(() => {
+    const q = qrcode(0, 'L'); q.addData(send.parts[i], 'Alphanumeric'); q.make();
+    box.innerHTML = q.createImgTag(8, 32);
+  }).catch(() => { box.innerHTML = '<p class="sub" style="color:#B3261E">QR 產生器載入失敗（可能網路被擋）。</p>'; });
+}
+
+// 手機端：收到整床之後
+function findTarget(inc) { return S.beds.find(x => String(x.bed) === String(inc.bed)) || S.beds.find(x => x.id === inc.id) || null; }
+function mergeBed(cur, inc) {
+  const out = { ...cur };
+  for (const k of ['bed', 'code', 'dx', 'hx', 'dnr', 'io', 'note', 'hand', 'sex']) if (inc[k]) out[k] = inc[k];
+  for (const k of ['problems', 'pending', 'abx', 'lines']) { const m = new Map((cur[k] || []).map(x => [x.id, x])); (inc[k] || []).forEach(x => m.set(x.id, x)); out[k] = [...m.values()]; }
+  const seen = new Set((cur.learned || []).map(x => x.d + '|' + x.t));
+  out.learned = [...(cur.learned || []), ...(inc.learned || []).filter(x => !seen.has(x.d + '|' + x.t))];
+  out.labs = { ...(cur.labs || {}) };
+  for (const [id, arr] of Object.entries(inc.labs || {})) {
+    const a = [...(out.labs[id] || [])];
+    arr.forEach(x => { if (!a.some(y => y.d === x.d && y.v === x.v)) a.push(x); });
+    a.sort((x, y) => x.d < y.d ? -1 : x.d > y.d ? 1 : (x.ts || 0) - (y.ts || 0));
+    out.labs[id] = a;
+  }
+  out.checks = { ...(cur.checks || {}) };
+  for (const [d, v] of Object.entries(inc.checks || {})) out.checks[d] = { ...(out.checks[d] || {}), ...v };
+  return out;
+}
+function commitWhole() {
+  const o = imp.whole, inc = o.bed, tgt = findTarget(inc);
+  let b;
+  if (tgt && imp.wmode === 'replace') { b = { ...newBed(inc.bed, ''), ...inc, id: tgt.id }; S.beds[S.beds.indexOf(tgt)] = b; }
+  else if (tgt) { b = mergeBed(tgt, inc); S.beds[S.beds.indexOf(tgt)] = b; }
+  else { b = { ...newBed(inc.bed, ''), ...inc }; if (S.beds.some(x => x.id === b.id)) b.id = uid(); S.beds.push(b); }
+  // 待辦：待辦表裡還沒有的才加（用 id 判斷，重拍不會重複）
+  let added = 0;
+  try {
+    let st = JSON.parse(get(TODO) || 'null');
+    if (!st || !Array.isArray(st.items)) st = { items: [], done: [] };
+    if (st.seeded) { st.items = st.items.filter(i => !i.ex); st.done = (st.done || []).filter(i => !i.ex); st.seeded = false; }
+    const have = new Set([...st.items, ...(st.done || [])].map(i => i.id));
+    (o.todos || []).forEach(t => { if (!have.has(t.id)) { st.items.push({ ...t, bed: String(b.bed) }); added++; } });
+    if (added) set(TODO, JSON.stringify(st));
+  } catch (e) {}
+  save(true); sweep();
+  toast(`已${tgt ? (imp.wmode === 'replace' ? '取代' : '合併到') : '新增'} ${label(b)}${added ? `，加入 ${added} 項待辦` : ''}`);
+  curBed = b.id; imp = null; go('bed');
+}
+
+async function scanQR(file) {
+  imp.msg = ''; imp.busy = '辨識 QR…'; render();
+  try {
+    const txt = await decodeQR(file);
+    imp.busy = '';
+    const m = txt && /^RB3:([0-9A-Z]{4}):(\d+)\/(\d+):([\s\S]*)$/.exec(txt);
+    if (m) {
+      const [, id, k, n] = m;
+      if (!imp.rx || imp.rx.id !== id) imp.rx = { id, n: +n, parts: {} };
+      const dup = imp.rx.parts[k] != null; imp.rx.parts[k] = m[4];
+      const got = Object.keys(imp.rx.parts).length;
+      if (got < imp.rx.n) { imp.note = dup ? `第 ${k} 張已經拍過了。` : `收到第 ${k} 張。`; render(); return; }
+      imp.whole = expandPayload(await unpackBed(Array.from({ length: imp.rx.n }, (_, i) => imp.rx.parts[i + 1]).join('')));
+      imp.rx = null; imp.note = ''; imp.wmode = 'merge'; imp.stage = 'bed'; render(); return;
+    }
+    const o = txt && parsePayload(txt);
+    if (!o) { imp.msg = txt ? '這不是查房板的 QR。' : '讀不到 QR。請讓 QR 佔畫面一半左右、對準、避開螢幕反光，或把電腦螢幕調亮再拍一次。'; render(); return; }
+    imp.bed = String(o.b || ''); imp.date = o.d || today(); imp.vals = o.vals;
+    imp.scanned = true; imp.stage = 'ok'; render();
+  } catch (e) { imp.busy = ''; imp.msg = '掃描失敗，請再拍一次。'; render(); }
+}
+function bindDrop() {
+  const d = $('drop'); if (!d) return;
+  d.addEventListener('dragover', e => { e.preventDefault(); d.classList.add('on'); });
+  d.addEventListener('dragleave', () => d.classList.remove('on'));
+  d.addEventListener('drop', e => { e.preventDefault(); d.classList.remove('on'); const f = [...(e.dataTransfer.files || [])].find(x => x.type.startsWith('image/')); if (f) { impSync(); ocr(f); } });
+}
+// 在匯入站任何地方 Ctrl+V 一張圖 → OCR
+document.addEventListener('paste', e => {
+  if (view !== 'imp' || !imp || imp.stage !== 'in') return;
+  const it = [...(e.clipboardData && e.clipboardData.items || [])].find(x => x.type.startsWith('image/'));
+  if (!it) return;
+  e.preventDefault(); impSync(); ocr(it.getAsFile());
+});
+
+// ── 設定與存檔
+async function renderSet() {
+  const el = $('setBody');
+  const learnN = S.beds.reduce((n, b) => n + b.learned.length, 0);
+  el.innerHTML = `<h2>手動存檔</h2><div class="sec">
+      <p class="sub" style="margin-top:0">上次手動存檔：<b>${ago(S.lastExport) || '從來沒有'}</b>。資料只在這支手機的瀏覽器裡，清除瀏覽器資料或換手機就會不見。</p>
+      <p class="sub">按「存檔」會把整份資料複製到剪貼簿（這個網頁環境不允許下載檔案，多半也叫不出分享選單），請貼到手機的備忘錄存起來；要還原時再整段貼回下面的「貼上存檔內容還原」。</p>
+      <p class="muted">瀏覽器的「保留資料」請求：${persisted === true ? '已被接受（比較不容易被自動回收，但還是要手動存檔）' : persisted === false ? '沒有被接受（空間吃緊時可能被自動回收，更要常存檔）' : '還沒有結果'}</p>
+      <div class="row"><button class="btn pri" data-act="export" style="flex:1">存檔</button><button class="btn" data-act="importJSON" style="flex:1">選存檔檔案還原</button></div>
+      <details class="snap" style="margin-top:8px"><summary>貼上存檔內容還原</summary>
+        <textarea id="restoreTxt" rows="4" placeholder="把之前存的內容整段貼進來" style="margin-top:6px"></textarea>
+        <div class="row" style="margin-top:6px"><button class="btn" data-act="restorePaste" style="flex:1">還原</button></div></details>
+    </div>
+    <h2>自動快照</h2><div class="sec" id="snapBox"><p class="sub" style="margin:0">讀取中…</p></div>
+    <h2>今天學到（全部床）</h2><div class="sec"><p class="sub" style="margin-top:0">共 ${learnN} 則，依日期排列，不含病人代號。</p>
+      <div class="row"><button class="btn" data-act="copyLearn" style="flex:1">複製全部「今天學到」</button></div></div>
+    <h2>每日清單要顯示的項目</h2><div class="sec">${CHECKLIST.map(c => `<label class="fu"><input type="checkbox" data-hide="${c.id}" ${S.hidden.includes(c.id) ? '' : 'checked'}><span>${esc(c.name)}</span></label>`).join('')}</div>
+    <h2>換科輪調</h2><div class="sec"><p class="sub" style="margin-top:0">刪除這支裝置上所有病人資料（自動快照也一起刪）。建議先存檔。</p>
+      <button class="btn bad" data-act="wipe">全部清空</button></div>
+    <p class="muted" style="margin-top:16px">每日清單卡和 problem 範本由 Fable 起草，未經審閱前只是建議。</p>`;
+  try {
+    const db = await idb(), list = await snaps(db);
+    $('snapBox').innerHTML = list.length ? `<p class="sub" style="margin-top:0">有變更時最多每 10 分鐘存一份，保留 3 天、最多 50 份。</p>` + list.slice(0, 20).map(s => {
+      const d = new Date(s.ts);
+      return `<div class="fu"><span class="w" style="min-width:8em">${md(ymd(d))} ${pad(d.getHours())}:${pad(d.getMinutes())}</span><span style="flex:1">${s.n} 床</span><button class="btn sm" data-act="restore" data-ts="${s.ts}">還原</button></div>`;
+    }).join('') : '<p class="sub" style="margin:0">還沒有快照（有變更後幾秒就會建立第一份）。</p>';
+  } catch (e) { $('snapBox').innerHTML = '<p class="sub" style="margin:0">這個瀏覽器不能用快照（IndexedDB 被擋）。請多用手動存檔。</p>'; }
+}
+async function exportJSON() {
+  const name = `查房板-${today()}-${pad(new Date().getHours())}${pad(new Date().getMinutes())}.json`;
+  const txt = JSON.stringify({ ...S, exportedAt: Date.now() }, null, 1);
+  const file = new File([txt], name, { type: 'application/json' });
+  // artifact 會擋網頁發起的下載，所以：手機用系統分享（→ 儲存到檔案）；不行就複製到剪貼簿請使用者貼到備忘錄。
+  // 只有真的成功才更新「上次存檔」。
+  const mark = how => { S.lastExport = Date.now(); save(true); render(); toast(how); };
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); mark('已存檔：' + name); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(txt); mark('存檔內容已複製：請貼到備忘錄或記事本存起來'); return; } catch (e) {}
+  const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select();
+  let ok = false; try { ok = document.execCommand('copy'); } catch (e) {} ta.remove();
+  if (ok) mark('存檔內容已複製：請貼到備忘錄或記事本存起來'); else toast('存檔失敗：這個瀏覽器不能分享也不能複製');
+}
+// artifact 的 iframe 沒有 allow-modals：confirm()／prompt() 根本不會跳出來，而是直接當成「取消」。
+// 所以所有確認都用頁面內的視窗。type：要使用者打出這幾個字才能按確定（例如「清空」）。
+function ask(msg, { ok = '確定', danger = false, type = '' } = {}) {
+  return new Promise(res => {
+    document.querySelector('.ask')?.remove();
+    const d = document.createElement('div'); d.className = 'ask';
+    d.innerHTML = `<div class="ask-box" role="alertdialog" aria-modal="true"><p>${esc(msg)}</p>${type ? `<input type="text" placeholder="輸入「${esc(type)}」" autocomplete="off">` : ''}<div class="row"><button class="btn" data-a="0" style="flex:1">取消</button><button class="btn ${danger ? 'bad-fill' : 'pri'}" data-a="1" style="flex:1">${esc(ok)}</button></div></div>`;
+    const inp = d.querySelector('input');
+    const done = v => { d.remove(); res(v); };
+    const tryOk = () => { if (type && inp.value.trim() !== type) { inp.focus(); toast(`請輸入「${type}」`); return; } done(true); };
+    d.addEventListener('click', e => { const a = e.target.closest('[data-a]'); if (a) a.dataset.a === '1' ? tryOk() : done(false); else if (e.target === d) done(false); });
+    d.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') done(false); if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); tryOk(); } });
+    document.body.appendChild(d); (inp || d.querySelector('[data-a="1"]')).focus();
+  });
+}
+async function restoreFrom(txt) {
+  const o = JSON.parse(txt);
+  if (!o || !Array.isArray(o.beds)) throw new Error('bad');
+  if (!(await ask(`用這份資料（${o.beds.length} 床）取代現在的內容？`, { ok: '取代' }))) return false;
+  const keep = S.lastExport;
+  S = { ...blank(), ...o, lastExport: Math.max(keep || 0, o.exportedAt || 0) };
+  delete S.exportedAt; save(true); toast('已還原'); return true;
+}
+
+// ── 事件
+function toast(m) {
+  document.querySelector('.toast')?.remove();
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; t.setAttribute('role', 'status');
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
+}
+const bedNow = () => bedById(curBed);
+function prob(id) { const b = bedNow(); return b && b.problems.find(p => p.id === id); }
+function copy(txt) {
+  const done = () => toast('已複製');
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, () => fallback());
+  else fallback();
+  function fallback() { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { toast('複製失敗，請手動選取'); } ta.remove(); }
+}
+function startRound() {
+  sortBeds();
+  if (!S.beds.length) { toast('先新增病人'); return; }
+  const t = today(), ids = S.beds.map(b => b.id);
+  let i = S.beds.findIndex(b => b.rounded !== t); if (i < 0) i = 0;
+  round = { ids, i }; curBed = ids[i]; go('bed');
+}
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const a = el.dataset.act, b = bedNow(), t = today();
+  switch (a) {
+    case 'addBed': {
+      const bed = $('nbBed').value.trim(); if (!bed) { $('nbBed').focus(); toast('請填床號'); return; }
+      (async () => {
+        if (S.beds.some(x => String(x.bed) === bed) && !(await ask(`已經有 ${bed} 床了，還是要新增？`, { ok: '新增' }))) return;
+        const nb = newBed(bed, $('nbCode').value); S.beds.push(nb); save(true);
+        $('nbBed').value = ''; $('nbCode').value = ''; curBed = nb.id; round = null; go('bed');
+      })(); return;
+    }
+    case 'open': curBed = el.dataset.id; round = null; go('bed'); return;
+    case 'back': round = null; openHow = null; openTpl = false; if (view === 'send' && bedNow()) { send = null; go('bed'); } else if (view === 'imp' && curBed && imp && imp.from) { imp = null; go('bed'); } else { imp = null; send = null; go('list'); } return;
+    case 'round': startRound(); return;
+    case 'roundNext': {
+      if (b) { b.rounded = t; save(true); }
+      const nx = round.ids.findIndex((id, i) => i > round.i && (bedById(id) || {}).rounded !== t);
+      if (nx < 0) { const left = round.ids.filter(id => (bedById(id) || {}).rounded !== t).length; round = null; toast(left ? `還有 ${left} 床沒過` : '全部床都過完了 ✓'); go('list'); return; }
+      round.i = nx; curBed = round.ids[nx]; openHow = null; openTpl = false; scrollTo(0, 0); render(); return;
+    }
+    case 'roundPrev': if (round.i > 0) { round.i--; curBed = round.ids[round.i]; openHow = null; scrollTo(0, 0); render(); } return;
+    case 'hand': hSel = null; go('hand'); return;
+    case 'import': impReset(); go('imp'); return;
+    case 'impFor': impReset(curBed); imp.from = true; go('imp'); return;
+    case 'settings': go('set'); return;
+    case 'export': exportJSON(); return;
+    // 單床：problem
+    case 'pToggle': openTpl = !openTpl; render(); return;
+    case 'pAddTpl': {
+      const tp = PROBLEMS.find(x => x.id === el.dataset.tpl); if (!tp || !b) return;
+      const p = { id: uid(), name: tp.name, tpl: tp.id, status: 'new', plan: '', since: t, fus: tp.followUps.map(f => ({ id: uid(), what: f.what, when: f.when, due: whenToDue(f.when, t), done: false, pushed: false })) };
+      b.problems.push(p); openTpl = false; save(true); sweep(); render(); toast(`已加入 ${tp.name}（${p.fus.length} 個追蹤點，可以改）`); return;
+    }
+    case 'pAddFree': {
+      const n = ($('pFree') || {}).value; if (!n || !n.trim() || !b) return;
+      b.problems.push({ id: uid(), name: n.trim(), tpl: '', status: 'new', plan: '', since: t, fus: [] }); openTpl = false; save(); return;
+    }
+    case 'pStatus': { const p = prob(el.dataset.p); if (p) { p.status = el.dataset.v; save(); } return; }
+    case 'pDel': {
+      const p = prob(el.dataset.p); if (!p) return;
+      // 這個 problem 還在待辦表裡、沒完成的追蹤點待辦，一起刪
+      const st = readTodo(), ids = new Set(p.fus.map(f => linkTodo(st, b, p, f)).filter(Boolean));
+      const open = st.items.filter(i => ids.has(i.id));
+      ask(`刪除「${p.name}」？${open.length ? `\n待辦表裡它還有 ${open.length} 項沒完成的追蹤點，會一起刪掉。` : ''}`, { ok: '刪除', danger: true }).then(y => {
+        if (!y) return;
+        if (open.length) { const s2 = readTodo(); s2.items = s2.items.filter(i => !ids.has(i.id)); set(TODO, JSON.stringify(s2)); }
+        b.problems = b.problems.filter(x => x !== p); save();
+      });
+      return;
+    }
+    case 'fuAdd': {
+      const p = prob(el.dataset.p); const inp = document.querySelector(`[data-fuin="${el.dataset.p}"]`), dt = document.querySelector(`[data-fudate="${el.dataset.p}"]`);
+      if (!p || !inp.value.trim()) { inp && inp.focus(); return; }
+      const daily = !!(document.querySelector(`[data-fudaily="${el.dataset.p}"]`) || {}).checked;
+      p.fus.push({ id: uid(), what: inp.value.trim(), when: daily ? '每日' : '', due: daily ? 'daily' : (dt.value || ''), done: false, pushed: false }); save(true); sweep(); render(); return;
+    }
+    case 'fuDone': {
+      const p = prob(el.dataset.p), f = p && p.fus.find(x => x.id === el.dataset.fu); if (!f) return;
+      if (isDaily(f)) f.doneOn = el.checked ? today() : ''; else f.done = el.checked;
+      const moved = todoFollowFu(b, p, f);
+      save();
+      if (moved) toast(el.checked ? '已追蹤，待辦表裡這一項也完成了' : '已取消，這一項回到待辦表');
+      return;
+    }
+    case 'fuDel': { const p = prob(el.dataset.p); if (p) { p.fus = p.fus.filter(x => x.id !== el.dataset.fu); save(); } return; }
+    // 每日清單
+    case 'how': openHow = openHow === el.dataset.c ? null : el.dataset.c; render(); return;
+    case 'ck': {
+      const day = b.checks[t] = b.checks[t] || {}, c = el.dataset.c, v = el.dataset.v;
+      if (day[c] && day[c].s === v) delete day[c]; else day[c] = { s: v, note: (day[c] && day[c].note) || '' };
+      Object.keys(b.checks).forEach(d => { if (d < addDays(t, -14)) delete b.checks[d]; });
+      save(); if (v === 'w' && day[c]) setTimeout(() => { const i = document.querySelector(`[data-ck="${c}"]`); i && i.focus(); }, 0); return;
+    }
+    // 等待中結果
+    case 'pendAdd': {
+      const w = $('pdWhat').value.trim(); if (!w) { $('pdWhat').focus(); return; }
+      b.pending.push({ id: uid(), type: $('pdType').value, what: w, expect: $('pdDate').value, done: false, result: '', prob: '' }); save(); return;
+    }
+    case 'pendRes': { const p = b.pending.find(x => x.id === el.dataset.id); if (p) { p.resolving = true; render(); } return; }
+    case 'pendDel': { b.pending = b.pending.filter(x => x.id !== el.dataset.id); save(); return; }
+    case 'pendDone': {
+      const p = b.pending.find(x => x.id === el.dataset.id); if (!p) return;
+      const r = (document.querySelector(`[data-res="${p.id}"]`) || {}).value || '', pid = (document.querySelector(`[data-resp="${p.id}"]`) || {}).value || '';
+      p.done = true; p.result = r.trim(); p.prob = pid; p.doneAt = t; delete p.resolving;
+      const pr = b.problems.find(x => x.id === pid);
+      if (pr) pr.plan = (pr.plan ? pr.plan + '\n' : '') + `[${md(t)}] ${p.what}：${p.result || '已回'}`;
+      save(); toast(pr ? `已帶回「${pr.name}」的計畫` : '已勾掉'); return;
+    }
+    // 主治交代
+    case 'chip': { const i = $('ordIn'); i.value = el.dataset.v + ' ' + i.value.replace(/^\s+/, ''); i.focus(); return; }
+    case 'ordAdd': {
+      const i = $('ordIn'), v = i.value.trim(); if (!v) { i.focus(); return; }
+      if (todoAdd(b.bed, v, +$('ordP').value, 0)) { i.value = ''; toast('已加入待辦'); render(); }
+      return;
+    }
+    // 抗生素
+    case 'abxAdd': {
+      const n = $('abName').value.trim(), st = $('abStart').value || t, days = parseInt($('abDays').value, 10) || 0, cx = $('abCx').value.trim();
+      if (!n) { $('abName').focus(); return; }
+      b.abx.push({ id: uid(), name: n, start: st, days: days || '', cx });
+      const d3 = addDays(st, 2);
+      todoAdd(b.bed, `${n} D3：看培養${cx ? '（' + cx + '）' : ''}，考慮降階`, 3, at8(d3));
+      if (days >= 2) todoAdd(b.bed, `${n} 預計 ${days} 天，${md(addDays(st, days - 1))} 是最後一天：確認是否停藥`, 3, at8(addDays(st, days - 2)));
+      save(); toast(days >= 2 ? '已加入，並排了 2 個待辦' : '已加入，並排了 D3 待辦'); return;
+    }
+    case 'abxDel': { const x = b.abx.find(y => y.id === el.dataset.id); if (x) ask(`停用／刪除 ${x.name}？\n待辦表裡排好的 D3、停藥提醒要自己刪。`, { ok: '刪除', danger: true }).then(y => { if (y) { b.abx = b.abx.filter(z => z !== x); save(); toast(`已刪除 ${x.name}`); } }); return; }
+    // 管路
+    case 'lineQuick': $('lnName').value = el.dataset.v; $('lnName').focus(); return;
+    case 'lineAdd': { const n = $('lnName').value.trim(); if (!n) return; b.lines.push({ id: uid(), t: n, since: $('lnDate').value || t }); save(); return; }
+    case 'lineDel': { b.lines = b.lines.filter(x => x.id !== el.dataset.id); save(); return; }
+    case 'learnAdd': { const v = $('lrIn').value.trim(); if (!v) return; b.learned.push({ d: t, t: v }); save(); return; }
+    case 'discharge': {
+      ask(`刪除 ${label(b)} 的所有資料？\n出院或轉走時用。快照裡還有 3 天內的舊版。`, { ok: '刪除這床', danger: true }).then(y => {
+        if (!y) return; S.beds = S.beds.filter(x => x !== b); curBed = null; round = null; save(true); toast('已刪除'); go('list');
+      }); return;
+    }
+    // 交班
+    case 'hBed': hSel.has(el.dataset.id) ? hSel.delete(el.dataset.id) : hSel.add(el.dataset.id); render(); return;
+    case 'hAll': hSel = hSel.size === S.beds.length ? new Set() : new Set(S.beds.map(x => x.id)); render(); return;
+    case 'hCopy': copy($('hOut').value); return;
+    // 匯入
+    case 'impParse': impSync(); if (!imp.text.trim()) { toast('先貼上文字'); return; } impParsed(imp.text); return;
+    case 'impPick': impSync(); $('fileImg').value = ''; $('fileImg').click(); return;
+    case 'impScan': impSync(); $('fileQR').value = ''; $('fileQR').click(); return;
+    case 'impBack': impSync(); imp.stage = 'in'; imp.scanned = false; render(); return;
+    case 'impAdd': { impSync(); const id = $('impAddId').value, v = parseFloat($('impAddV').value); if (!id || isNaN(v)) { toast('選項目、填數值'); return; } imp.vals[id] = v; render(); return; }
+    case 'impMode': impSync(); imp.mode = el.dataset.v; render(); return;
+    case 'impFix': impSync(); imp.vals[el.dataset.id] = parseFloat(el.dataset.v); render(); return;
+    case 'impSave': impCommit(); return;
+    case 'impQR': impSync(); if (!imp.bed) { toast('請填床號'); return; } if (!Object.keys(imp.vals).length) { toast('沒有數值'); return; } imp.stage = 'qr'; render(); return;
+    case 'impNew': { const d = imp.date; impReset(); imp.date = d; render(); return; }
+    // 整床：手機端
+    case 'wMode': imp.wmode = el.dataset.v; render(); return;
+    case 'wSave': commitWhole(); return;
+    case 'wCancel': imp.whole = null; imp.stage = 'in'; render(); return;
+    // 整床：電腦端
+    case 'sendBed': {
+      send = { bedId: b.id, parts: null, i: 0 }; go('send');
+      packBed(bedPayload(b)).then(str => { if (send && send.bedId === b.id) { send.parts = splitParts(str); render(); } }).catch(() => toast('產生失敗'));
+      return;
+    }
+    case 'sendPrev': if (send.i > 0) { send.i--; render(); } return;
+    case 'sendNext': if (send.i < send.parts.length - 1) { send.i++; render(); } return;
+    case 'sendDel': {
+      const sb = bedById(send.bedId); if (!sb) return;
+      ask(`確定手機已經收到了？\n會從這台電腦刪除 ${label(sb)} 和這床的待辦。`, { ok: '從這台電腦刪除', danger: true }).then(y => { if (!y) return;
+      try {
+        const st = JSON.parse(get(TODO) || 'null');
+        if (st && Array.isArray(st.items)) { st.items = st.items.filter(i => String(i.bed) !== String(sb.bed)); st.done = (st.done || []).filter(i => String(i.bed) !== String(sb.bed)); set(TODO, JSON.stringify(st)); }
+      } catch (er) {}
+      S.beds = S.beds.filter(x => x !== sb); send = null; curBed = null; save(true); toast('已從這台電腦刪除'); go('list');
+      }); return;
+    }
+    // 設定
+    case 'importJSON': $('fileJSON').value = ''; $('fileJSON').click(); return;
+    case 'restorePaste': { const v = ($('restoreTxt') || {}).value || ''; restoreFrom(v).then(ok => { if (ok) go('list'); }, () => toast('這不是查房板的存檔內容')); return; }
+    case 'copyLearn': {
+      const all = S.beds.flatMap(x => x.learned.map(l => ({ ...l, dx: x.dx }))).sort((x, y) => x.d < y.d ? -1 : 1);
+      copy(all.map(l => `${l.d}${l.dx ? `（${l.dx}）` : ''} ${l.t}`).join('\n') || '（還沒有）'); return;
+    }
+    case 'restore': (async () => {
+      try { const db = await idb(), list = await snaps(db), s = list.find(x => String(x.ts) === el.dataset.ts); if (s && await restoreFrom(s.data)) go('list'); } catch (er) { toast('還原失敗'); }
+    })(); return;
+    case 'wipe': {
+      ask('刪除這支裝置上所有病人資料和快照？無法復原。\n確定的話，輸入「清空」。', { ok: '全部清空', danger: true, type: '清空' }).then(y => {
+        if (!y) return;
+        S = { ...blank(), hidden: S.hidden, where: S.where }; save(true);
+        try { indexedDB.deleteDatabase('rounds-snap'); } catch (er) {}
+        toast('已全部清空'); go('list');
+      }); return;
+    }
+  }
+});
+document.querySelectorAll('#hFmt button').forEach(x => x.addEventListener('click', () => { hFmt = x.dataset.fmt; render(); }));
+
+// 文字欄位：打字時存（不重畫，避免游標跳掉）
+document.addEventListener('input', e => {
+  const el = e.target, b = bedNow();
+  if (el.dataset.f && b) { b[el.dataset.f] = el.value; if (el.dataset.f === 'bed' || el.dataset.f === 'code' || el.dataset.f === 'dx') $('bedTitle').textContent = label(b) + (b.dx ? '・' + b.dx : ''); save(true); return; }
+  if (el.dataset.pf) { const p = prob(el.dataset.p); if (p) { p[el.dataset.pf] = el.value; save(true); } return; }
+  if (el.dataset.ck && b) { const d = b.checks[today()]; if (d && d[el.dataset.ck]) { d[el.dataset.ck].note = el.value; save(true); } return; }
+  if (el.dataset.where) { S.where[el.dataset.where] = el.value; save(true); return; }
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.dataset.hide) { const id = el.dataset.hide; S.hidden = S.hidden.filter(x => x !== id); if (!el.checked) S.hidden.push(id); save(true); return; }
+  if (el.dataset.iv || el.dataset.iok) { impSync(); render(); }
+  if (el.dataset.fudaily) { const d = document.querySelector(`[data-fudate="${el.dataset.fudaily}"]`); if (d) d.disabled = el.checked; }
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || e.isComposing) return;
+  const id = e.target.id, map = { ordIn: 'ordAdd', nbCode: 'addBed', nbBed: 'addBed', lrIn: 'learnAdd', pdWhat: 'pendAdd', lnName: 'lineAdd', pFree: 'pAddFree' };
+  if (map[id]) { e.preventDefault(); document.querySelector(`[data-act="${map[id]}"]`)?.click(); }
+  if (e.target.dataset.fuin) { e.preventDefault(); document.querySelector(`[data-act="fuAdd"][data-p="${e.target.dataset.fuin}"]`)?.click(); }
+});
+$('fileImg').addEventListener('change', e => { const f = e.target.files[0]; if (f) ocr(f); });
+$('fileQR').addEventListener('change', e => { const f = e.target.files[0]; if (f) scanQR(f); });
+$('fileJSON').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  f.text().then(t => restoreFrom(t)).then(ok => { if (ok) go('list'); }, () => toast('這不是查房板的存檔'));
+});
+// 其他分頁（例如待辦表）改了資料 → 重畫
+addEventListener('storage', e => { if (e.key === KEY) { S = load(); render(); } else if (e.key === TODO) { syncFromTodo(); if (view === 'bed') render(); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { sweep(); if (view === 'list') render(); } });
+
+sweep();
+render();
+// 改床號：把待辦表裡這床的待辦一起改過去（待辦表用床號對應病人）
+document.addEventListener('focusin', e => { const el = e.target, b = bedNow(); if (el.dataset && el.dataset.f === 'bed' && b) el.dataset.old = String(b.bed); });
+document.addEventListener('change', e => {
+  const el = e.target, b = bedNow();
+  if (!el.dataset || !b) return;
+  if (el.dataset.f === 'sex') { render(); return; }
+  if (el.dataset.f === 'bed') {
+    const old = el.dataset.old, nw = String(b.bed).trim();
+    if (old == null || old === nw) return;
+    try {
+      const st = JSON.parse(get(TODO) || 'null');
+      if (st && Array.isArray(st.items)) {
+        let n = 0; st.items.forEach(i => { if (String(i.bed) === old) { i.bed = nw; n++; } });
+        if (n && set(TODO, JSON.stringify(st))) toast(`${n} 項待辦已改到 ${nw} 床`);
+      }
+    } catch (er) {}
+    el.dataset.old = nw;
+  }
+});
+// 請瀏覽器盡量不要自動回收這裡的資料（iOS 不一定答應，所以仍要手動存檔）
+let persisted = null;
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist().then(ok => { persisted = ok; }, () => {}); } catch (e) {}
+setInterval(() => { if (view === 'list') renderSave(); }, 60e3);
+})();
+</script>
+</body>
+</html>

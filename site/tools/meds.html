@@ -1,0 +1,1612 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>值班用藥速查</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: sticky header (search + summary), patient-state banner, topic grid nav (sidebar on wide), one topic at a time; mechanisms folded */
+:root{
+  --bg:#f2f4f5; --surface:#fff; --fg:#1a2326; --muted:#5b696e; --line:#d7dee0;
+  --accent:#0d6870; --accent-soft:#e0eff0;
+  --ok:#1d7a3e; --ok-soft:#e3f3e8; --warn:#9a5b00; --warn-soft:#fff2d9; --bad:#b3261e; --bad-soft:#fde8e6;
+  --mark:#ffe58a; --markfg:#1a2326;
+  --ff-display:"Noto Serif TC","Songti TC",serif;
+  --ff-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --ff-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#11171a; --surface:#1a2226; --fg:#e3e9ea; --muted:#93a2a6; --line:#2d383c;
+  --accent:#5cc2c8; --accent-soft:#1c3437;
+  --ok:#6fd38f; --ok-soft:#173023; --warn:#f2b45a; --warn-soft:#352812; --bad:#ff8a80; --bad-soft:#3a1d1b;
+  --mark:#7a6420; --markfg:#fff6d5; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11171a; --surface:#1a2226; --fg:#e3e9ea; --muted:#93a2a6; --line:#2d383c;
+  --accent:#5cc2c8; --accent-soft:#1c3437;
+  --ok:#6fd38f; --ok-soft:#173023; --warn:#f2b45a; --warn-soft:#352812; --bad:#ff8a80; --bad-soft:#3a1d1b;
+  --mark:#7a6420; --markfg:#fff6d5; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--ff-body);font-size:15px;line-height:1.6}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.num,code{font-family:var(--ff-mono);font-size:.88em;font-variant-numeric:tabular-nums}
+
+/* header */
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--surface);border-bottom:1px solid var(--line)}
+header.top .wrap{padding-block:10px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.brand{font-family:var(--ff-display);font-size:1.15rem;margin:0;white-space:nowrap}
+.search{flex:1 1 260px;display:flex;gap:6px;min-width:0}
+.search input{flex:1;min-width:0;font:inherit;font-size:16px;padding:8px 11px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+.search input:focus{outline:none;border-color:var(--accent)}
+.hbtns{display:flex;gap:6px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;font-size:.88rem;white-space:nowrap}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:500}
+.btn .ct{display:inline-block;min-width:1.4em;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--surface);color:var(--accent);font-size:.78rem;text-align:center}
+.activebar{flex-basis:100%;display:flex;flex-wrap:wrap;gap:5px;font-size:.8rem;color:var(--muted)}
+.activebar .pill{background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:1px 9px}
+.disc{background:var(--warn-soft);color:var(--fg);font-size:.8rem}
+.disc .wrap{padding-block:6px}
+
+/* state banner */
+.states{background:var(--surface);border-bottom:1px solid var(--line)}
+.states .wrap{padding-block:12px 14px}
+.states h2{font-size:.95rem;margin:0 0 8px;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.states h2 small{font-weight:400;color:var(--muted);font-size:.8rem}
+.schips{display:flex;flex-wrap:wrap;gap:6px}
+.schip{border:1.5px solid var(--line);background:var(--bg);border-radius:999px;padding:5px 12px;font-size:.88rem}
+.schip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:500}
+.schip.clear{border-style:dashed;color:var(--muted)}
+
+/* layout */
+.layout{display:grid;gap:18px;padding-block:16px 40px}
+@media (min-width:920px){.layout{grid-template-columns:230px minmax(0,1fr)}.nav{position:sticky;top:calc(env(safe-area-inset-top,0px) + 100px);align-self:start;max-height:calc(100vh - 120px);overflow:auto}}
+.nav h3{font-size:.78rem;letter-spacing:.08em;color:var(--muted);margin:10px 0 6px;font-weight:500}
+.nav h3:first-child{margin-top:0}
+.ngrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px}
+@media (min-width:920px){.ngrid{grid-template-columns:1fr}}
+.nb{display:flex;align-items:center;gap:6px;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;font-size:.9rem;min-width:0}
+.nb .nt{flex:1;min-width:0}
+.nb[aria-current="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:700}
+.nb .b{font-size:.7rem;border-radius:8px;padding:0 6px;line-height:1.5}
+.b.x{background:var(--bad);color:var(--surface)}
+.b.s{background:var(--accent);color:var(--surface)}
+
+/* topic */
+main{min-width:0}
+.topic{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px clamp(14px,3vw,24px) 20px;min-width:0}
+.topic+.topic{margin-top:14px}
+.eyebrow{font-size:.75rem;letter-spacing:.1em;color:var(--muted)}
+.topic h2{font-family:var(--ff-display);font-size:1.45rem;margin:2px 0 2px;text-wrap:balance}
+.topic .sub{color:var(--muted);margin:0 0 12px;font-size:.88rem}
+.topic h3{font-size:.98rem;margin:20px 0 8px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.topic h3 small{font-weight:400;color:var(--muted);font-size:.78rem}
+.key{background:var(--accent-soft);border-radius:8px;padding:10px 14px}
+.key p{margin:4px 0}.key ul,.key ol{margin:4px 0;padding-left:1.3em}
+.alert{display:flex;gap:10px;background:var(--bad-soft);border:1.5px solid var(--bad);border-radius:8px;padding:9px 12px;margin:8px 0;font-weight:500}
+.alert::before{content:"⚠";color:var(--bad);font-weight:700}
+.snote{border-radius:8px;padding:8px 12px;margin:8px 0;background:var(--warn-soft);font-size:.92rem}
+.snote b{color:var(--warn)}
+.add{font-size:.68rem;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 4px;margin-left:4px;vertical-align:1px;font-weight:400;white-space:nowrap}
+
+/* items */
+.items{display:flex;flex-direction:column;gap:8px}
+.it{border:1px solid var(--line);border-radius:9px;padding:9px 12px 10px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 10px;background:var(--surface)}
+.it.lv-p{border-color:var(--ok);box-shadow:inset 3px 0 0 var(--ok)}
+.it.lv-c{box-shadow:inset 3px 0 0 var(--warn)}
+.it.lv-x{background:var(--bad-soft);border-color:var(--bad);box-shadow:inset 3px 0 0 var(--bad)}
+.it.lv-x .nm{text-decoration:line-through;text-decoration-color:var(--bad)}
+.it.sel{outline:2px solid var(--accent);outline-offset:1px}
+.pick{grid-row:1/span 6;width:30px;height:30px;border-radius:7px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);font-weight:700;font-size:1.05rem;line-height:1;align-self:start;margin-top:1px}
+.pick{display:grid;place-items:center;padding:0}
+.pick svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.it.sel .pick{background:var(--accent);color:var(--surface)}
+.ih{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;min-width:0}
+.nm{font-weight:700;font-size:1rem}
+.cat{font-size:.72rem;color:var(--muted)}
+.bd{font-size:.72rem;border-radius:5px;padding:1px 7px;font-weight:700;white-space:nowrap}
+.bd.first{background:var(--accent);color:var(--surface)}
+.bd.p{background:var(--ok);color:var(--surface)}
+.bd.c{background:var(--warn);color:var(--surface)}
+.bd.x{background:var(--bad);color:var(--surface)}
+.dose{font-size:.9rem;min-width:0}
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.tg{font-size:.78rem;border-radius:5px;padding:1px 7px;line-height:1.55}
+.tg.sp{background:var(--ok-soft);color:var(--ok)}
+.tg.se{background:var(--warn-soft);color:var(--warn)}
+.tg.sp::before{content:"＋ "}.tg.se::before{content:"副作用 "}
+.dg{color:var(--bad);font-weight:700;font-size:.88rem;margin-top:3px}
+.dg::before{content:"⚠ "}
+.why{font-size:.84rem;margin-top:3px;display:flex;flex-direction:column;gap:1px}
+.why .wx{color:var(--bad);font-weight:500}.why .wc{color:var(--warn)}.why .wp{color:var(--ok)}
+
+/* checklist + assess */
+.chk{display:flex;flex-direction:column;gap:4px}
+.chk label{display:flex;gap:9px;align-items:flex-start;padding:5px 8px;border-radius:6px;cursor:pointer}
+.chk label:hover{background:var(--bg)}
+.chk input{width:18px;height:18px;margin-top:3px;accent-color:var(--accent);flex:none}
+.chk input:checked+span{color:var(--muted);text-decoration:line-through}
+.prog{font-size:.78rem;color:var(--muted);font-weight:400}
+details.fold{border:1px solid var(--line);border-radius:9px;margin-top:12px}
+details.fold>summary{cursor:pointer;padding:9px 14px;font-weight:500;list-style:none;display:flex;gap:8px;align-items:baseline}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::before{content:"▸";color:var(--muted)}
+details.fold[open]>summary::before{content:"▾"}
+details.fold>summary small{color:var(--muted);font-weight:400;font-size:.78rem}
+details.fold .fb{padding:0 14px 12px;min-width:0}
+details.assess{border-color:var(--accent)}
+details.assess>summary{color:var(--accent)}
+.as{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 9px;padding:8px 6px;border-top:1px solid var(--line)}
+.as:first-child{border-top:0}
+.as input{width:18px;height:18px;margin-top:3px;accent-color:var(--accent);grid-row:1/span 2}
+.as .an{font-weight:500}
+.as .ar{font-size:.88rem;color:var(--muted)}
+.as.major .ar{color:var(--fg)}
+.bd.major{background:var(--bad);color:var(--surface)}
+
+.tbl{overflow-x:auto;margin:8px 0}
+table{border-collapse:collapse;font-size:.86rem;min-width:100%}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}
+th{background:var(--accent-soft);font-weight:500;white-space:nowrap}
+.fb ul,.fb ol{padding-left:1.2em;margin:4px 0}.fb h4{margin:12px 0 4px;font-size:.9rem;color:var(--accent)}
+.w{color:var(--bad);font-weight:700}
+
+/* calc */
+.calc{border:1px dashed var(--accent);border-radius:9px;padding:10px 14px;margin-top:12px}
+.calc .row{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:6px 0}
+.calc label{font-size:.86rem;display:flex;gap:6px;align-items:center}
+.calc input,.calc select{font:inherit;font-size:16px;width:90px;padding:4px 7px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+.calc select{width:auto}
+.calc .out{font-size:.92rem;background:var(--bg);border-radius:6px;padding:6px 10px}
+
+/* summary / overview */
+.sumsec{margin-top:16px}
+.sumsec h3{border-bottom:1px solid var(--line);padding-bottom:4px}
+.srow{padding:7px 0;border-bottom:1px dashed var(--line)}
+.srow .nm{font-size:.95rem}
+.empty{color:var(--muted);padding:10px 0}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.imp .eyebrow{color:var(--hub-todo)}
+.g4{font-size:.88rem;border-radius:8px;padding:8px 12px;background:var(--accent-soft);margin:10px 0}
+.imptop{display:flex;flex-direction:column;gap:10px;margin:12px 0 4px;max-width:520px}
+.imptop label{display:flex;gap:6px;align-items:center;font-size:.9rem}
+.imptop label input{font:inherit;font-size:16px;width:84px;text-align:center;padding:6px 9px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+.impp{display:flex;flex-wrap:wrap;gap:6px}
+.impp .schip[aria-pressed="true"]{background:var(--hub-todo);border-color:var(--hub-todo);color:var(--surface)}
+.irow{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px dashed var(--line)}
+.irow:not(.on) .ibody{opacity:.55}
+.ibody{flex:1;min-width:0}
+.ibox{flex:none;width:24px;height:24px;margin-top:1px;border-radius:50%;border:1.5px dashed var(--muted);background:transparent;display:grid;place-items:center;padding:0;font:700 16px/1 var(--ff-mono);color:var(--muted)}
+.ibox[aria-pressed="true"]{background:var(--hub-todo);border:1.5px solid var(--hub-todo);color:var(--surface)}
+.irow.on{background:color-mix(in srgb,var(--hub-todo-soft) 60%,transparent);border-radius:6px}
+#bImp{background:var(--hub-todo);border-color:var(--hub-todo);font-weight:700}
+#bImp:disabled{opacity:.45}
+textarea#copytxt{width:100%;min-height:160px;font-family:var(--ff-mono);font-size:.8rem;margin-top:8px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:8px}
+.ovlink{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;text-underline-offset:2px;font-size:.84rem}
+mark{background:var(--mark);color:var(--markfg);border-radius:2px;padding:0 1px}
+
+/* renal */
+.cdl{font-size:.86rem;margin-top:3px}
+.cdl b{color:var(--accent);font-weight:500}
+.rdl{font-size:.86rem;margin-top:3px;border-radius:6px;padding:3px 8px;background:var(--bg)}
+.rdl.c{background:var(--warn-soft)}.rdl.x{background:var(--bad-soft);color:var(--bad);font-weight:500}
+.rdl b{font-weight:700}
+.rcalc{border:1.5px solid var(--accent);border-radius:10px;padding:4px 14px 12px}
+.rcalc h3{border-bottom:0!important;justify-content:space-between}
+.rcalc .row{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:8px 0}
+.rcalc label{font-size:.88rem;display:flex;gap:6px;align-items:center}
+.rcalc input[type=number],.rcalc select{font:inherit;font-size:16px;width:86px;padding:4px 7px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+.rcalc select{width:auto}
+.rcalc .out{font-size:.95rem;background:var(--bg);border-radius:6px;padding:8px 10px}
+.sw{display:inline-flex;gap:6px;align-items:center;font-size:.86rem;font-weight:500;cursor:pointer}
+.sw input{width:18px;height:18px;accent-color:var(--accent)}
+.activebar .pill.rn{background:var(--warn-soft);color:var(--warn);border:0;cursor:pointer;font:inherit;font-size:.8rem}
+/* glossary */
+.gl{text-decoration:underline dotted var(--accent);text-decoration-thickness:1.5px;text-underline-offset:3px;cursor:help;border-radius:3px}
+.gl:hover,.gl.on{background:var(--accent-soft)}
+.gsheet{position:fixed;left:0;right:0;bottom:0;z-index:20;transform:translateY(110%);transition:transform .14s ease,visibility 0s .14s;visibility:hidden;pointer-events:none}
+.gsheet.show{visibility:visible;transition:transform .14s ease}
+.gsheet.show{transform:none;pointer-events:auto}
+.gsheet .gin{position:relative;isolation:isolate;max-width:640px;margin:0 auto;padding:12px max(18px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));transition:padding .15s ease}
+.gsheet .gin::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--surface);border:1px solid var(--line);border-bottom:0;border-radius:14px 14px 0 0;box-shadow:0 -6px 24px rgba(0,0,0,.18)}
+.gsheet .gtx{position:relative;background:var(--surface);border-radius:8px}
+.gsheet .gh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.gsheet .gt{font-family:var(--ff-mono);font-size:1.15rem;font-weight:500;color:var(--accent)}
+.gsheet .gf{font-weight:700}
+.gsheet .gx{margin-left:auto;border:0;background:none;color:var(--muted);font-size:1.2rem;padding:0 4px}
+.gsheet p{margin:6px 0 0;font-size:.93rem}
+.gsheet .gbar{position:absolute;left:14px;right:14px;bottom:4px;height:3px;border-radius:2px;background:var(--accent);opacity:.45;transform-origin:left;transform:scaleX(0)}
+.gsheet.top .gbar{bottom:4px}
+.gsheet.auto .gbar{animation:gbar var(--gdur,5s) linear forwards}
+.gsheet.auto.hold .gbar{animation-play-state:paused}
+@keyframes gbar{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.gsheet.thru .gin{pointer-events:none}
+.gsheet.thru .gin::before{-webkit-mask-image:radial-gradient(circle 110px at var(--mx) var(--my),transparent 0,rgba(0,0,0,.1) 50px,#000 110px);mask-image:radial-gradient(circle 110px at var(--mx) var(--my),transparent 0,rgba(0,0,0,.1) 50px,#000 110px)}
+.gsheet.thru .gx{pointer-events:auto}
+.gsheet.top{bottom:auto;top:var(--gtop,0px);transform:translateY(calc(-100% - var(--gtop,0px) - 10px))}
+.gsheet.top.show{transform:none}
+.gsheet.top .gin{padding-bottom:14px}
+.gsheet.top .gin::before{border-bottom:1px solid var(--line);border-top:0;border-radius:0 0 14px 14px;box-shadow:0 6px 24px rgba(0,0,0,.18)}
+.btn[aria-pressed="false"] .gs{color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.gsheet{transition:none}}
+footer{color:var(--muted);font-size:.8rem;padding-block:0 40px}
+footer p{max-width:70ch}
+</style>
+<style id="hub-base">
+/* 臨床輔助決策工具 · 共用基底（每個工具都內嵌這一份）
+   字體：系統字（iPhone = 蘋方，Android = Noto CJK），不下載網路字型，開啟更快
+   色票：病房冷灰底 + 各工具辨識色；動畫：同一組曲線與時長 */
+:root{
+  --hub-bg:#EEF1F2; --hub-surface:#FFFFFF; --hub-surface2:#E6EAEC; --hub-ink:#152025; --hub-ink2:#4A575E; --hub-ink3:#6E7A81; --hub-line:#D3DADD;
+  --hub-bad:#B3261E; --hub-bad-soft:#FBE6E4; --hub-warn:#9A5B00; --hub-warn-soft:#FBEFD9; --hub-ok:#1D7A3E; --hub-ok-soft:#E1F2E6;
+  --hub-code:#C0262F; --hub-code-soft:#FBE4E5; --hub-pilot:#A35500; --hub-pilot-soft:#F6E7D2;
+  --hub-consult:#2C5C8C; --hub-consult-soft:#DFE8F2; --hub-meds:#0D6870; --hub-meds-soft:#DDEFF0;
+  --hub-labs:#5B4699; --hub-labs-soft:#EBE6F6; --hub-todo:#B4573A; --hub-todo-soft:#F5E3DA;
+  --hub-p1:#B3322B; --hub-p2:#C27416; --hub-p3:#4F6B8A; --hub-p4:#8A867B;
+  --hub-sans:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",system-ui,sans-serif;
+  --hub-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Roboto Mono",monospace;
+  --hub-ease:cubic-bezier(.2,.8,.2,1); --hub-dur:.18s;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --hub-bg:#0E1316; --hub-surface:#161D21; --hub-surface2:#1E272C; --hub-ink:#E4E9EB; --hub-ink2:#A2AEB4; --hub-ink3:#7E8B93; --hub-line:#2A353B;
+  --hub-bad:#FF7A70; --hub-bad-soft:#3A1B19; --hub-warn:#F0B04A; --hub-warn-soft:#352812; --hub-ok:#6CCF8E; --hub-ok-soft:#15301F;
+  --hub-code:#FF6B70; --hub-code-soft:#3A1A1D; --hub-pilot:#F0A23A; --hub-pilot-soft:#3A2911;
+  --hub-consult:#80B1E0; --hub-consult-soft:#162636; --hub-meds:#5CC2C8; --hub-meds-soft:#16302F;
+  --hub-labs:#B4A2EC; --hub-labs-soft:#2A2440; --hub-todo:#E08A68; --hub-todo-soft:#3A241B; --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#A6A297; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --hub-bg:#0E1316; --hub-surface:#161D21; --hub-surface2:#1E272C; --hub-ink:#E4E9EB; --hub-ink2:#A2AEB4; --hub-ink3:#7E8B93; --hub-line:#2A353B;
+  --hub-bad:#FF7A70; --hub-bad-soft:#3A1B19; --hub-warn:#F0B04A; --hub-warn-soft:#352812; --hub-ok:#6CCF8E; --hub-ok-soft:#15301F;
+  --hub-code:#FF6B70; --hub-code-soft:#3A1A1D; --hub-pilot:#F0A23A; --hub-pilot-soft:#3A2911;
+  --hub-consult:#80B1E0; --hub-consult-soft:#162636; --hub-meds:#5CC2C8; --hub-meds-soft:#16302F;
+  --hub-labs:#B4A2EC; --hub-labs-soft:#2A2440; --hub-todo:#E08A68; --hub-todo-soft:#3A241B; --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#A6A297; color-scheme:dark}
+
+/* 觸控：點擊不延遲、不閃灰框、iPhone 不自動放大字 */
+html{-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{-webkit-font-smoothing:antialiased;text-rendering:optimizeSpeed}
+::selection{background:color-mix(in srgb,var(--hub-accent,var(--hub-ink)) 22%,transparent)}
+/* iPhone 點進字小於 16px 的輸入框會自動放大、而且不會縮回來：觸控裝置上所有輸入框一律 ≥16px */
+@media (pointer:coarse){input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),textarea,select{font-size:max(16px,1em)!important}}
+/* 共用動畫：按下去微縮、顏色淡入淡出（低權重，工具自己的設定優先） */
+:where(button,.btn,.chip,.card,summary,[role="tab"],a){transition:background-color var(--hub-dur) var(--hub-ease),border-color var(--hub-dur) var(--hub-ease),color var(--hub-dur) var(--hub-ease),box-shadow var(--hub-dur) var(--hub-ease),opacity var(--hub-dur) var(--hub-ease),transform .12s var(--hub-ease)}
+:where(button,.btn,.chip,[role="tab"]):active:not(:disabled){transform:scale(.97)}
+@keyframes hub-in{from{opacity:0;transform:translateY(6px)}}
+@keyframes hub-pop{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
+.hub-toast{position:fixed;left:16px;right:16px;margin:0 auto;width:fit-content;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;max-width:min(520px,calc(100% - 32px));box-sizing:border-box;display:flex;gap:10px;align-items:center;background:var(--hub-ink);color:var(--hub-bg);font:500 14px/1.4 var(--hub-sans);padding:9px 14px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:hub-in .22s var(--hub-ease)}
+/* 待辦設定按鈕：跟待辦表的快速新增同一套（立即／緊急／待辦／有空，點緊急或待辦展開倒數） */
+.hp{display:flex;flex-direction:column;gap:8px;min-width:0}
+.hp-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.hp-pr{--pc:var(--hub-p3);display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:46px;padding:4px;border:1px solid color-mix(in srgb,var(--pc) 45%,var(--hub-line));border-radius:999px;background:transparent;color:var(--pc);font:500 15px/1.2 var(--hub-sans);cursor:pointer}
+.hp-pr[data-p="1"]{--pc:var(--hub-p1)}.hp-pr[data-p="2"]{--pc:var(--hub-p2)}.hp-pr[data-p="4"]{--pc:var(--hub-p4)}
+.hp-pr small{font-size:12px;font-variant-numeric:tabular-nums}
+.hp-pr small:empty{display:none}
+.hp-pr[aria-pressed="true"]{background:var(--pc);border-color:var(--pc);color:var(--hub-surface)}
+.hp-tm{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px}
+.hp-tm::-webkit-scrollbar{display:none}
+.hp-c{flex:none;min-height:40px;border:1px solid var(--hub-line);background:transparent;border-radius:999px;padding:6px 14px;font:15px/1 var(--hub-sans);color:var(--hub-ink);white-space:nowrap;cursor:pointer;font-variant-numeric:tabular-nums}
+.hp-c[aria-pressed="true"]{background:var(--hub-ink);border-color:var(--hub-ink);color:var(--hub-bg)}
+.hp input{flex:none;font:16px var(--hub-sans);min-height:40px;padding:5px 10px;border-radius:999px;border:1px solid var(--hub-line);background:var(--hub-bg);color:var(--hub-ink);width:80px;text-align:center}
+.hp-dt{display:flex;gap:6px}
+.hp-dt input[type="date"]{flex:1 1 9.5em;width:auto;max-width:12em}
+.hp-dt input[type="time"]{width:7em}
+/* 右滑加入待辦 */
+[data-swipe]{position:relative;touch-action:pan-y}
+[data-swipe].sw-drag{transition:none!important}
+[data-swipe].sw-back{transition:transform .22s var(--hub-ease)!important}
+[data-swipe]::before{content:"＋ 待辦";position:absolute;top:0;bottom:0;right:100%;width:var(--sw,0px);display:flex;align-items:center;justify-content:flex-end;padding-right:12px;box-sizing:border-box;background:var(--hub-todo);color:var(--hub-surface);font:700 14px/1 var(--hub-sans);white-space:nowrap;overflow:hidden;opacity:var(--swo,0);pointer-events:none}
+[data-swipe].sw-arm::before{content:"放開加入"}
+body.sw-on{-webkit-user-select:none;user-select:none}
+@keyframes hub-flash{from{background-color:var(--hub-todo-soft);box-shadow:inset 4px 0 0 var(--hub-todo)}}
+.sw-done{animation:hub-flash .9s var(--hub-ease)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+
+html:root:root{--bg:var(--hub-bg);--surface:var(--hub-surface);--line:var(--hub-line);--fg:var(--hub-ink);--muted:var(--hub-ink2);--accent:var(--hub-meds);--accent-soft:var(--hub-meds-soft);--ok:var(--hub-ok);--ok-soft:var(--hub-ok-soft);--warn:var(--hub-warn);--warn-soft:var(--hub-warn-soft);--bad:var(--hub-bad);--bad-soft:var(--hub-bad-soft);--hub-accent:var(--hub-meds);--ff-display:var(--hub-sans);--ff-body:var(--hub-sans);--ff-mono:var(--hub-mono)}
+</style>
+
+
+<header class="top"><div class="wrap">
+  <h1 class="brand">值班用藥速查</h1>
+  <div class="search"><input id="q" type="search" placeholder="搜尋藥名、症狀" autocomplete="off"></div>
+  <div class="hbtns">
+    <button class="btn" id="bGl" type="button" aria-pressed="true">辭典 <span class="gs" id="glst">開</span></button>
+    <button class="btn" id="bOv" type="button">狀態・腎功能</button>
+    <button class="btn pri" id="bSum" type="button">匯入待辦<span class="ct" id="sumct">0</span></button>
+  </div>
+  <div class="activebar" id="activebar"></div>
+</div></header>
+<div class="disc"><div class="wrap">⚠ 僅供學習與臨床輔助參考，不取代臨床判斷、院內規範與主治醫師指示；劑量皆為成人劑量（保守劑量與腎劑量部分整理自國外仿單，台灣品項含量可能不同），開立前請再核對。</div></div>
+
+<section class="states"><div class="wrap">
+  <h2>選擇你的病人狀態以輔助 <small>可複選（高齡與懷孕、兒童互斥），會即時標示整份工具的首選／慎用／禁用並重新排序</small></h2>
+  <div class="schips" id="schips"></div>
+</div></section>
+
+<div class="wrap layout">
+  <nav class="nav" id="nav" aria-label="主題"></nav>
+  <main id="main"></main>
+</div>
+<div class="gsheet" id="gsheet" role="dialog" aria-label="縮寫解釋"><div class="gin"><div class="gtx" id="gtx"><div class="gh"><span class="gt" id="gt"></span><span class="gf" id="gf"></span><button type="button" class="gx" id="gx" aria-label="關閉">✕</button></div><p id="gd"></p></div><div class="gbar" aria-hidden="true"></div></div></div>
+<footer class="wrap"><p><b>免責聲明</b>：本工具整理自個人臨床學習筆記（三高控制、簡單症狀處理），並補充部分一般性臨床資訊（標示「補充」者，以及病人狀態對應的首選／慎用／禁用判讀與評估建議）。內容可能有疏漏或與最新指引、院內藥品及處方集不同，僅供學習與決策輔助，不構成醫療建議，不能取代臨床判斷、院內規範、藥師意見及主治醫師指示。所有劑量為成人一般劑量，兒童、孕婦、器官功能不全者請另查完整資料。使用者需自行核對每一項醫囑。</p></footer>
+
+<script>
+/* 待辦表共用：同一個總站共用 localStorage（shiftboard.v1），待辦表那邊會即時更新
+   ‧ hubTodo.add()：加一項（可帶子項目）
+   ‧ hubTodo.pickerHTML()：跟待辦表一樣的「立即／緊急／待辦／有空＋倒數」按鈕
+   ‧ data-swipe 的列：手指右滑加入待辦（主程式提供 window.hubOnSwipe(el) 回傳內容）
+   ‧ 床號預設 = 最近一次輸入的床號（hub.lastBed，各工具共用） */
+(function () {
+  const KEY = 'shiftboard.v1', BED = 'hub.lastBed', PK = 'hub.todoPick';
+  const PRN = { 1: '立即', 2: '緊急', 3: '待辦', 4: '有空' };
+  const TM = { 2: [[5, '5分'], [10, '10分'], [15, '15分'], [30, '30分']], 3: [[60, '1時'], [120, '2時'], [240, '4時'], [-1, '明天'], [-2, '日期']] };
+  const timed = p => p === 2 || p === 3;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const set = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+
+  let pk = { p: 3, tm: 0, cm: '', d: '', t: '08:00', open: false };
+  try { const s = JSON.parse(get(PK) || 'null'); if (s && PRN[s.p]) pk = { ...pk, ...s, open: false }; } catch (e) {}
+  const savePk = () => set(PK, JSON.stringify({ p: pk.p, tm: pk.tm, t: pk.t }));
+
+  function tmLabel() {
+    if (!timed(pk.p)) return '';
+    const cm = parseInt(pk.cm, 10);
+    if (cm > 0) return cm >= 60 && cm % 60 === 0 ? `${cm / 60}時` : `${cm}分`;
+    if (pk.tm === -1) return '明天';
+    if (pk.tm === -2) return pk.d ? `${+pk.d.slice(5, 7)}/${+pk.d.slice(8, 10)}` : '日期';
+    const hit = (TM[pk.p] || []).find(x => x[0] === pk.tm); return hit ? hit[1] : '';
+  }
+  function inner() {
+    const lbl = tmLabel(), cmOn = parseInt(pk.cm, 10) > 0;
+    let h = `<div class="hp-row" role="group" aria-label="緊急程度">${[1, 2, 3, 4].map(p =>
+      `<button type="button" class="hp-pr" data-p="${p}" data-hp-p="${p}" aria-pressed="${pk.p === p}"><span>${PRN[p]}</span><small>${pk.p === p ? lbl : ''}</small></button>`).join('')}</div>`;
+    if (pk.open && timed(pk.p)) {
+      h += `<div class="hp-tm" role="group" aria-label="倒數時間">${TM[pk.p].map(([m, t]) =>
+        `<button type="button" class="hp-c" data-hp-tm="${m}" aria-pressed="${pk.tm === m && !cmOn}">${t}</button>`).join('')}<input type="number" data-hp-cm min="1" max="1440" inputmode="numeric" placeholder="自訂分" aria-label="自訂分鐘" value="${esc(pk.cm)}"></div>`;
+      if (pk.tm < 0 && !cmOn) h += `<div class="hp-dt"><input type="date" data-hp-d aria-label="日期" value="${esc(pk.d)}"><input type="time" data-hp-t aria-label="時間" value="${esc(pk.t || '08:00')}"></div>`;
+    }
+    return h;
+  }
+  function sumText() { const b = api.bed(), l = tmLabel(); return `${b ? b + ' 床 · ' : ''}${PRN[pk.p]}${l ? ' · ' + l : ''}`; }
+  function refresh(full) {
+    document.querySelectorAll('[data-hp-root]').forEach(r => {
+      if (full) r.innerHTML = inner();
+      else r.querySelectorAll('.hp-pr').forEach(b => { b.querySelector('small').textContent = +b.dataset.hpP === pk.p ? tmLabel() : ''; });
+    });
+    document.querySelectorAll('[data-hp-sum]').forEach(e => { e.textContent = sumText(); });
+  }
+
+  const api = window.hubTodo = {
+    KEY,
+    bed() { return (get(BED) || '').trim(); },
+    setBed(v) { set(BED, (v || '').trim()); document.querySelectorAll('[data-hp-bed]').forEach(i => { if (i !== document.activeElement) i.value = v; }); refresh(false); },
+    pickerHTML() { return `<div class="hp" data-hp-root>${inner()}</div>`; },
+    sumHTML() { return `<span data-hp-sum>${esc(sumText())}</span>`; },
+    // 依目前按鈕算到時時間；回傳 { due, err }
+    due() {
+      const now = Date.now(), cm = parseInt(pk.cm, 10);
+      if (!timed(pk.p)) return { due: 0 };
+      if (cm > 0) return { due: now + cm * 60e3 };
+      if (pk.tm === -1) { const d = new Date(); d.setDate(d.getDate() + 1); const [h, m] = (pk.t || '08:00').split(':'); d.setHours(+h, +m, 0, 0); return { due: d.getTime() }; }
+      if (pk.tm === -2) {
+        const w = pk.d ? new Date(`${pk.d}T${pk.t || '08:00'}`).getTime() : NaN;
+        return w > now ? { due: w } : { err: pk.d ? '選的時間已經過了' : '請先選日期' };
+      }
+      return { due: pk.tm > 0 ? now + pk.tm * 60e3 : 0 };
+    },
+    lastErr: '',
+    _read() { try { const st = JSON.parse(get(KEY) || 'null'); if (st && Array.isArray(st.items)) return st; } catch (e) {} return null; },
+    // 這一項在待辦表裡的狀態：'open'（還沒做）、'done'（已完成）或 null（不在／被刪掉）
+    status(id) { if (!id) return null; const st = api._read(); if (!st) return null; if (st.items.some(i => i.id === id)) return 'open'; return (st.done || []).some(i => i.id === id) ? 'done' : null; },
+    subStatus(id, k) {
+      const st = api._read(); if (!st) return null;
+      const it = st.items.find(i => i.id === id), d = it ? null : (st.done || []).find(i => i.id === id);
+      const x = it || d; if (!x || !x.subs || !x.subs[k]) return null;
+      return x.subs[k].d || d ? 'done' : 'open';
+    },
+    subDone(id, k) {
+      const st = api._read(); if (!st) return false;
+      const it = st.items.find(i => i.id === id); if (!it || !it.subs || !it.subs[k]) return false;
+      it.subs[k].d = 1; set(KEY, JSON.stringify(st)); return true;
+    },
+    complete(id) {
+      const st = api._read(); if (!st) return false;
+      const it = st.items.find(i => i.id === id); if (!it) return false;
+      st.items = st.items.filter(i => i !== it); st.done = st.done || []; st.done.push({ ...it, doneAt: Date.now() });
+      set(KEY, JSON.stringify(st)); return true;
+    },
+    // b = { bed?, text, p?, mins?, subs:[{t, tag}], src }；沒給 p 就用按鈕目前的設定
+    add(b) {
+      const now = Date.now();
+      let p = b.p, due = b.mins ? now + b.mins * 60e3 : 0;
+      if (!p) { const r = api.due(); if (r.err) { api.lastErr = r.err; return null; } p = pk.p; due = r.due; }
+      const bed = b.bed != null ? String(b.bed).trim() : api.bed();
+      let st = null;
+      try { st = JSON.parse(get(KEY) || 'null'); } catch (e) {}
+      if (!st || !Array.isArray(st.items)) st = { items: [], done: [] };
+      if (st.seeded) { st.items = st.items.filter(i => !i.ex); st.done = (st.done || []).filter(i => !i.ex); st.seeded = false; }
+      const id = now.toString(36) + Math.random().toString(36).slice(2, 5);
+      const it = { id, bed, text: b.text, p, due, start: now, src: b.src || '' };
+      if (b.subs && b.subs.length) it.subs = b.subs.map((s, k) => ({ id: id + '.' + k, t: s.t, tag: s.tag || '', d: 0 }));
+      st.items.push(it);
+      try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) { api.lastErr = '存不進待辦表'; return null; }
+      if (bed) set(BED, bed);
+      if (!b.p && parseInt(pk.cm, 10) > 0) { pk.cm = ''; pk.tm = 0; refresh(true); }
+      try { parent.postMessage({ hub: 'todo-add', id, text: it.text, bed, n: (it.subs || []).length }, '*'); } catch (e) {}
+      return id;
+    }
+  };
+
+  // 按鈕行為跟待辦表的快速新增一樣：點「緊急／待辦」展開倒數，再點一次收起；倒數再點一次＝不計時
+  document.addEventListener('click', e => {
+    const pb = e.target.closest('[data-hp-p]'), tb = e.target.closest('[data-hp-tm]');
+    if (pb) {
+      const p = +pb.dataset.hpP;
+      if (p === pk.p) pk.open = timed(p) && !pk.open;
+      else { pk.p = p; pk.tm = 0; pk.cm = ''; pk.open = timed(p); }
+      savePk(); refresh(true); return;
+    }
+    if (tb) {
+      const m = +tb.dataset.hpTm; pk.cm = ''; pk.tm = pk.tm === m ? 0 : m;
+      if (pk.tm === -2 && !pk.d) pk.d = ymd(new Date());
+      savePk(); refresh(true);
+      if (pk.tm === -2) { const d = document.querySelector('[data-hp-d]'); try { d && d.showPicker(); } catch (er) {} }
+    }
+  });
+  document.addEventListener('input', e => {
+    const t = e.target;
+    if (t.matches('[data-hp-bed]')) { api.setBed(t.value); return; }
+    if (t.matches('[data-hp-cm]')) { pk.cm = t.value; if (pk.tm < 0) pk.tm = 0; refresh(false); document.querySelectorAll('[data-hp-tm]').forEach(b => b.setAttribute('aria-pressed', 'false')); }
+    if (t.matches('[data-hp-d]')) { pk.d = t.value; refresh(false); }
+    if (t.matches('[data-hp-t]')) { pk.t = t.value; savePk(); refresh(false); }
+  });
+  addEventListener('storage', e => { if (e.key === BED) { document.querySelectorAll('[data-hp-bed]').forEach(i => { if (i !== document.activeElement) i.value = api.bed(); }); refresh(false); } });
+
+  // 右滑加入待辦（滑超過門檻放開才加入；只往右，不影響上下捲動）
+  // 手機用 touch 事件：第一下判斷是往右滑就立刻 preventDefault，iPhone 才不會把手勢交給外層去切換工具
+  const TH = 64; let g = null, swiped = 0;
+  function start(el, x, y, kind) { g = { el, x, y, kind, lock: false, dx: 0 }; }
+  function move(x, y, ev) {
+    if (!g) return;
+    const dx = x - g.x, dy = y - g.y;
+    if (!g.lock) {
+      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+      if (dx > 0 && dx > Math.abs(dy)) {
+        g.lock = true; g.el.classList.add('sw-drag'); document.body.classList.add('sw-on');
+        try { getSelection().removeAllRanges(); } catch (er) {}
+      } else { g = null; return; }
+    }
+    if (ev.cancelable) ev.preventDefault();
+    ev.stopPropagation();
+    const d = Math.max(0, dx), v = d < TH ? d : TH + (d - TH) * 0.35;
+    g.dx = d;
+    g.el.style.transform = `translateX(${v}px)`;
+    g.el.style.setProperty('--sw', v + 'px'); g.el.style.setProperty('--swo', Math.min(1, d / TH));
+    g.el.classList.toggle('sw-arm', d >= TH);
+  }
+  function finish(commit) {
+    const G = g; g = null;
+    if (!G || !G.lock) return;
+    swiped = Date.now(); document.body.classList.remove('sw-on');
+    const el = G.el;
+    el.classList.remove('sw-drag', 'sw-arm'); el.classList.add('sw-back');
+    el.style.transform = ''; el.style.setProperty('--sw', '0px'); el.style.setProperty('--swo', '0');
+    setTimeout(() => el.classList.remove('sw-back'), 240);
+    if (commit && G.dx >= TH && window.hubOnSwipe) {
+      const r = window.hubOnSwipe(el); if (!r) return;
+      if (r === true) { el.classList.remove('sw-done'); void el.offsetWidth; el.classList.add('sw-done'); try { navigator.vibrate && navigator.vibrate(15); } catch (er) {} return; }
+      const id = api.add(r);
+      if (!id) { window.hubSwipeErr && window.hubSwipeErr(api.lastErr); return; }
+      el.classList.remove('sw-done'); void el.offsetWidth; el.classList.add('sw-done');
+      if (window.hubOnSwiped) window.hubOnSwiped(el, id);
+      try { navigator.vibrate && navigator.vibrate(15); } catch (er) {}
+    }
+  }
+  const swEl = t => t && t.closest && !t.closest('input,textarea,select') ? t.closest('[data-swipe]') : null;
+  document.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) { g = null; return; }
+    const el = swEl(e.target); if (!el) { g = null; return; }
+    start(el, e.touches[0].clientX, e.touches[0].clientY, 'touch');
+  }, { passive: true, capture: true });
+  document.addEventListener('touchmove', e => { if (g && g.kind === 'touch') move(e.touches[0].clientX, e.touches[0].clientY, e); }, { passive: false, capture: true });
+  document.addEventListener('touchend', () => { if (g && g.kind === 'touch') finish(true); }, { passive: true, capture: true });
+  document.addEventListener('touchcancel', () => { if (g && g.kind === 'touch') finish(false); }, { passive: true, capture: true });
+  // 電腦用滑鼠拖也可以
+  document.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse' || e.button > 0) return; const el = swEl(e.target); if (el) start(el, e.clientX, e.clientY, 'mouse'); }, true);
+  document.addEventListener('pointermove', e => { if (g && g.kind === 'mouse') move(e.clientX, e.clientY, e); }, true);
+  document.addEventListener('pointerup', () => { if (g && g.kind === 'mouse') finish(true); }, true);
+  document.addEventListener('click', e => { if (Date.now() - swiped < 400) { e.preventDefault(); e.stopPropagation(); } }, true);
+})();
+</script>
+<script>
+/* ---------- patient states ---------- */
+const ST=[
+ ["renal","腎功能不全"],["hepatic","肝功能不全"],["hf","心衰竭"],["dm","糖尿病／血糖差"],["elderly","高齡 ≥65"],
+ ["preg","懷孕"],["child","兒童"],["npo","禁食／無法口服"],["gib","消化道出血／潰瘍"],["airway","氣喘／COPD"],
+ ["seizure","癲癇病史"],["retention","尿滯留／BPH"],["qt","QT 延長"]];
+const SN=Object.fromEntries(ST);
+/* mutually exclusive states: picking one drops the other */
+const EXCL={elderly:["preg","child"],preg:["elderly"],child:["elderly"]};
+const GN={ /* global notes per state */
+ renal:"停腎毒性藥：NSAID、ACEI/ARB（AKI 或高鉀時）、Metformin、Baclofen、Demerol、Baktar、Vancomycin、Aminoglycoside、顯影劑；抗生素調腎劑量；胰島素 TDD 抓低；心腎差點滴泡 50 mL。",
+ hepatic:"Acetaminophen 上限 2 g/day；BZD 選 Lorazepam；肝性腦病變用 Lactulose；Statin、TZD、SU 需小心。",
+ hf:"記 I/O；點滴保守、藥物泡 50 mL；避免 TZD、non-DHP CCB、NSAID；SGLT2i 首選。",
+ dm:"Check finger sugar 2 parts（控制差 4 parts）、糖尿病飲食；類固醇會升血糖；Statin、ACEI/ARB 有益。",
+ elderly:"避免第一代抗組織胺、BZD、Z-drug、肌肉鬆弛劑（補充：Beers criteria）；NSAID 能不開就不開；H2 blocker 注意譫妄；Condition 選 guarded；咳痰差加 suction PRN。",
+ preg:"（補充）避免 ACEI/ARB、Statin、NSAID（≥20 週）、SGLT2i、GLP-1 RA；降壓用 Labetalol／Nifedipine／Hydralazine；止痛首選 Acetaminophen；血糖首選胰島素。",
+ child:"本工具所有劑量皆為成人劑量，兒童須依體重查兒科劑量。（補充）Tramadol <12 歲禁用、Loperamide 幼兒避免、Metoclopramide 易 EPS。",
+ npo:"停所有非胰島素降血糖藥與餐前胰島素、basal 照給、Q6H 驗血糖；含糖點滴每 5 g 糖加 RI 1 U；口服改 SL／IV（Cabudan SL、NTG SL、Trandate IV、Acetamol IV、Pantoloc IV）；記得開點滴。",
+ gib:"停 NSAID；Pantoloc 80 mg IVD 30 分鐘 → 8 mg/hr；驗 CBC、PT/APTT/INR；BUN/Cr >30 提示上消化道出血。",
+ airway:"避免非選擇性 β blocker 與 Bethanechol；鴉片類、BZD 小心呼吸抑制。",
+ seizure:"Tramadol 禁用；（補充）Demerol 避免、抗精神病藥會降低癲癇閾值。",
+ retention:"避免抗膽鹼藥：第一代抗組織胺、Buscopan、Solifenacin；可用 α1 blocker。",
+ qt:"（補充）Haloperidol、Quetiapine、Domperidone 小心；用藥前看 ECG QTc，矯正 K、Mg。"
+};
+
+/* ---------- data ---------- */
+const it=(n,d,o={})=>Object.assign({n,d},o);
+const T=[
+/* ================= 三高 ================= */
+{id:"lipid",g:"三高控制",t:"高血脂",sub:"Statin 首選 · LDL 目標 · TG",
+top:`<p><b>Statin</b> → 加 <b>Ezetimibe</b> → 加 <b>PCSK9i</b>，LDL 越低越好。</p><p>LDL 目標依風險：<b class="num">&lt;130／&lt;115／&lt;100／&lt;70／&lt;55</b>。TG <b class="num">&gt;500</b> 才用降 TG 藥。</p>`,
+sn:{dm:"糖尿病屬高風險，LDL 目標 <100（台灣）；Pitavastatin 不增加新發糖尿病。",renal:"CKD 屬高風險，LDL 目標 <100。",preg:"懷孕禁用 Statin。"},
+
+items:[
+ it("Atorvastatin","中強度 10–20 mg；高強度 40–80 mg QD",{cat:"Statin",first:1,sp:["高效型","腎差不需調整（補充）"],se:["肌肉痠痛","肝指數↑","新發糖尿病","CYP3A4 交互作用"],f:"preg:x:懷孕禁用;hepatic:c:活動性肝病避免;renal:p:不需依腎功能調整"}),
+ it("Rosuvastatin","中強度 5–10 mg；高強度 20–40 mg QD",{cat:"Statin",first:1,sp:["高效型"],se:["肌肉痠痛","肝指數↑","新發糖尿病"],f:"preg:x:懷孕禁用;hepatic:c:活動性肝病避免;renal:c:重度腎差需降劑量（補充）"}),
+ it("Pitavastatin","中強度 2–4 mg QD",{cat:"Statin",sp:["副作用少","不增加新發糖尿病","不經 CYP，交互作用少","4 mg 長期預後不輸高強度"],f:"preg:x:懷孕禁用;dm:p:不增加新發糖尿病;hepatic:c:活動性肝病避免"}),
+ it("Pravastatin","中強度 40–80 mg",{cat:"Statin",sp:["水溶性","可預防首次心臟病發作"],f:"preg:x:懷孕禁用"}),
+ it("Lovastatin / Fluvastatin / Simvastatin","",{cat:"Statin",f:"preg:x:懷孕禁用"}),
+ it("Ezetimibe","併用於 statin 之上",{cat:"降 LDL",first:"statin 不足或不耐",sp:["抑制腸道 NPC1L1 吸收","增加肝 LDL receptor"],se:["肝功能輕微受損"]}),
+ it("Evolocumab / Alirocumab","PCSK9 單株抗體",{cat:"PCSK9i",sp:["FH 或極高風險且 statin 不足"]}),
+ it("Inclisiran","siRNA，關閉 PCSK9 生成",{cat:"PCSK9i"}),
+ it("Bempedoic acid","",{cat:"降 LDL",sp:["抑制上游 ACL","無 statin 肌肉副作用","可與 statin 併用"]}),
+ it("Bile acid resin（Colesevelam / Colestipol / Cholestyramine）","",{cat:"降 LDL",se:["打嗝","火燒心","便秘","腹瀉"],dg:"憩室炎患者避免"}),
+ it("Fibrates（Fenofibrate、Gemfibrozil…）","TG >500 時",{cat:"降 TG",first:"TG >500",se:["消化道症狀","肝指數↑","膽結石","LDL 可能上升"],dg:"Gemfibrozil 併用 statin 橫紋肌溶解風險高（補充）",f:"renal:c:腎差需減量或避免（補充）;hepatic:c:肝病小心"}),
+ it("Niacin / Acipimox","",{cat:"降 TG",sp:["大幅提升 HDL"],se:["臉部潮紅","肝功能異常","高尿酸／痛風"],f:"hepatic:x:肝功能異常;dm:c:可能升血糖（補充）"}),
+ it("魚油 ω-3（pure EPA）","",{cat:"降 TG",sp:["抗發炎、抗心律不整","DHA 會升 LDL，pure EPA 只降 TG"]})
+],
+chk:["排除次發性因素（甲狀腺低下、腎病症候群、cholestasis、酗酒、皮質醇過多、垂體低下）","已嘗試飲食控制","完成風險分層、決定 LDL 目標","檢查併用藥物交互作用","非懷孕（Statin 禁用）"],
+ass:[{n:"TSH",r:"甲狀腺低下 → 先治療，血脂常隨之改善",m:1},{n:"Lp(a)（一生驗一次）",r:">50 異常；>100 風險極高 → LDL 目標更嚴格",m:1},{n:"冠狀動脈鈣化分數 CAC",r:"0 vs ≥100 / ≥400 / ≥1000 直接改變風險分級與目標",m:1},{n:"HbA1c／空腹血糖",r:"糖尿病 → 直接列為高風險",m:1},{n:"eGFR、UACR",r:"CKD → 高風險"},{n:"肝功能、CK baseline",r:"肌痛時 CK >10×ULN → 停 statin（補充）",m:1},{n:"早發冠心病家族史、LDL ≥190",r:"懷疑家族性高膽固醇血症 → 考慮 PCSK9i",m:1}],
+ref:`<h4>重點詳述</h4><p><b>LDL</b>：與心血管疾病絕對相關，越低越好 → <b>Statin ± Ezetimibe</b> 起始，未達標加 <b>PCSK9 inhibitor</b>。</p>
+<p><b>TG &gt; 500 mg/dL</b>（胰臟炎風險）才用降 TG 藥：Fibrates、Niacin、魚油。</p>
+<p>先排除次發性因素、先試飲食控制。Rule of six：statin 加倍只多降 6% LDL，高強度仍不足應併用他藥。</p>
+<p>LDL 目標（台灣 2025）：低 <span class="num">&lt;130</span>／中 <span class="num">&lt;115</span>／高 <span class="num">&lt;100</span>／非常高 <span class="num">&lt;70</span>／極高 <span class="num">&lt;55<。</p>
+<h4>台灣 2025 高血脂治療指引</h4><div class="tbl"><table><tr><th>台灣 2025 風險</th><th>LDL 目標</th><th>治療</th></tr>
+<tr><td>低風險（1 項危險因子）</td><td class="num">&lt;130</td><td rowspan="2">先生活型態，未達標再加藥</td></tr>
+<tr><td>中風險（多項）</td><td class="num">&lt;115</td></tr>
+<tr><td>高風險：DM、CKD、LDL ≥190、CAC ≥400</td><td class="num">&lt;100</td><td>中/高強度 statin 或合併 Ezetimibe</td></tr>
+<tr><td>非常高：ACS、缺血中風/TIA、PAD、狹窄 ≥50%</td><td class="num">&lt;70</td><td rowspan="2">高強度 statin 或合併 Ezetimibe，考慮 PCSK9i</td></tr>
+<tr><td>極高：CAD 合併一年內 MI、≥2 次 MI、多條阻塞、ACS+DM、PAD/頸動脈狹窄</td><td class="num">&lt;55</td></tr></table></div>
+<h4>2026 美國 AHA（未發生 ASCVD 用 PREVENT 分級）</h4><div class="tbl"><table><tr><th>LDL &lt; 100</th><th>LDL &lt; 70</th><th>LDL &lt; 55</th></tr><tr><td>Low / Borderline / Intermediate risk；CAC 1–99；40–75 歲 DM；LDL ≥190</td><td>High risk；ASCVD 但非 very-high；CAC 100–299；DM 合併多個危險因子；LDL ≥190 合併多個危險因子或確診 FH</td><td>CAC ≥1000；Very-high risk ASCVD：(1) 兩次 ASCVD（MI、中風、有症狀 PAOD、一年內 ACS）或 (2) 一次 ASCVD + ≥2 項：吸菸、DM、HTN、心衰竭、≥65 歲、曾再灌流、CKD、statin+Ezetimibe 下 LDL &gt;100</td></tr></table></div>
+<h4>台灣 2025 危險因子定義</h4><p>高血壓；年齡（男 ≥45、女 ≥55）；早發冠心病家族史（男 ≤55、女 ≤65）；HDL 低（男 &lt;40、女 &lt;50）；抽菸；代謝症候群。</p>
+<h4>其他</h4><ul><li>ASCVD：冠心病、腦血管疾病、周邊動脈疾病、主動脈疾病</li><li>Statin 副作用：肌痛、少數橫紋肌溶解、最罕見 immune-mediated necrotizing myopathy；肝指數↑；新發 DM；腸胃不適；未定論：中樞、白內障、腎臟</li></ul>`,
+mech:`<ul><li>Statin：抑制 HMG-CoA reductase；抑制 Rho-kinase；↑PPARα（降 TG、升 HDL、抗血栓）；↑PPARγ（改善胰島素阻抗）</li><li>Bempedoic acid：抑制上游 ACL</li><li>Bile acid resin：原本 95% 膽鹽回收 → 結合帶走 → 肝臟製更多膽酸 → 降 LDL</li><li>Ezetimibe：抑制 NPC1L1</li><li>Fibrates：↑PPARα → LPL 活性↑ → TG 合成↓、水解↑；但 VLDL→IDL→LDL 加速</li><li>Niacin：抑制 VLDL 分泌、促 LPL</li><li>魚油：啟動 PPARα</li><li>PCSK9i：阻止 PCSK9 分解 LDL receptor，使其循環利用</li></ul>`},
+
+{id:"dm",g:"三高控制",t:"糖尿病用藥",sub:"Metformin 第一線 · 心腎保護優先",
+top:`<p><b>Metformin</b> 第一線。HF／CKD → <b>SGLT2i</b>；ASCVD 或需減重 → <b>GLP-1 RA</b>。</p><p>目標 HbA1c <b class="num">&lt;7%</b>。</p>`,
+sn:{renal:"eGFR <30 停 Metformin；SGLT2i、Semaglutide、Linagliptin 為首選。",hf:"SGLT2i 首選；Pioglitazone 禁用。",npo:"禁食時停用所有非胰島素降血糖藥，改胰島素。",elderly:"避免低血糖：SU 小心，DPP-4i 較安全。",preg:"（補充）血糖首選胰島素。"},
+items:[
+ it("Metformin (Glucophage)","",{cat:"Biguanide",first:1,sp:["體重下降","不傷 β cell"],se:["腸胃不適","Vit B12／葉酸缺乏"],dg:"乳酸中毒；eGFR <30 禁用；注射顯影劑後 48 小時內停用",f:"renal:x:eGFR <30 禁用;hepatic:c:乳酸中毒風險;npo:x:禁食停用;preg:c:懷孕首選胰島素（補充）;hf:c:急性失代償時避免（補充）"}),
+ it("Dapagliflozin (Forxiga) / Empagliflozin (Jardiance) / Canagliflozin (Invokana)","",{cat:"SGLT-2i",first:"HF／CKD",sp:["延緩腎功能下降","改善心衰竭","體重下降","減少蛋白尿","可持續用至洗腎"],se:["尿糖","泌尿道感染","進食差老人易脫水"],dg:"罕見 euglycemic DKA",f:"hf:p:改善心衰竭;renal:p:心腎保護，可用至洗腎;elderly:c:進食差易脫水;npo:x:禁食暫停（euglycemic DKA）;preg:x:懷孕避免（補充）"}),
+ it("Semaglutide (Ozempic)／口服 Rybelsus","",{cat:"GLP-1 RA",first:"ASCVD／CKD／減重",sp:["心腎保護等級最高","減重效果極佳"],se:["腸胃不適","延緩胃排空"],dg:"罕見胰臟炎、甲狀腺髓質癌",f:"renal:p:改善蛋白尿、心腎保護;preg:x:懷孕避免（補充）"}),
+ it("Tirzepatide (Mounjaro)","",{cat:"GLP-1 RA",sp:["GIP/GLP-1 雙重","減重效果最好"],se:["腸胃不適","延緩胃排空"],dg:"罕見胰臟炎、甲狀腺髓質癌",f:"preg:x:懷孕避免（補充）"}),
+ it("Dulaglutide (Trulicity) / Liraglutide (Saxenda)","",{cat:"GLP-1 RA",sp:["減少心血管事件","改善蛋白尿"],se:["腸胃不適"],f:"preg:x:懷孕避免（補充）"}),
+ it("Linagliptin (Trajenta)","",{cat:"DPP-4i",sp:["副作用少","腎差不需調劑量"],se:["胰臟炎"],f:"renal:p:不需調劑量;elderly:p:低血糖風險低（補充）"}),
+ it("Sitagliptin (Januvia) / Vildagliptin (Galvus)","",{cat:"DPP-4i",sp:["副作用少"],se:["胰臟炎"],f:"renal:c:需依腎功能調劑量;elderly:p:低血糖風險低（補充）"}),
+ it("Pioglitazone (Actos)","",{cat:"TZD",sp:["對脂肪肝有幫助","延緩 pre-DM 進展","不傷 β cell"],se:["體重明顯增加","水分滯留水腫","骨折風險","可能增加膀胱癌"],dg:"心衰竭禁用",f:"hf:x:心衰竭禁用;hepatic:x:中度肝功能不全禁用;renal:x:中度腎功能不全禁用;elderly:c:骨折、水腫"}),
+ it("Gliclazide (Diamicron) / Glimepiride (Amaryl)","",{cat:"SU",sp:["較利於空腹血糖"],se:["體重稍增","加速 β cell 凋亡"],dg:"容易低血糖",f:"renal:x:中度腎功能不全禁用;hepatic:x:中度肝功能不全禁用;elderly:c:低血糖風險高;npo:x:禁食停用"}),
+ it("Repaglinide (Novonorm) / Mitiglinide (Glufast) / Nateglinide (Starlix)","",{cat:"Glinides",sp:["較利於飯後血糖"],se:["稍易低血糖","體重稍增"],dg:"不可與 SU 併用",f:"renal:c:重度腎功能不全禁用;hepatic:c:重度肝功能不全禁用;npo:x:禁食停用"}),
+ it("Acarbose (Glucobay)","",{cat:"α-glucosidase i",sp:["延緩 pre-DM 進展"],se:["腸胃不適"],f:"renal:x:中度腎功能不全禁用;npo:x:禁食停用"})
+],
+chk:["確認 eGFR（Metformin、SU、DPP-4i 劑量）","近 48 小時內是否打顯影劑","有無心衰竭（禁 TZD、首選 SGLT2i）","是否禁食或進食差（停 SU、SGLT2i）","評估低血糖風險"],
+ass:[{n:"eGFR、UACR",r:"eGFR <30 停 Metformin；CKD／蛋白尿 → SGLT2i 首選",m:1},{n:"心衰竭評估（症狀、NT-proBNP、心臟超音波）",r:"有 HF → SGLT2i 首選、禁 TZD",m:1},{n:"甲狀腺髓質癌／MEN2 病史或家族史",r:"陽性 → 不可用 GLP-1 RA（補充）",m:1},{n:"胰臟炎病史",r:"避免 GLP-1 RA、DPP-4i"},{n:"肝臟超音波、肝指數",r:"脂肪肝 → GLP-1 RA 或 Pioglitazone"},{n:"HbA1c",r:"極高或有高血糖症狀 → 考慮直接使用胰島素（補充）",m:1},{n:"體重／BMI",r:"需減重 → GLP-1 RA、Tirzepatide"}],
+ref:`<h4>重點詳述</h4><p><b>目標</b>：空腹 <span class="num">80–130</span>、飯後 2h <span class="num">&lt;160</span>、HbA1c <span class="num">&lt;7%</span>；估算 <span class="num">(HbA1c−2)×30 ≈ 血糖</span>。</p>
+<ol><li><b>Metformin</b> 第一線，無禁忌就用</li><li>心衰竭 → <b>SGLT2i</b></li><li>ASCVD，或 ≥55 歲合併 ≥2 項（HTN、血脂異常、抽菸、肥胖、蛋白尿）→ <b>SGLT2i 或 GLP-1 RA</b>，未達標兩者併用，再加 Pioglitazone</li><li>CKD → ACEI/ARB 最大忍受劑量 + <b>SGLT2i</b>（可用到洗腎），未達標加 Semaglutide</li><li>需減重 → GLP-1 RA 最好，SGLT2i 也不錯</li><li>心腎達標後，脂肪肝 → GLP-1 RA 或 Pioglitazone</li><li>三種機轉口服仍不佳 → 胰島素</li></ol>
+<p>血壓、血脂要比一般人控制得更嚴格。</p>
+<p><b>降糖效果</b>：Very high：高劑量 Dulaglutide、Semaglutide、Tirzepatide、Insulin、合併療法｜High：其他 GLP-1 RA、Metformin、SGLT2i、SU、TZD｜Intermediate：DPP-4i</p><p><b>減重效果</b>：Very high：Semaglutide、Tirzepatide｜High：Dulaglutide、Liraglutide｜Intermediate：其他 GLP-1 RA、SGLT2i｜Neutral：DPP-4i、Metformin</p><p>DM 有 25% 併發心血管疾病、20% 併發 CKD，為常見死因，指引以心腎保護為首要。</p>`,
+mech:`<ul><li>SU、Glinides：刺激 β cell 分泌胰島素，但加速 β cell 凋亡（半年後血糖又升）</li><li>Metformin、TZD：增加胰島素敏感性，不傷 β cell</li><li>α-glucosidase inhibitor：抑制腸道吸收醣類</li><li>DPP-4i：不讓 DPP 分解腸泌素</li><li>SGLT-2i：減少腎臟再吸收葡萄糖</li><li>GLP-1 RA：腸泌素致效劑</li></ul>`},
+
+{id:"insulin",g:"三高控制",t:"住院血糖・胰島素",sub:"Basal-bolus · Sliding scale · ISF 試算",
+top:`<p>目標 <b class="num">140–180</b>。TDD = 體重 × <b>0.3–0.5</b>，一半 basal 睡前、一半 bolus 三餐前。</p><p>ST 高血糖：<b>RI IVP</b>，1 U 約降 25 mg/dL。</p>`,
+alerts:[{t:"ST 降血糖前先排除 DKA／HHS（意識、酮體、anion gap）並確認接下來是否進食",add:1}],
+sn:{npo:"Q6H 驗血糖；停餐前胰島素，basal 照給；含糖點滴每 5 g 糖加 RI 1 U。",renal:"TDD 取 0.3 × 體重的低端。",elderly:"（補充）避免單用 sliding scale，劑量保守以免低血糖。",dm:"Check finger sugar 2 parts，控制差改 4 parts。"},
+calc:1,
+items:[
+ it("Glargine (Toujeo) / Degludec (Tresiba)","TDD 的 1/2，睡前 SC",{cat:"Basal",first:1,sp:["超長效"],f:"npo:p:禁食照常給;renal:c:TDD 抓低;elderly:c:劑量保守"}),
+ it("Aspart (Novorapid)","TDD 的 1/2，三餐前平分 SC",{cat:"Bolus",first:1,sp:["速效"],f:"npo:x:禁食停用餐前胰島素"}),
+ it("Regular insulin (RI) STAT","依 sliding scale 或 ISF；盡量 IVP",{cat:"Correction",first:"值班 ST",sp:["起效快、持續短","1 U 約降 25 mg/dL"]}),
+ it("RI 加入含糖點滴","每 5 g 糖加 RI 1 U",{cat:"NPO",f:"npo:p:禁食時使用"}),
+ it("Ryzodeg","30% Aspart + 70% Degludec",{cat:"Premix"}),
+ it("NPH / Detemir (Levemir)","中效／長效",{cat:"Basal"})
+],
+chk:["確認接下來是否進食／NPO","確認腎功能（TDD 抓低）","排除 DKA／HHS","0600 高時考慮驗 0300 血糖","開 finger sugar 2 或 4 parts"],
+ass:[{n:"0300 血糖",r:"偏低 → Somogyi effect，應減少而非增加睡前胰島素",m:1},{n:"β-hydroxybutyrate、anion gap、VBG",r:"陽性 → 改走 DKA／HHS 流程",m:1},{n:"是否使用類固醇",r:"有 → 午後、晚間血糖偏高，需加 bolus（補充）"},{n:"HbA1c",r:"評估長期控制，決定出院方案"}],
+ref:`<h4>重點詳述</h4><p>住院目標 <b class="num">140–180 mg/dL</b>。生命徵象穩定、食慾好、無禁忌 → 可續用口服藥；否則改胰島素。</p>
+<ul><li><b>TDD = 體重 × 0.3–0.5</b>（腎差抓低）</li><li>一半 basal：Toujeo 或 Tresiba 睡前 SC</li><li>一半 bolus：Novorapid 三餐前平分 SC</li><li>調整：驗 0600／1100／1600／2100；某時段高 → 上調<b>前一個時段</b>的胰島素，每次 ±2–4 U</li></ul>
+<h4 style="margin:10px 0 4px">值班 ST 高血糖（懶人 sliding scale，RI 盡量 IVP）</h4>
+<div class="tbl"><table><tr><th>血糖</th><th>200–249</th><th>250–299</th><th>300–349</th><th>350–399</th><th>≥400</th></tr><tr><td>白天</td><td>2U</td><td>4U</td><td>6U</td><td>8U</td><td>10U</td></tr><tr><td>睡前</td><td>–</td><td>2U</td><td>4U</td><td>6U</td><td>8U</td></tr></table></div>
+<p>RI 1 U 約降 25 mg/dL（第一型約 50）。已在用胰島素者用下方 ISF 精算。</p>
+<h4>劑型</h4><ul><li>速效：Lispro、Glulisine、Aspart (Novorapid)</li><li>短效：Regular insulin (RI)</li><li>中效：NPH</li><li>長效：Detemir (Levemir)</li><li>超長效：Glargine (Toujeo)、Degludec (Tresiba)</li></ul>
+<h4>精準算法</h4><ul><li>ISF（1 U 降多少）= 1500/TDD（RI）或 1800/TDD（Novorapid）</li><li>C/I ratio（1 U 處理幾克醣）= 450/TDD（RI）或 500/TDD（Novorapid）</li><li>例：TDD 30 → ISF 50；C/I 15，午餐 60 g 醣需額外 4 U</li></ul>`},
+
+{id:"dka",g:"三高控制",t:"DKA／HHS",sub:"高血糖急症 · 補液 → 胰島素 → 補鉀",
+top:`<p><b>N/S 補液 → 先看 K → RI 0.1 U/kg bolus + 0.1 U/kg/hr pump</b>，DKA 血糖到 200（HHS 到 300）→ 加含糖點滴、pump 降速。</p>`,
+alerts:[{t:"K < 3.3 不可打胰島素，先把鉀拉起來"},{t:"大量補水後交替 0.9% 與 0.45% 鹽水，避免滲透壓降太快造成腦水腫"}],
+sn:{hf:"給水更保守，避免 fluid overload。",renal:"給水保守；補鉀前確認尿量（補充）。"},
+items:[
+ it("N/S","嚴重脫水 1000 mL/hr；輕度 250–500 mL/hr",{cat:"補液",first:1,f:"hf:c:給水保守;renal:c:給水保守"}),
+ it("RI IV bolus → pump","0.1 U/kg IV，接 0.1 U/kg/hr",{cat:"胰島素",first:1,dg:"K <3.3 時不可給"}),
+ it("KCl 補充","K <5.3 時邊打胰島素邊補",{cat:"電解質",first:1,f:"renal:c:確認尿量再補（補充）"}),
+ it("0.45% saline（與 N/S 交替）","大量補水後",{cat:"補液",sp:["避免腦水腫"]}),
+ it("含糖點滴 + pump 降速","DKA 血糖 200／HHS 300 時，pump 0.02–0.05 U/kg/hr",{cat:"胰島素"}),
+ it("NaHCO3","100 mEq IVD",{cat:"電解質",first:"pH <7.0"}),
+ it("Basal-bolus 銜接","緩解且可進食後開始，2–4 小時後停 pump",{cat:"胰島素"})
+],
+chk:["驗 K 後才開胰島素","找誘發因子 6I","血糖至少 Q2–3H","追 anion gap／意識","basal-bolus 與 pump 重疊 2–4 小時"],
+ass:[{n:"K",r:"<3.3 → 暫停胰島素先補鉀",m:1},{n:"VBG（pH、HCO3）",r:"pH <7.0 → 給 NaHCO3",m:1},{n:"β-hydroxybutyrate",r:">3 mmol/L 直接急救；>1.5 有酮酸中毒風險",m:1},{n:"Effective osmolality",r:">320 → HHS",m:1},{n:"校正 Na",r:"血糖每升 100，Na 假性下降 1.6"},{n:"WBC、培養、CXR、UA",r:">25000 高度懷疑感染",m:1},{n:"ECG、Troponin",r:"ischemia 為誘發因子 → 一併處理（補充）",m:1},{n:"Lipase",r:"胰臟炎為誘發因子（補充）"}],
+ref:`<h4>重點詳述</h4><p><b>DKA</b>：血糖 <span class="num">&gt;250</span> + high AG metabolic acidosis + 酮體（β-OHB &gt;3 mmol/L 直接急救）。<b>HHS</b>：血糖 <span class="num">&gt;600</span>、effective osm <span class="num">&gt;320</span>、通常無酮體。</p>
+<ol><li>補液：N/S，嚴重脫水 1000 mL/hr、輕度 250–500 mL/hr</li><li><b>先看 K</b>：&lt;3.3 先補鉀不打胰島素；&lt;5.3 邊打邊補</li><li>RI 0.1 U/kg（或 10 U）IV → pump 0.1 U/kg/hr（RI 100 U in N/S 100 mL）</li><li>至少 Q2–3H 驗血糖</li><li>DKA 降到 200、HHS 降到 300 → pump 0.02–0.05 U/kg/hr + 含糖點滴</li><li>緩解且可進食 → basal-bolus，至少 2–4 小時後才停 pump</li><li>pH &lt;7.0 → NaHCO3 100 mEq IVD</li></ol>
+<p><b>誘發因子 6I</b>：infection、inflammation、insulin deficiency、iatrogenic（類固醇）、ischemia、intoxication。</p>
+<h4>DKA／HHS 診斷與緩解標準</h4><div class="tbl"><table><tr><th></th><th>DKA</th><th>HHS</th></tr><tr><td>血糖</td><td class="num">&gt;250</td><td class="num">&gt;600</td></tr><tr><td>酸鹼</td><td>High AG metabolic acidosis</td><td>通常不酸、無酮體</td></tr><tr><td>關鍵</td><td>β-OHB &gt;1.5 風險；&gt;3 mmol/L 急救</td><td>Effective osm &gt;320 = 2(Na+K)+Glu/18</td></tr><tr><td>緩解</td><td>Anion gap 正常</td><td>意識恢復</td></tr></table></div>`,
+mech:`<div class="tbl"><table><tr><th></th><th>DKA</th><th>HHS</th></tr><tr><td>成因</td><td>完全缺乏胰島素</td><td>胰島素抗性（相對缺乏）</td></tr><tr><td>機轉</td><td>脂肪分解 → 游離脂肪酸 → 肝臟只能轉酮體 → 酮酸中毒（也致高血脂）</td><td>高血糖 → 滲透壓↑ → 滲透性利尿 → 嚴重脫水 → 惡性循環</td></tr><tr><td>症狀</td><td>噁吐、口渴、多尿、嗜睡、昏迷；Kussmaul、腹痛；發生快（住院死亡率 0.4%）</td><td>意識不清較多（老人）；發生慢，死亡率較高</td></tr></table></div><ul><li>脫水使電解質看似高，實際都缺乏</li><li>WBC 10000–15000 可接受</li></ul>`},
+
+{id:"htn",g:"三高控制",t:"高血壓",sub:"值班 ST 降壓 · 長期控制",
+top:`<p>ST：先處理不適 → <b>Cabudan 1# PO</b>（禁食時 SL）。</p><p>長期：<b>DHP CCB</b> → 加 ARB → 加利尿劑。</p>`,
+alerts:[{t:"先排除高血壓相關急症：IICP sign、主動脈剝離（雙上肢血壓差）、腦出血或其他器官損傷"}],
+sn:{npo:"改用 Cabudan SL、NTG SL 或 Trandate IVP。",renal:"AKI 或高血鉀時避免 ACEI/ARB。",preg:"（補充）ACEI/ARB 禁用；用 Labetalol、Nifedipine、Hydralazine。",hf:"慢性 HF 用 ACEI/ARB、β blocker；避免 non-DHP CCB。",dm:"ACEI/ARB 有腎保護。"},
+ref:`<h4>重點詳述</h4><p><b>值班 ST</b>：先處理讓血壓高的不適（疼痛、脹氣、尿不出來）→ <b>Cabudan 1# PO</b>；有禁忌改 Stable／Norvasc／Adalat 1# PO。禁食：Cabudan SL、NTG SL 或 Trandate 0.5 amp IVP（+N/S 20 mL）。</p>
+<p><b>長期</b>：DHP CCB 第一線 → 併 ARB → 第三線 Furosemide 或 Isormol。β blocker、non-DHP CCB 不作為主要降壓用途。</p>`,
+items:[
+ it("Captopril (Cabudan)","1# PO 或 SL",{cat:"ACEI",first:"值班 ST",sp:["快速降壓首選","可舌下"],se:["乾咳","高血鉀"],f:"renal:c:AKI 或高鉀時禁用;preg:x:懷孕禁用;npo:p:可舌下;dm:p:腎保護;hf:p:HF 適用"}),
+ it("Amlodipine (Norvasc)","1# PO",{cat:"DHP CCB",first:"長期第一線",se:["臉潮紅","下肢水腫"]}),
+ it("Nifedipine (Adalat)","1# PO",{cat:"DHP CCB",sp:["降壓效果強"],dg:"不可舌下",f:"preg:p:孕期可用（補充）;elderly:c:低血壓跌倒"}),
+ it("Hydralazine (Stable 10 mg / Apolin 25 mg)","1# PO",{cat:"血管擴張",sp:["短效"],f:"preg:p:孕期可用（補充）"}),
+ it("NTG","1# SL",{cat:"硝酸鹽",f:"npo:p:可舌下"}),
+ it("Labetalol (Trandate)","0.5 amp IVP（+N/S 20 mL）",{cat:"α1+β",f:"npo:p:可靜脈;airway:x:非選擇性 β，氣喘禁用;preg:p:孕期首選之一（補充）;hf:c:急性失代償避免"}),
+ it("ARB（Olmesartan > Irbesartan > Valsartan > Losartan）","QD",{cat:"ARB",first:"長期第二線",sp:["長效","無乾咳"],se:["高血鉀"],f:"renal:c:AKI 或高鉀時禁用;preg:x:懷孕禁用;dm:p:腎保護;hf:p:HF 適用"}),
+ it("Furosemide","PO 或 IV",{cat:"利尿劑",first:"第三線",sp:["降血鈣"],se:["低血鉀"],f:"hf:p:水腫、HF"}),
+ it("Thiazide","",{cat:"利尿劑",sp:["升血鈣","頑固型高血壓"],se:["低血鉀","痛風","升血糖血脂"],f:"dm:c:升血糖;renal:c:eGFR <30 效果差（補充）"}),
+ it("Bisoprolol (Concor) / Metoprolol / Atenolol","",{cat:"β1-selective",sp:["HF、MI、CAD 適合"],dg:"HF 急性惡化、AV block 避免",f:"hf:p:慢性穩定 HF;airway:c:選擇性仍需小心"}),
+ it("Propranolol (Inderal) / Carvedilol","",{cat:"非選擇性 β",f:"airway:x:氣喘禁用;hf:c:慢性 HF 可用 Carvedilol，急性惡化避免"}),
+ it("Verapamil / Diltiazem (Herbesser)","",{cat:"non-DHP CCB",sp:["PAOD、心律不整"],dg:"心衰竭、AV block 避免",f:"hf:x:心衰竭禁用"}),
+ it("Doxazosin (Doxaben)","1# HS",{cat:"α1 blocker",sp:["攝護腺肥大可用"],f:"retention:p:兼治 BPH;elderly:c:姿勢性低血壓"}),
+ it("Clonidine (Catapres)","",{cat:"Others",dg:"停藥後容易反彈高血壓",f:"elderly:c:鎮靜、低血壓"})
+],
+chk:["重量血壓、確認袖帶與姿勢","處理疼痛、脹氣、尿滯留","問平常血壓 baseline 與服藥","神經學檢查（IICP、中風）","雙上肢血壓（剝離）","是否禁食"],
+ass:[{n:"雙上肢血壓差、胸背痛",r:"陽性 → 懷疑主動脈剝離，不能只給口服藥，安排 CT、積極控制心跳血壓",m:1},{n:"神經學檢查、GCS、瞳孔",r:"異常 → 懷疑腦出血或 IICP，緊急腦部 CT",m:1},{n:"ECG、Troponin（有胸痛時）",r:"陽性 → ACS 處置（補充）",m:1},{n:"Cr、K、UA",r:"AKI 或高鉀 → 避免 ACEI/ARB；有器官損傷 → 高血壓急症（補充）",m:1},{n:"頭痛、視力模糊、喘",r:"器官損傷症狀 → 高血壓急症，靜脈藥物與監測（補充）",m:1},{n:"懷孕 >20 週",r:"陽性 → 評估子癲前症（補充）",m:1}]},
+
+{id:"gout",g:"三高控制",t:"痛風・高尿酸",sub:"急性期止痛 · 慢性降尿酸 UA <6",
+top:`<p>急性：<b>NSAID／Colchicine／steroid</b>，首次發作不開始降尿酸。</p><p>慢性：降尿酸目標 UA <b class="num">&lt;6</b>。</p>`,
+alerts:[{t:"HLA-B*5801 帶因者服 Allopurinol 易發生 SJS／TEN"}],
+sn:{renal:"避免 NSAID 與促尿酸排泄劑；Colchicine 減量；Allopurinol 低劑量起始。",gib:"避免 NSAID，改 Colchicine 或 steroid。"},
+ref:`<h4>重點詳述</h4><p><b>急性期</b>：NSAIDs、Colchicine、steroid。<b>首次發作不可開始降尿酸</b>（反而加劇）；已長期服用者繼續吃。</p>
+<p><b>慢性期</b>目標 UA &lt;6。適應症：痛風石或慢性關節炎影像證據、一年內急性發作兩次、CKD。無症狀高尿酸不建議用藥。首次用降尿酸藥須併用 Colchicine。</p>`,
+items:[
+ it("NSAIDs","急性期",{cat:"急性期",first:1,f:"renal:x:腎毒性;gib:x:胃潰瘍出血;hf:x:水分滯留;elderly:c:能不開就不開;preg:x:懷孕避免（補充）"}),
+ it("Colchicine","1# BID",{cat:"急性期",first:1,sp:["起始降尿酸時預防發作"],se:["腹瀉（補充）"],f:"renal:c:需減量;hepatic:c:需小心"}),
+ it("Hydrocortisone／Prednisolone","± 搭配",{cat:"急性期",sp:["NSAID 禁忌時可選（補充）"],f:"renal:p:腎差較安全（補充）;dm:c:升血糖;gib:c:潰瘍風險"}),
+ it("Allopurinol","",{cat:"XO inhibitor",first:"慢性期",sp:["減少尿酸產生"],dg:"HLA-B*5801 易 SJS／TEN",f:"renal:c:低劑量起始"}),
+ it("Febuxostat","",{cat:"XO inhibitor",sp:["減少尿酸產生"]}),
+ it("Probenecid / Benzbromarone / Sulfinpyrazone","",{cat:"促尿酸排泄",f:"renal:x:腎功能差不適合"}),
+ it("Uricase","",{cat:"分解尿酸",sp:["直接分解血中尿酸"]})
+],
+chk:["是否為首次發作（首次不開始降尿酸）","確認腎功能","Allopurinol 前確認 HLA-B*5801","檢視會升尿酸的藥物（利尿劑、低劑量 salicylate）"],
+ass:[{n:"關節液穿刺：結晶、革蘭染色、培養",r:"細菌陽性 → 化膿性關節炎，處置完全不同（補充）",m:1},{n:"HLA-B*5801",r:"陽性 → 不可用 Allopurinol",m:1},{n:"eGFR",r:"差 → 避免 NSAID 與促尿酸排泄劑",m:1},{n:"血尿酸",r:"急性發作時可能正常，不能用來排除痛風"},{n:"X 光",r:"overhanging margin sign → 慢性痛風石，為降尿酸適應症"}],
+mech:`<h4>生理</h4><ul><li>形成：1/3 飲食、2/3 代謝（Ribose-5-P →PRPP synthetase→ PRPP → Inosinic acid → Inosine → Hypoxanthine →Xanthine oxidase→ Uric acid；HPRT 回收、負回饋）</li><li>排出：1/3 腸道、2/3 腎臟（100% 過濾 → URAT1／OAT10／OAT4 再吸收 → ABCG2／MRP4／NPT1 分泌）→ 最終排出 6–12%</li></ul>
+<h4>成因</h4><ul><li>過度製造：細胞破壞（溶血、橫紋肌溶解）、汰換快（lympho/myeloproliferative、乾癬）、PRPP synthetase 過度活化、HPRT deficiency（X-linked）</li><li>排出減少（90%）：腎功能不全、利尿劑、酸化（乳酸中毒、休克、DKA、酒精酮酸中毒、Salicylate &lt;2 g/day）</li></ul>
+<h4>病程</h4><ul><li>無症狀：&gt;7 mg/dL（停經前女性以 6 為準）</li><li>急性痛風：下肢周邊常見；1st MTP 佔首發 50%、終身 90%；Gouty cellulitis 像蜂窩性組織炎但無菌</li><li>慢性痛風石：關節、肌腱、眼、耳、腎錐體、瓣膜、鞏膜</li></ul>`},
+
+/* ================= 值班 ================= */
+{id:"admit",g:"簡單症狀處理",t:"接新病人",sub:"認識病人 · Routine 醫囑 · 開藥 · 檢驗",
+top:`<p>親自看病人、問病史、做 PE → 照下方確認清單開 routine 醫囑。</p>`,
+alerts:[{t:"目前不適合的藥物要停掉：例如腎功能不好停 Metformin、消化道出血停 NSAID"},{t:"確定病人真的沒有藥物過敏才寫 NKFDA"}],
+sn:{dm:"新增 Check finger sugar 2 parts（控制差 4 parts）；Diet 糖尿病飲食。",renal:"停 Metformin、NSAID，抗生素調腎劑量。洗腎：右手禁治療、Hemodialysis on QW1,3,5，照會腎內。",gib:"停 NSAID，Diet 考慮 NPO 或流質。",npo:"Diet NPO，記得開點滴。",elderly:"Condition 選 guarded；咳痰差加 suction PRN。",hf:"記 I/O；點滴保守。"},
+ref:`<h4>重點詳述</h4><p>急診入院：主訴 → 急診 vital sign → 抽血、影像 → 急診診斷與治療。門診入院：門診病歷寫明入院目的。<b>最重要的還是親自看病人、問病史、做 PE。</b></p>
+<p>開藥：慢性病藥從體系用藥帶入（來源 UD 藥局；完整在本院藥袋才選「護理師給自備藥」）；外院藥請家屬帶來或插健保卡查雲端。無腦給法是接續急診治療，但急診抗生素常太後線，簡單社區感染不必要。點滴也是治療，脫水風險要開。</p>`,
+items:[],
+chk:["看急診主訴、VS、抽血、影像、診斷與治療","親自看病人、問病史、做 PE","01 Admission","02 Diagnosis：主診斷","03 Condition：stationary／guarded（年長）／critical（ICU）","04 Vital sign","05 Activity：as tolerance／with assistance／bed-ridden","06 Allergy：真的沒過敏才寫 NKFDA","07 BW & I/O：無特別需求 record BW QW","08 Diet：一般／DM／NPO／流質","09 輸送等級：I（ICU 為 III）","氧氣、管路 order","傷口：wound CD QD + PRN","慢性病藥帶入並停掉不適合的藥","懷疑感染留完整培養（肺炎 sputum；菌血症兩套 blood culture）","下一筆抽血（通常三天後；週五值班開下週一晨血）","危急狀況檢驗更頻繁（例：Hb 7 剛輸血，隔天再驗）","打入院病摘（至少 A+P 暫存）"],
+ass:[{n:"健保雲端藥歷",r:"發現外院抗凝、降血糖、鎮靜藥 → 影響住院用藥與手術準備（補充）",m:1},{n:"藥物過敏史再確認",r:"陽性 → 避開同類藥物，並記錄於 Allergy",m:1},{n:"腎功能、肝功能",r:"決定是否停藥或調劑量",m:1}]},
+
+{id:"rx",g:"簡單症狀處理",t:"開藥頻次・途徑・稀釋",sub:"給藥時間 · IVD／IVP 稀釋",
+top:`<p>IVP 加 <b>N/S 20 mL</b>；IVD 加 <b>N/S 100 mL</b>（心腎差 50 mL）；INHL 加 <b>N/S 3 mL</b>。</p><p>過了護理給藥時間要加開一筆 ST。</p>`,
+sn:{hf:"心腎功能差，IVD 泡 50 mL 就好，避免 fluid overload。",renal:"心腎功能差，IVD 泡 50 mL 就好。"},
+ref:`<h4>重點詳述</h4><div class="tbl"><table><tr><th>頻次</th><th>給藥時間</th><th>途徑</th><th>說明</th></tr>
+<tr><td>Q12H</td><td class="num">0900、2100</td><td>IVP</td><td>通常加 <b>N/S 20 mL</b></td></tr>
+<tr><td>Q8H</td><td class="num">0500、1300、2100</td><td>IVD</td><td>加 <b>N/S 50–100 mL</b>，100 mL/hr</td></tr>
+<tr><td>Q6H</td><td class="num">0500、1100、1700、2300</td><td>INHL</td><td>霧化加 <b>N/S 3 mL</b></td></tr>
+<tr><td>QD AMAC</td><td class="num">0700</td><td>TOPI</td><td>頻次開 STAT</td></tr>
+<tr><td>QD AMPC</td><td class="num">0900</td><td>SL</td><td>舌下</td></tr>
+<tr><td>HS</td><td class="num">2100</td><td>RECT／VAG</td><td>塞劑</td></tr>
+<tr><td>BID</td><td class="num">AC 0700、1700／PC 0800、1800</td><td>IM／SC</td><td>肌肉／皮下</td></tr>
+<tr><td>QOD／PRN</td><td>每兩天／需要時</td><td></td><td></td></tr></table></div>
+<ul><li>已過給藥時間要加開一筆 ST（例：14:00 開 Q8H 抗生素，13:00 已過）</li><li>口服藥通常不開 QxH，抗生素、止痛藥例外</li><li>參考：UpToDate、熱病、火星渦蟲、臨床藥理精要</li></ul>
+<h4 style="margin:10px 0 4px">常見稀釋</h4><ul><li><b>IVD 100 mL N/S</b>：抗生素、PPI、Acetamol、Transamin</li><li><b>IVD D5W</b>：Amiodarone、Norepinephrine、Dopamine</li><li><b>IVD 不需稀釋</b>：Fluoroquinolone、Metronidazole；Vancomycin 慢滴可泡多一點</li><li><b>IVP 20 mL N/S</b>：Diphenhydramine、Parecoxib、類固醇</li><li><b>IVP 20 mL Aq</b>：Metoclopramide</li><li><b>IVP 不需稀釋</b>：Furosemide、Morphine、麻醉類</li></ul>`,
+items:[],
+chk:["沒有禁忌症","不會藥物過敏","與現有藥物沒有不良交互作用","肝腎功能可代謝此藥","是否已過護理給藥時間（需加 ST）"],ass:[]},
+
+{id:"pain",g:"簡單症狀處理",t:"疼痛",sub:"紅旗 · 止痛階梯 · 鴉片換算",
+top:`<p><b>Acetaminophen → NSAID → weak → strong opioid</b>。Break-through：一天劑量的 <b>1/6</b> STAT。</p>`,
+alerts:[{t:"先排除致命原因：胸痛（MI、主動脈剝離、肺栓塞、張力性氣胸、食道破裂）、頭痛 SNOOP4、腹痛 peritoneal sign"},{t:"鴉片類可能呼吸抑制，記得告知家屬；並開軟便藥"}],
+sn:{renal:"避免 NSAID／COX-2；鴉片類首選 Fentanyl；Morphine 減量。",hepatic:"Acetaminophen 上限 2 g/day。",gib:"避免 NSAID，首選 Acetaminophen。",elderly:"NSAID 能不開就不開；需要時併胃藥（Strocain、Famotidine、PPI）。",seizure:"Tramadol 禁用。",npo:"Acetamol IV、Parecoxib IVP、Tramadol IM、Fentanyl。"},
+items:[
+ it("Acetaminophen (Panadol)","1# PO TID–QID",{cat:"第一階",first:1,dg:"上限 4 g/day（肝差 2 g）；中毒解毒劑 NAC",f:"hepatic:c:上限 2 g/day;renal:p:腎差可用;gib:p:不傷胃;elderly:p:較安全;preg:p:孕期首選（補充）;hf:p:不滯留水分;npo:x:改 Acetamol IV"}),
+ it("Acetamol","IVD（+N/S 100 mL），自費約 150 元",{cat:"第一階",sp:["靜脈劑型"],f:"npo:p:可靜脈;hepatic:c:上限 2 g/day;gib:p:不傷胃;renal:p:腎差可用"}),
+ it("Ibuprofen","",{cat:"NSAID",sp:["副作用少，較安全"],f:"renal:x:腎毒性;gib:x:胃潰瘍;hf:x:水分滯留;elderly:c:能不開就不開;preg:x:≥20 週避免（補充）;airway:c:可能誘發氣喘（補充）"}),
+ it("Diclofenac (Cataflam)","",{cat:"NSAID",se:["胃潰瘍","腎功能"],f:"renal:x:腎毒性;gib:x:胃潰瘍;hf:x:水分滯留;elderly:c:能不開就不開;preg:x:避免（補充）"}),
+ it("Mefenamic acid (Ponstan)","",{cat:"NSAID",sp:["適合月經痛"],f:"renal:x:腎毒性;gib:x:胃潰瘍;preg:x:避免（補充）"}),
+ it("Ketorolac","IM 或 IVP（+N/S 20 mL）",{cat:"NSAID",dg:"胃潰瘍與腎毒性強",f:"renal:x:腎毒性強;gib:x:胃潰瘍強;elderly:x:避免;hf:x:水分滯留;preg:x:避免（補充）"}),
+ it("Celecoxib (Celebrex) / Etoricoxib (Arcoxia)","",{cat:"COX-2",sp:["較不傷胃"],se:["仍傷腎"],f:"renal:x:仍傷腎;hf:x:心毒性;gib:c:較不傷胃仍需小心;preg:x:避免（補充）"}),
+ it("Parecoxib (Dynastat)","IVP（+N/S 20 mL），自費 700 元",{cat:"COX-2",f:"npo:p:可靜脈;renal:x:傷腎;hf:x:心毒性"}),
+ it("Ultracet / Utraphen","",{cat:"Weak opioid",sp:["強度約 Morphine × 0.1"],f:"seizure:c:含 tramadol;elderly:c:嗜睡跌倒"}),
+ it("Tramadol (Limadol, Tramtor)","0.5–1 amp IM",{cat:"Weak opioid",dg:"癲癇病史禁用",f:"seizure:x:癲癇禁用;child:x:<12 歲禁用（補充）;renal:c:減量（補充）;elderly:c:譫妄、跌倒"}),
+ it("Morphine","起手 5–10 mg PO Q8H",{cat:"Strong opioid",se:["便秘","噁心"],dg:"呼吸抑制",f:"renal:c:腎差減量或改 Fentanyl;elderly:c:低劑量起始;airway:c:呼吸抑制;hepatic:c:減量"}),
+ it("Oxycodone（OxyContin 10 mg 長效／OxyNorm 5 mg 速效）","",{cat:"Strong opioid",sp:["強度約 Morphine × 2"],se:["便秘","噁心"],dg:"呼吸抑制",f:"renal:c:減量;hepatic:c:減量;airway:c:呼吸抑制"}),
+ it("Fentanyl 針劑","",{cat:"Strong opioid",sp:["腎差鴉片類首選","強度約 Morphine × 100"],dg:"呼吸抑制",f:"renal:p:腎差首選;npo:p:非口服;airway:c:呼吸抑制"}),
+ it("Fentanyl 貼片","12.5 或 25 μg/hr，每三天換",{cat:"Strong opioid",sp:["首次需 12 小時才有效"],dg:"不適合急性疼痛或未用過鴉片者（補充）",f:"renal:p:腎差可用;npo:p:非口服"}),
+ it("Symproic（自費）","",{cat:"鴉片便秘",sp:["拮抗鴉片便秘，不影響止痛"]}),
+ it("Pregabalin (Lyrica) / Gabapentin (Neurontin)","自費",{cat:"神經痛",f:"renal:c:需依腎功能調劑量（補充）;elderly:c:嗜睡跌倒"}),
+ it("Chlorzoxazone (Solaxin / Soma)","",{cat:"肌肉放鬆",f:"elderly:c:避免肌肉鬆弛劑（補充）"})
+],
+chk:["LQQOPERA 問診","排除紅旗（胸痛、頭痛、腹痛）","確認肝腎功能","NSAID 過敏、胃潰瘍或出血史","老人用 NSAID 併胃藥","用鴉片：開軟便藥並告知家屬呼吸抑制風險"],
+ass:[{n:"ECG、Troponin（胸痛）",r:"陽性 → ACS 處置，不只是止痛",m:1},{n:"雙上肢血壓、CXR／CT（胸背痛）",r:"懷疑主動脈剝離或氣胸 → 緊急處置",m:1},{n:"D-dimer／CTPA（胸痛合併喘、心跳快）",r:"肺栓塞 → 抗凝（補充）",m:1},{n:"神經學檢查、頸部僵硬（頭痛）",r:"陽性或 thunderclap → 腦部 CT／LP（SAH、腦膜炎）",m:1},{n:"Peritoneal sign（rebound、guarding）",r:"陽性 → 外科急症，照會並考慮 NPO",m:1},{n:"Murphy／McBurney sign、Lipase、腹部超音波",r:"膽囊炎、闌尾炎、胰臟炎"},{n:"肝腎功能",r:"決定 Acetaminophen 上限與是否可用 NSAID",m:1}],
+ref:`<h4>重點詳述</h4><p><b>原則</b>：by oral、by clock、by ladder：Acetaminophen → NSAID → weak opioid → strong opioid。</p>
+<p>Morphine 換算 PO : SC : IV = <b class="num">1 : 2 : 3</b>；Oxycodone ≈ Morphine × 2；Fentanyl ≈ × 100；Ultracet ≈ × 0.1；Fentanyl patch 25 μg/hr ≈ Morphine 60 mg/day。<b>Break-through pain：STAT 給一天劑量的 1/6。</b></p>
+<p>先 LQQOPERA；疼痛本身可使血壓、心跳上升。</p>
+<h4>頭痛 SNOOP4</h4><ul><li>Systemic：腦膜炎頸僵、Brudzinski、Kernig</li><li>Neurologic sign：單側無力、意識改變、感覺喪失、共濟失調</li><li>Onset：突然發作（thunderclap → SAH／aneurysm rupture）</li><li>Old：高齡少 primary headache</li><li>Position：隨姿勢改變 → 腦壓異常</li><li>Pattern：發作形式改變</li><li>Precipitation：咳嗽或出力加劇</li><li>Papilledema</li></ul>`},
+
+{id:"nv",g:"簡單症狀處理",t:"噁心嘔吐・打嗝",sub:"Primperan 首選 · 排除腸阻塞",
+top:`<p>首選 <b>Primperan 1 amp IVP（+Aq 20 mL）</b>；出現 EPS → Vena IVP。</p>`,
+alerts:[{t:"完全性機械性腸阻塞禁用 Metoclopramide"}],
+sn:{npo:"改 Metoclopramide IVP 或 Prochlorperazine IM。",elderly:"Metoclopramide、Prochlorperazine 小心 EPS。"},
+ref:`<h4>重點詳述</h4><p>首選 <b>Metoclopramide (Primperan)</b>：1# PO TID 或 1 amp IVP（+<b>Aq 20 mL</b>）。發生 EPS → Diphenhydramine IVP（+N/S 20 mL）。打嗝：Metoclopramide 或 Baclofen。</p>`,
+items:[
+ it("Metoclopramide (Primperan / Promeran)","1# PO TID；1 amp IVP（+Aq 20 mL）",{cat:"止吐",first:1,sp:["促進胃排空","也可止打嗝"],se:["EPS"],dg:"完全性機械性腸阻塞禁用",f:"renal:c:減量（補充）;elderly:c:EPS;child:c:易 EPS（補充）;npo:p:可靜脈;preg:p:孕期可用（補充）"}),
+ it("Domperidone","1# PO TID",{cat:"止吐",f:"qt:c:QT 延長（補充）;npo:x:僅口服"}),
+ it("Prochlorperazine (Novamin)","1# PO TID；1 amp IM",{cat:"止吐",se:["EPS","鎮靜","抗膽鹼","低血壓"],f:"elderly:c:鎮靜、低血壓;retention:c:抗膽鹼;npo:p:可 IM"}),
+ it("Mosapride","1# PO TID",{cat:"促蠕動"}),
+ it("Baclofen","1# PO QD–BID",{cat:"止打嗝",f:"renal:x:腎差蓄積;elderly:c:嗜睡"})
+],
+chk:["排除腸阻塞（腹脹、無排氣、腸音）","檢視可能致吐藥物","檢查電解質與血糖"],
+ass:[{n:"腹部 X 光（KUB）",r:"腸阻塞 → 禁 Metoclopramide，NPO + NG 減壓",m:1},{n:"神經學檢查",r:"IICP 徵象 → 腦部 CT（補充）",m:1},{n:"ECG",r:"下壁 MI 可表現為噁心嘔吐（補充）",m:1},{n:"電解質、血糖、BUN",r:"DKA、尿毒、低鈉等原因"},{n:"懷孕試驗（育齡女性）",r:"陽性 → 用藥選擇改變（補充）",m:1}]},
+
+{id:"bowel",g:"簡單症狀處理",t:"便秘・腹瀉・脹氣",sub:"Sennoside · MgO · Smecta",
+top:`<p>便秘：<b>Sennoside 2# HS</b> → MgO → Dulcolax 塞劑 → EVAC。</p><p>腹瀉：<b>Smecta</b>，感染性避免止瀉。</p>`,
+alerts:[{t:"感染性腸胃炎避免止瀉劑；腸阻塞禁用 Buscopan"}],
+sn:{renal:"ESRD 禁用 MgO（無法排鎂）。",hepatic:"肝性腦病變首選 Lactulose。",retention:"Buscopan 抗膽鹼，避免。"},
+ref:`<h4>重點詳述</h4><p><b>便秘</b>：Sennoside 2# HS（隔天起床有便意）→ MgO → 三天沒解便 Dulcolax 塞劑 → EVAC 灌腸；肝性腦病變用 Lactulose。</p><p><b>腹瀉</b>：Smecta、Hidrasec 溫和；感染性腸胃炎盡量避免止瀉。</p>`,
+items:[
+ it("Sennoside","2# PO HS",{cat:"便秘",first:1,sp:["睡前吃，隔天起床有便意"]}),
+ it("MgO","1# PO TID",{cat:"便秘",first:1,sp:["軟便兼胃藥"],dg:"ESRD 禁用",f:"renal:x:ESRD 無法排鎂"}),
+ it("Lactulose","15–30 mL PO TID；效果差可 60 mL + N/S 60 mL 灌腸",{cat:"便秘",sp:["強力瀉藥"],f:"hepatic:p:肝性腦病變首選"}),
+ it("Bisacodyl (Dulcolax)","1 supp RECT ST",{cat:"便秘",sp:["三天沒大便就塞"],f:"npo:p:非口服"}),
+ it("EVAC","1# ENEMA ST",{cat:"便秘",f:"npo:p:非口服"}),
+ it("Smecta / Hidrasec","1 pack PO TID",{cat:"腹瀉",first:1,sp:["效果溫和"]}),
+ it("Loperamide (Imolex)","1# PO BID",{cat:"腹瀉",dg:"效果強，勿輕易使用；感染性腹瀉避免",f:"child:x:幼兒避免（補充）"}),
+ it("Kascoal","1–2# PO TID；效果差可六顆磨粉 ST",{cat:"脹氣",first:1}),
+ it("Butylbromide（Buscopan、Fucon；針劑 Hyoscon、Escopan）","",{cat:"腸絞痛",sp:["hyperactive bowel 腸絞痛","膽、腎結石痛","Foley 仍漏尿的膀胱痙攣"],dg:"腸阻塞禁用",f:"retention:x:抗膽鹼;elderly:c:抗膽鹼譫妄;qt:c:心跳加快（補充）"}),
+ it("Biofermin-R / Miyarisan","1 pack BID",{cat:"益生菌",sp:["Biofermin-R 效果較好"]}),
+ it("Megestrol","400–800 mg/day",{cat:"食慾",sp:["癌症患者促進食慾"]})
+],
+chk:["排除腸阻塞","確認幾天未解便","腹瀉是否感染性（發燒、血便）","檢視鴉片類等致便秘藥物"],
+ass:[{n:"腹部 X 光",r:"腸阻塞、糞石 → 處置不同",m:1},{n:"Stool culture／C. difficile（近期抗生素）",r:"陽性 → 禁止瀉劑，治療感染（補充）",m:1},{n:"電解質（K、Mg）",r:"低 K 會使腸蠕動變差（補充）"},{n:"TSH",r:"甲狀腺低下可致便秘（補充）"}]},
+
+{id:"gi",g:"簡單症狀處理",t:"胃藥・消化道出血",sub:"H2 blocker · PPI · Pantoloc high dose",
+top:`<p>胃痛：<b>Strocain 1# TID AC</b>。</p><p>UGI bleeding：<b>Pantoloc 80 mg IVD → 8 mg/hr</b>。</p>`,
+alerts:[{t:"服用 Clopidogrel 者避免 Esomeprazole"}],
+sn:{gib:"停 NSAID；Pantoloc high dose；驗 CBC、PT/APTT/INR。",elderly:"Famotidine 注意譫妄。",npo:"PPI 改 Pantoloc IV。"},
+ref:`<h4>重點詳述</h4><p>腸胃不適常用 <b>Strocain 1# TID AC</b>（含輕微麻醉，胃痛快速緩解）、Famotidine。PPI 1# PO QD 飯前，需胃鏡才有健保給付（Omeprazole 除外）。</p>
+<p><b>上消化道出血</b>：Pantoloc <b class="num">80 mg IVD in 30 min</b> STAT，接 pump <b class="num">8 mg/hr</b>。</p>`,
+items:[
+ it("Pantoprazole (Pantoloc)","IV；出血：80 mg IVD 30 min → 8 mg/hr",{cat:"PPI",first:"消化道出血",sp:["針劑型"],f:"gib:p:出血首選;npo:p:靜脈"}),
+ it("Famotidine (Gaster / Kimodin)","",{cat:"H2 blocker",first:1,f:"elderly:c:注意譫妄;renal:c:減量（補充）"}),
+ it("Oxethazaine (Strocain)","1# PO TID AC",{cat:"胃痛",first:1,sp:["含輕微麻醉，胃痛快速緩解"]}),
+ it("Topaal (Algitab)","1# PO TID–QID 咀嚼",{cat:"GERD"}),
+ it("Omeprazole (Omezol)","1# PO QD AC",{cat:"PPI",sp:["最便宜","不需胃鏡即可健保給付"]}),
+ it("Rabeprazole (Pariet)","1# PO QD AC",{cat:"PPI",sp:["門診常用"]}),
+ it("Esomeprazole (Nexium)","1# PO QD AC",{cat:"PPI",dg:"藥物交互作用多，服用 Clopidogrel 者避免"}),
+ it("Lansoprazole (Takepron)","口溶錠",{cat:"PPI",sp:["可用於鼻胃管（其他 PPI 多不能磨粉）"]}),
+ it("Dexlansoprazole (Dexilant)","",{cat:"PPI",sp:["藥效最強"]})
+],
+chk:["停 NSAID，評估抗凝／抗血小板藥物","驗 CBC、PT/APTT/INR","有無 NG 管（PPI 選 Takepron）","是否服用 Clopidogrel"],
+ass:[{n:"Hb、BUN/Cr",r:"BUN/Cr >30 提示上消化道出血；Hb 下降需輸血",m:1},{n:"血壓、心跳（shock index）",r:"不穩定 → 輸液輸血、緊急胃鏡（補充）",m:1},{n:"PT/INR、抗凝藥",r:"異常 → 矯正凝血（補充）",m:1},{n:"照會腸胃科胃鏡",r:"確認出血點並止血（補充）",m:1}]},
+
+{id:"uri",g:"簡單症狀處理",t:"喉嚨痛・鼻水・咳嗽痰",sub:"抗組織胺 · 止咳 · 化痰 · CPT",
+top:`<p>鼻水：第二代抗組織胺。咳：<b>Medicon</b>。痰：<b>Ambroxol</b> + N/S 吸入。</p>`,
+sn:{elderly:"避免第一代抗組織胺，改第二代。",retention:"第一代抗組織胺抗膽鹼，避免。"},
+ref:`<h4>重點詳述</h4><p>喉嚨痛：止痛 + Broen-C 1# TID 或自費 Difflam 噴劑；排除咽炎、會厭炎、深頸部感染（必要時 neck X-ray AP + lateral）。</p>
+<p>化痰：Ambroxol 口服；吸入 Ancare 或 Bisolvon（+N/S 3 mL）；痰不多用純 N/S 3 mL INHL。照會胸內 CPT；無法配合請照顧者買拍痰杯，<b>不可在吃飯或管灌後拍痰</b>。</p>`,
+items:[
+ it("Loratadine (Finska) / Levocetirizine (Xyzal)","1# PO QD",{cat:"第二代抗組織胺",first:1,sp:["較不嗜睡"],f:"elderly:p:較安全;retention:p:較少抗膽鹼"}),
+ it("Diphenhydramine (Vena)","1# PO QD–TID",{cat:"第一代抗組織胺",se:["嗜睡","抗膽鹼"],f:"elderly:x:避免（補充）;retention:x:抗膽鹼"}),
+ it("Cyproheptadine / Chlorpheniramine / Carbinoxamine","1# PO TID",{cat:"第一代抗組織胺",se:["嗜睡","抗膽鹼"],f:"elderly:x:避免（補充）;retention:x:抗膽鹼"}),
+ it("Secorine","10 mL PO TID",{cat:"第一代抗組織胺",se:["嗜睡","抗膽鹼"],f:"elderly:c:嗜睡;retention:c:抗膽鹼"}),
+ it("Medicon","1# PO TID",{cat:"止咳",first:1}),
+ it("Brown mixture","5–10 mL PO HS",{cat:"止咳",sp:["睡前喝"],f:"child:c:含鴉片成分（補充）"}),
+ it("Meptin","2# PO HS",{cat:"止咳",sp:["輕微擴張支氣管，比較好咳"]}),
+ it("Ambroxol (Mubroxol)","1# PO TID",{cat:"化痰",first:1}),
+ it("Acetylcysteine：ACC 口服／Ancare 吸入","ACC 1 pack QD–BID；Ancare 1 amp INHL（+N/S 3 mL）Q8H，擇一",{cat:"化痰",f:"airway:c:吸入可能誘發支氣管痙攣（補充）"}),
+ it("Bisolvon","2 mL INHL（+N/S 3 mL）Q12H",{cat:"化痰"}),
+ it("Broen-C／Difflam 噴劑","Broen-C 1# PO TID；Difflam 自費",{cat:"喉嚨痛"})
+],
+chk:["排除會厭炎、深頸部感染","評估咳痰能力（suction PRN）","排除肺炎"],
+ass:[{n:"吞嚥困難、流口水、聲音改變、stridor",r:"陽性 → 懷疑會厭炎或深頸部感染，呼吸道危急（補充）",m:1},{n:"Neck X-ray（AP + lateral）",r:"thumb sign、咽後腔變寬",m:1},{n:"CXR、SpO2",r:"肺炎 → 抗生素、收 sputum culture",m:1}]},
+
+{id:"airway",g:"簡單症狀處理",t:"氣喘／COPD・類固醇",sub:"吸入劑 · 全身性類固醇",
+top:`<p>AE：<b>Medason 40 mg QD–Q12H</b> + Combivent 吸入。類固醇用超過一週要漸減。</p>`,
+alerts:[{t:"Methylprednisolone 500 mg（pulse therapy）勿亂開"}],
+sn:{dm:"類固醇會升血糖，需加驗血糖、調整胰島素。",hf:"Hydrocortisone 留鈉較多，小心水腫。",gib:"類固醇增加潰瘍風險，考慮併用胃藥。"},
+items:[
+ it("Methylprednisolone (Medason)","40 mg QD–Q12H",{cat:"全身類固醇",first:"Asthma／COPD AE",sp:["作用快","肺部穿透好"],f:"dm:c:升血糖;gib:c:潰瘍風險"}),
+ it("Hydrocortisone (Solu-cortef)","50 mg Q6H／100 mg STAT",{cat:"全身類固醇",first:"敗血性休克、腎上腺不足",f:"dm:c:升血糖;hf:c:留鈉較多;gib:c:潰瘍風險"}),
+ it("Prednisolone","口服",{cat:"全身類固醇",f:"dm:c:升血糖;npo:x:僅口服"}),
+ it("Dexamethasone","",{cat:"全身類固醇",first:"腦水腫",f:"dm:c:升血糖"}),
+ it("Combivent（Salbutamol + Ipratropium）","INHL",{cat:"SABA+SAMA",first:"急性喘",se:["心跳加速","抗膽鹼"]}),
+ it("Salbutamol (Ventolin) / Fenoterol (Berotec) / Terbutaline (Butanyl)","",{cat:"SABA",se:["心跳加速"]}),
+ it("Ipratropium (Atrovent)","",{cat:"SAMA",se:["抗膽鹼"],f:"retention:c:抗膽鹼"}),
+ it("Budesonide (Pulmicort)","",{cat:"ICS"}),
+ it("Symbicort／Seretide","ICS + LABA",{cat:"維持吸入劑"}),
+ it("Anoro／Spiolto","LAMA + LABA",{cat:"維持吸入劑"}),
+ it("Trimbow","ICS + LABA + LAMA",{cat:"維持吸入劑"})
+],
+ref:`<h4>重點詳述</h4><p>Asthma AE、COPD AE：<b>Methylprednisolone (Medason) 40 mg QD–Q12H</b>（快、肺穿透好）。全身性類固醇用超過一週應逐步減半停藥。</p>
+
+<h4>全身性類固醇效價比較</h4><div class="tbl"><table><tr><th>類固醇</th><th>抗發炎</th><th>留鈉</th><th>時間</th><th>用途</th></tr>
+<tr><td>Hydrocortisone (Solu-cortef)</td><td>1</td><td>1</td><td>8–12 hr</td><td>敗血性休克、嚴重肺炎 50 mg Q6H；嚴重過敏、腎上腺不足 100 mg STAT</td></tr>
+<tr><td>Prednisolone</td><td>4</td><td>0.8</td><td>12–36 hr</td><td>口服，等效換算可替代針劑</td></tr>
+<tr><td>Methylprednisolone</td><td>5</td><td>0.5</td><td>12–36 hr</td><td>Asthma／COPD AE</td></tr>
+<tr><td>Dexamethasone</td><td>25</td><td>0</td><td>36–72 hr</td><td>腦轉移腦水腫</td></tr>
+<tr><td>Betamethasone</td><td colspan="3"></td><td>脊髓損傷初期預防 spinal shock</td></tr></table></div>`,
+chk:["評估 SpO2 與呼吸功","類固醇使用天數（>1 週需漸減）","DM 病人加驗血糖"],
+ass:[{n:"ABG／VBG（PaCO2）",r:"高碳酸血症 → 考慮 NIV（補充）",m:1},{n:"CXR",r:"氣胸、肺炎 → 處置改變（補充）",m:1},{n:"SpO2 目標",r:"COPD 維持 88–92%，避免給過多氧氣（補充）",m:1}]},
+
+{id:"dizzy",g:"簡單症狀處理",t:"頭暈",sub:"Diphenidol · 排除中樞與心因",
+top:`<p><b>Diphenidol 1# TID</b>。</p>`,
+alerts:[{t:"先排除中風、心律不整、低血糖、姿勢性低血壓（補充）",add:1}],
+sn:{elderly:"Diphenidol、Vena 抗膽鹼，易跌倒與譫妄。"},
+ref:`<h4>重點詳述</h4><p>Diphenidol 1# PO TID、Diphenhydramine (Vena) 1# QD、Nicametate 50 mg PO TID。</p>`,
+items:[
+ it("Diphenidol","1# PO TID",{cat:"止暈",first:1,f:"elderly:c:抗膽鹼、跌倒;retention:c:抗膽鹼"}),
+ it("Diphenhydramine (Vena)","1# PO QD",{cat:"止暈",f:"elderly:x:避免（補充）;retention:x:抗膽鹼"}),
+ it("Nicametate","50 mg PO TID",{cat:"止暈"})
+],
+chk:["量血糖","量姿勢性血壓","神經學檢查","心律"],
+ass:[{n:"神經學檢查、HINTS",r:"中樞徵象 → 懷疑後循環中風，腦部影像（補充）",m:1},{n:"ECG、姿勢性血壓",r:"心律不整或姿勢性低血壓 → 處置不同（補充）",m:1},{n:"血糖",r:"低血糖 → 立即矯正",m:1},{n:"Hb",r:"貧血、出血（補充）"}]},
+
+{id:"uro",g:"簡單症狀處理",t:"尿滯留・膀胱・血尿",sub:"Foley · α1 blocker · 3-way irrigation",
+top:`<p>尿滯留 <b class="num">&gt;400 mL</b> → Foley + <b>α1 blocker</b>，4–5 天後試拔。</p><p>血塊血尿 → 3-way Foley irrigation。</p>`,
+alerts:[{t:"沒有 Foley 的血尿病人給 Tranexamic acid，可能形成血塊塞住尿道"}],
+sn:{retention:"避免抗膽鹼藥。",elderly:"Doxazosin 姿勢性低血壓；Solifenacin 抗膽鹼譫妄。"},
+ref:`<h4>重點詳述</h4><p><b>尿滯留</b>：嚴重先 on Foley + α1 blocker 或副交感興奮劑，4–5 天後拔 Foley 試試。女性 α1 blocker 需自費，優先 Bethanechol。</p>
+<p><b>血尿有大血塊</b>：怕阻塞 → on 3-way Foley + <b class="num">1000 mL N/S Q8H</b> irrigation；排除結石、感染、腫瘤，可照會泌尿科膀胱鏡。</p>`,
+items:[
+ it("Tamsulosin (Tamlosin, Harnalidge)","1# HS",{cat:"α1 blocker",first:1,f:"retention:p:首選;elderly:c:姿勢性低血壓（補充）"}),
+ it("Silodosin (Urief)","1# HS",{cat:"α1 blocker",f:"retention:p:可用"}),
+ it("Doxazosin (Doxaben)","1# HS",{cat:"α1 blocker",sp:["也會降血壓"],f:"retention:p:可用;elderly:c:姿勢性低血壓"}),
+ it("Bethanechol","1# TID",{cat:"副交感興奮",first:"女性",dg:"禁忌：氣喘、心搏過緩、低血壓、腸阻塞",f:"airway:x:氣喘禁用"}),
+ it("Dutasteride (Avodart)","",{cat:"BPH",sp:["抑制攝護腺增生"]}),
+ it("Mirabegron (Betmiga)","",{cat:"膀胱過動",first:1,sp:["β3 agonist，減少頻尿"]}),
+ it("Solifenacin (Vesicare)","",{cat:"膀胱過動",se:["抗膽鹼"],f:"retention:x:會加重尿滯留;elderly:c:譫妄"}),
+ it("3-way Foley + N/S irrigation","1000 mL N/S Q8H",{cat:"血尿",first:"大血塊"}),
+ it("Tranexamic acid","",{cat:"血尿",dg:"無 Foley 者小心血塊阻塞尿道"})
+],
+chk:["床邊超音波量膀胱容積","檢視抗膽鹼、鴉片類藥物","排除血尿原因（結石、感染、腫瘤）"],
+ass:[{n:"膀胱超音波（長×寬×高×0.5–0.7）",r:">400 mL → 直接 on Foley",m:1},{n:"腎臟超音波",r:"hydronephrosis → 阻塞性，需解除",m:1},{n:"UA、urine culture",r:"UTI → 抗生素"},{n:"膀胱鏡（照會泌尿科）",r:"腫瘤或出血點"}]},
+
+{id:"sleep",g:"簡單症狀處理",t:"失眠",sub:"Trazodone · BZD · Z-drug",
+top:`<p>首選 <b>Trazodone</b>；高齡避免 BZD、Z-drug。</p>`,
+sn:{elderly:"（補充）BZD 與 Z-drug 增加跌倒與譫妄，盡量避免。",hepatic:"BZD 選 Lorazepam，避免長效。",airway:"BZD 小心呼吸抑制。"},
+ref:`<h4>重點詳述</h4><p>先找失眠原因（疼痛、頻尿、環境、譫妄前兆）。安全的選擇：<b>Trazodone</b> 低劑量；憂鬱合併失眠用 Mirtazapine 0.5–1# HS；Lemborexant 較不殘留白天嗜睡。</p>`,
+items:[
+ it("Trazodone (Mesyrel)","低劑量 HS",{cat:"抗憂鬱",first:1,sp:["很安全的助眠選擇"],f:"elderly:p:較安全（補充）"}),
+ it("Mirtazapine","0.5–1# HS",{cat:"抗憂鬱",sp:["憂鬱合併失眠"]}),
+ it("Lemborexant (Dayvigo)","自費 55 元",{cat:"Orexin 拮抗",sp:["較不殘留白天嗜睡"]}),
+ it("Lorazepam (Lowen / Ativan)","",{cat:"BZD 短效",sp:["肝差可用","高劑量可預防或治療酒精戒斷"],f:"hepatic:p:肝差首選 BZD;elderly:c:跌倒、譫妄;airway:c:呼吸抑制"}),
+ it("Brotizolam (Lendormin)","",{cat:"BZD 短效",f:"elderly:c:跌倒、譫妄;airway:c:呼吸抑制"}),
+ it("Alprazolam (Xanax) / Estazolam (Eurodin)","",{cat:"BZD 中效",sp:["Alprazolam 也可抗焦慮"],f:"elderly:c:跌倒、譫妄;airway:c:呼吸抑制"}),
+ it("Diazepam / Clonazepam (Rivotril)","",{cat:"BZD 長效",sp:["Clonazepam 可緩解中風夜間腳抽筋"],f:"elderly:x:長效易蓄積（補充）;hepatic:x:長效避免;airway:c:呼吸抑制"}),
+ it("Zolpidem (Stilnox)","",{cat:"Z-drug",dg:"可能夢遊，盡量少開（之前有吃則無妨）",f:"elderly:c:跌倒（補充）"})
+],
+chk:["找失眠原因（疼痛、頻尿、環境）","評估是否譫妄","確認無呼吸抑制風險"],
+ass:[{n:"CAM 譫妄評估",r:"陽性 → 不可給 BZD，改走譫妄處置",m:1},{n:"酒精使用史",r:"戒斷 → Lorazepam 反而是首選",m:1}]},
+
+{id:"delirium",g:"簡單症狀處理",t:"譫妄",sub:"Haldol 首選 · AEIOU TIPS",
+top:`<p>停 BZD → 移到安全空間 → <b>Haldol 0.5–1 amp IM</b> → 用 AEIOU TIPS 找原因。</p>`,
+alerts:[{t:"Haloperidol、Quetiapine 皆可能 QT prolong 與 EPS"}],
+sn:{qt:"先看 ECG QTc，矯正 K、Mg 再給抗精神病藥。",elderly:"抗精神病藥低劑量起始。"},
+items:[
+ it("Haloperidol (Haldol)","0.5–1 amp IM STAT",{cat:"抗精神病",first:1,se:["EPS","QT prolong"],f:"qt:c:QT 延長;elderly:c:低劑量;seizure:c:降低癲癇閾值（補充）;npo:p:可 IM"}),
+ it("Quetiapine (Seroquel / Qting)","25–50 mg PO HS",{cat:"抗精神病",sp:["輕劑量即助眠","可開長期醫囑"],se:["EPS","QT prolong","抗膽鹼","姿勢性低血壓"],f:"qt:c:QT 延長;retention:c:抗膽鹼;elderly:c:姿勢性低血壓;npo:x:僅口服"}),
+ it("Lorazepam","",{cat:"BZD",first:"酒精戒斷",dg:"一般譫妄應停用 BZD，酒精戒斷除外"})
+],
+chk:["停 BZD 與抗膽鹼藥（含 H2 blocker）","移到單獨安全空間","AEIOU TIPS survey","給抗精神病藥前看 QTc"],
+ass:[{n:"血糖",r:"低血糖 → 立即矯正",m:1},{n:"SpO2、ABG（CO2）",r:"缺氧或 CO2 滯留",m:1},{n:"Na、Ca、BUN、NH3",r:"代謝性腦病變（補充）"},{n:"感染（UA、CXR、培養）",r:"找出並治療感染源"},{n:"神經學檢查、腦部 CT",r:"局部缺損 → 中風或顱內出血（補充）",m:1},{n:"ECG QTc",r:"延長 → 避免或減量抗精神病藥（補充）",m:1},{n:"酒精使用史",r:"戒斷 → BZD（Lorazepam）為首選",m:1}],
+ref:`<h4>重點詳述</h4><ol><li>停用會造成譫妄的藥物（例如 BZD）</li><li>移到單獨空間（治療室、檢查室、茶水間）</li><li>急性：<b>Haloperidol 0.5–1 amp IM STAT</b></li><li>穩定後 survey 急性意識改變原因：<b>AEIOU TIPS</b></li><li>需要長期：Quetiapine 25–50 mg PO HS</li></ol>
+<h4>AEIOU TIPS（補充）</h4><ul><li>A：Alcohol</li><li>E：Epilepsy、Electrolytes、Encephalopathy</li><li>I：Insulin（低／高血糖）</li><li>O：Opiates、Oxygen</li><li>U：Uremia</li><li>T：Trauma、Temperature</li><li>I：Infection</li><li>P：Poisoning、Psychiatric</li><li>S：Shock、Stroke、SAH</li></ul>`},
+
+{id:"io",g:"簡單症狀處理",t:"I/O・AKI",sub:"何時記 I/O · AKI survey",
+top:`<p>AKI：Cr ↑ <b>0.3 或 50%</b>，或尿量 <b class="num">&lt;0.5 mL/kg/hr</b>。</p><p>先排除 post-renal、停腎毒性藥；無 AKI 但 overload → <b>Furosemide 1 amp IVP</b>。</p>`,
+alerts:[{t:"AKI 停腎毒性藥：NSAID、ACEI/ARB、Metformin、Baclofen、Demerol、Baktar、Vancomycin、Aminoglycoside、顯影劑"}],
+sn:{hf:"需記 I/O；點滴保守。",renal:"比 baseline Cr 判斷是 CKD 還是 AKI。"},
+ref:`<h4>重點詳述</h4><p><b>AKI</b>：Cr 短期上升 <b>50% 或 0.3 mg/dL</b>，或尿量 <b>&lt;0.5 mL/kg/hr</b>（60 kg 至少 720 mL/day）。</p>
+<p>Insensible loss 約 600 mL/day（每發燒 1°C 多 100 mL）；I/O 可接受 <b class="num">−500 ～ +1000</b>。</p>
+<ul><li><b>I/O negative 多</b>：通常不擔心。看利尿劑何時開始與反應、脫水表現、電解質（每週至少抽兩次）。</li><li><b>I/O positive 多</b>：關鍵是有無 AKI。先比 baseline 尿量與 Cr；無 AKI 但扣 insensible loss 仍多，且有水腫、肺水腫、喘 → <b>Furosemide 1 amp IVP</b>。</li><li>需記 I/O：用利尿劑、fluid overload 風險（HF、CKD、ESRD）、AKI 或 shock；家屬記不準改 QD 量體重。</li></ul>`,
+items:[
+ it("排除 post-renal：床邊超音波 + Foley","尿滯留 >400 mL 直接 on Foley",{cat:"第一步",first:1}),
+ it("輸液補充","pre-renal AKI",{cat:"治療",first:"pre-renal",f:"hf:c:小心 fluid overload"}),
+ it("Furosemide","1 amp IVP",{cat:"利尿",first:"無 AKI 但 overload",se:["低血鉀"],f:"hf:p:水腫、肺水腫"}),
+ it("抗生素調腎劑量","",{cat:"治療"}),
+ it("治療根本原因","止血、矯正體液流失、升階抗生素",{cat:"治療"})
+],
+chk:["床邊超音波：膀胱是否脹大","床邊超音波：雙側 hydronephrosis","Vital sign 是否接近休克","脫水表現（口腔黏膜乾、心跳升、血壓降）","驗 BUN、Cr、Na、K","停腎毒性藥","抗生素調腎劑量"],
+ass:[{n:"膀胱超音波",r:">400 mL → Foley（post-renal）",m:1},{n:"腎臟超音波",r:"hydronephrosis → 阻塞，需解除",m:1},{n:"BUN/Cr",r:">20 pre-renal；>30 常見於上消化道出血",m:1},{n:"CBC、PT、APTT、INR",r:"大出血（黑便、吐血、經血過多、腹內出血）",m:1},{n:"CBC/DC、CRP、UA、CXR",r:"敗血症 → 升階抗生素",m:1},{n:"FENa／urine Na（補充）",r:"<1% 支持 pre-renal（利尿劑使用中參考價值低）"}]},
+
+{id:"topical",g:"簡單症狀處理",t:"常用外用藥",sub:"傷口 · 皮膚 · 口腔 · 痔瘡",
+top:`<p>TOPI 頻次開 STAT 即可。</p>`,
+ref:`<div class="tbl"><table><tr><th>用途</th><th>藥物</th></tr>
+<tr><td>瘀青</td><td>Esarin／Hirudoid</td></tr><tr><td>紅臀</td><td>ZnO</td></tr><tr><td>殺菌</td><td>Povidone iodine (Biodyne)</td></tr>
+<tr><td>頭部傷口</td><td>Erythromycin</td></tr><tr><td>頸部以下傷口</td><td>Biomycin</td></tr><tr><td>感染性傷口</td><td>Spersin</td></tr>
+<tr><td>皮膚炎合併搔抓傷口</td><td>Mycomb</td></tr><tr><td>燙傷、壓瘡、大面積脫落</td><td>Silvadiazine／Siliverzine (SSD)</td></tr>
+<tr><td>止癢</td><td>Doxepin (Ichderm)</td></tr><tr><td>脂漏性皮膚炎</td><td>Elomet</td></tr><tr><td>濕疹</td><td>Topsym</td></tr><tr><td>乾癬</td><td>Sinbaby</td></tr><tr><td>香港腳</td><td>Zalain</td></tr>
+<tr><td>口內膏</td><td>Triamcinolone (Oralfix)、Dexamethasone (Dexaltin)</td></tr><tr><td>痠痛</td><td>Teiria</td></tr><tr><td>痔瘡</td><td>Hemodin、Xylmol、Posterisan、Proctosedyl</td></tr></table></div><p>TOPI 頻次開 STAT 即可。</p>`,
+items:[],chk:[],ass:[]},
+/* ================= 急症處理 ================= */
+{id:"reversal",g:"急症處理",t:"抗凝血劑 Reversal",sub:"Xa 抑制劑 · Dabigatran · Warfarin · Heparin／Enoxaparin",
+top:`<p>先問三件事：<b>哪一種抗凝劑、最後一劑幾點、腎功能</b>。</p><p>停藥 → 對應解藥：Xa 抑制劑 <b>Andexanet</b>（沒有就 <b>4F-PCC 50 IU/kg</b>）｜Dabigatran <b>Idarucizumab 5 g</b>｜Warfarin <b>4F-PCC＋Vit K 10 mg IV</b>｜Heparin／Enoxaparin <b>Protamine</b>。</p>`,
+alerts:[{t:"INR／PT 無法反映 DOAC 濃度：INR 正常或只有 1.5，不代表沒有抗凝作用"},{t:"危及生命的出血（顱內出血、休克、要緊急開刀）不要等檢驗報告，先給 reversal",add:1}],
+sn:{renal:"DOAC 與 Enoxaparin 在腎差時清除變慢，最後一劑過了更久仍有作用；Dabigatran 可考慮緊急洗腎移除（補充）。",elderly:"高齡＋抗凝＋跌倒撞頭 → 低門檻照 brain CT；意識變差先想顱內出血。",gib:"停抗凝與抗血小板藥；危及生命或止不住的出血才 reversal，同時 Pantoloc high dose。",hepatic:"肝病本身 INR 就偏高，Warfarin 過量時更難矯正；Vit K 反應較差（補充）。",hf:"FFP 量大容易 TACO（輸血相關循環負荷過量），優先 PCC。"},
+ref:`<h4>速查表</h4><div class="tbl"><table><tr><th>抗凝劑</th><th>解藥</th><th>劑量</th></tr>
+<tr><td>Rivaroxaban／Apixaban／Edoxaban</td><td>Andexanet alfa；沒有就 4F-PCC</td><td>PCC <span class="num">50 IU/kg</span>（常見上限 5000 IU）</td></tr>
+<tr><td>Dabigatran</td><td>Idarucizumab</td><td><span class="num">5 g IV</span>（2.5 g ×2）</td></tr>
+<tr><td>Warfarin</td><td>4F-PCC＋Vitamin K</td><td>INR 2–4：<span class="num">25 IU/kg</span>｜4–6：<span class="num">35 IU/kg</span>｜&gt;6：<span class="num">50 IU/kg</span>；Vit K <span class="num">10 mg IV</span> 慢推</td></tr>
+<tr><td>UFH（heparin 點滴）</td><td>Protamine</td><td><span class="num">1 mg／100 U</span>（算最近 2–3 小時輸入量），最多 50 mg</td></tr>
+<tr><td>Enoxaparin</td><td>Protamine</td><td>≤8 小時：<span class="num">1 mg／1 mg</span>｜8–12 小時：<span class="num">0.5 mg／1 mg</span>；只能逆轉約 60%</td></tr></table></div>
+<h4>什麼時候要 reversal</h4><ul><li><b>要</b>：顱內出血、休克或血行動力不穩、關鍵部位出血（脊椎、心包膜、眼內）、要緊急手術或侵入性處置</li><li><b>通常不用</b>：小出血 → 停藥、局部止血、觀察</li><li>DOAC 服用 2–4 小時內：可加 Activated charcoal（呼吸道有保護時）</li></ul>
+<h4>醫囑範例</h4><ul><li><code>D/C rivaroxaban, D/C enoxaparin</code>（每一種都要寫出來）</li><li><code>4-factor PCC 50 IU/kg IV over 10 min, STAT</code></li><li><code>Protamine 40 mg in NS 50 mL IVD over 10 min ×1, STAT</code></li><li><code>PT/INR、aPTT 給藥後 30 min 複驗</code></li></ul>
+<h4>🩺 模擬病例：林伯伯（78M，跌倒後 acute SDH）</h4><p>Rivaroxaban 15 mg QD＋Enoxaparin 40 mg SC QD 同時在用（雙重抗凝，入院醫囑錯誤），最後一劑 6.5 小時前，CrCl 41，INR 1.5。→ 停兩種藥、<b>4F-PCC 50 IU/kg（62 kg＝3100 IU）</b>＋<b>Protamine 40 mg</b>，同時降腦壓、送 CT、會診神經外科。</p>`,
+items:[
+ it("Andexanet alfa (Ondexxya)","低劑量：400 mg IV bolus（30 mg/min）→ 4 mg/min ×120 min；高劑量：800 mg IV bolus → 8 mg/min ×120 min",{cat:"Xa 抑制劑解藥",first:"Rivaroxaban／Apixaban 危及生命出血",sp:["Xa 抑制劑的專一解藥","高劑量：8 小時內服 Rivaroxaban >10 mg、Apixaban >5 mg，或時間不明","院內不一定有"],se:["血栓事件","停藥後抗凝作用可能回升"],dg:"會讓之後的 heparin 失效，預計要用 heparin 的手術（如體外循環）前避免（補充）"}),
+ it("4-factor PCC (Beriplex)","DOAC：50 IU/kg IV（常見上限 5000 IU）；Warfarin：依 INR 25／35／50 IU/kg；推注約 10 分鐘",{cat:"凝血因子",first:"Xa 抑制劑（沒有 Andexanet）、Warfarin",sp:["不需配血型","體積小，幾分鐘內給完","系統依體重換算"],se:["血栓事件"],dg:"部分製劑含 heparin：HIT 病史禁用（補充）",f:"hf:p:體積小，比 FFP 不易容量負荷"}),
+ it("Idarucizumab (Praxbind)","5 g IV（2.5 g ×2，連續給）",{cat:"Dabigatran 解藥",first:"Dabigatran",sp:["專一單株抗體","幾分鐘內逆轉"],se:["少數 12–24 小時後凝血時間再延長"]}),
+ it("Vitamin K1 (Phytonadione)","出血：10 mg in NS 50 mL IVD over 20–30 min；INR 過高沒出血：1–2.5 mg PO",{cat:"Warfarin",first:"Warfarin（搭配 PCC）",sp:["6–12 小時才起效，要和 PCC 一起給","PCC 作用只有幾小時，靠 Vit K 接手"],dg:"IV 推太快罕見過敏性休克，要慢推",f:"hepatic:c:肝病反應較差（補充）"}),
+ it("Protamine sulfate","UFH：1 mg／100 U（最近 2–3 小時輸入量）；Enoxaparin ≤8 h：1 mg／1 mg；最多 50 mg，最快 5 mg/min",{cat:"Heparin／LMWH",first:"Heparin、Enoxaparin",sp:["對 Enoxaparin 只能逆轉約 60%","對 Fondaparinux 無效"],se:["低血壓（推太快）","心跳變慢"],dg:"過敏：魚過敏、輸精管結紮、用過 NPH 胰島素者風險較高；過量本身有抗凝作用"}),
+ it("FFP（新鮮冷凍血漿）","10–15 mL/kg",{cat:"血品",first:"沒有 PCC 時的 Warfarin",sp:["要解凍、配血型，較慢"],se:["TACO 容量負荷","TRALI","過敏"],dg:"對 DOAC 幾乎無效",f:"hf:c:容量負荷大，易 TACO;renal:c:容量負荷"}),
+ it("Activated charcoal（活性碳）","50 g PO／NG ×1",{cat:"減少吸收",sp:["DOAC 服用 2–4 小時內有用"],dg:"意識差、無法保護呼吸道禁用（吸入風險）",f:"npo:x:意識差或無法保護呼吸道禁用"}),
+ it("Desmopressin (DDAVP)","0.4 mcg/kg in NS 50 mL IVD over 20 min ×1",{cat:"抗血小板",first:"服用抗血小板藥的顱內出血（補充）",sp:["促進 vWF、第 VIII 因子釋放"],se:["低血鈉","水分滯留"],dg:"抗血小板藥合併 ICH 不建議常規輸血小板（PATCH trial）（補充）"}),
+ it("Tranexamic acid (Transamin)","1 g IV over 10 min → 1 g IVD over 8 hr",{cat:"抗纖溶",sp:["非專一，不能取代解藥","外傷出血 3 小時內給（CRASH-2／3）"],se:["癲癇（高劑量）"],dg:"3 小時後才給反而增加死亡（外傷出血）",f:"seizure:c:高劑量可能誘發癲癇;renal:c:腎差需減量（補充）"})
+],
+chk:["確認抗凝劑種類、劑量、最後一劑時間","查腎功能（DOAC、Enoxaparin 清除變慢）","每一種抗凝藥都停：口服、皮下、heparin 點滴","有沒有同時開兩種抗凝（例：DOAC＋預防劑量 Enoxaparin）","出血是否危及生命：顱內、休克、需緊急手術","抽 CBC、PT/INR、aPTT、Type and screen","需要會診的科別（神經外科、外科、腸胃科）"],
+ass:[{n:"PT/INR",r:"Warfarin 依 INR 決定 PCC 劑量；對 DOAC 不可靠，不能用來說「還好」",m:1},{n:"aPTT",r:"監測 heparin；Dabigatran 時延長代表有藥，但正常不代表沒藥"},{n:"Anti-Xa level",r:"估 Xa 抑制劑或 LMWH 濃度；院內有才驗，不要等報告才給藥（補充）"},{n:"Thrombin time",r:"正常可排除顯著的 Dabigatran 作用（補充）"},{n:"Brain CT（撞頭或意識改變）",r:"確認顱內出血 → 決定 reversal 與手術",m:1},{n:"給藥後 30 分鐘複驗凝血",r:"確認逆轉效果"}],
+mech:`<ul><li>Andexanet：假的 factor Xa，把 Xa 抑制劑吸走</li><li>Idarucizumab：抗體直接抓住 Dabigatran</li><li>PCC：補充第 II、VII、IX、X 因子（凝血酶原複合物）</li><li>Vitamin K：讓肝臟重新製造 II、VII、IX、X 因子，對抗 Warfarin</li><li>Protamine：帶正電，和帶負電的 heparin 結合後失去作用；LMWH 分子小，只能部分結合</li></ul>`}
+];
+
+/* ---------- parse flags ---------- */
+T.forEach(t=>t.items.forEach(i=>{i.F={};(i.f||"").split(";").filter(Boolean).forEach(s=>{const a=s.split(":");i.F[a[0]]=[a[1],a.slice(2).join(":")]})}));
+
+/* ---------- state ---------- */
+let S={st:[],pick:{},chk:{},as:{},tid:"admit",view:"topic",gloss:true,renalOn:true,rn:{}};
+try{const s=JSON.parse(localStorage.getItem("wr3")||"null");if(s)S=Object.assign(S,s)}catch(e){}
+if(S.st.includes("elderly"))S.st=S.st.filter(x=>x!=="preg"&&x!=="child");
+function save(){try{localStorage.setItem("wr3",JSON.stringify(S))}catch(e){}}
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const addTag=s=>esc(s).replace(/（補充）/g,'<span class="add">補充</span>');
+const LV={p:["首選","wp"],c:["慎用","wc"],x:["禁用","wx"]};
+
+function evalItem(i){let worst=null;const why=[];const rd=i._t?rdEval(i._t,i):null;
+ const add=(k,lv,tx)=>{why.push([k,lv,tx]);const r={x:3,c:2,p:1}[lv];if(!worst||r>{x:3,c:2,p:1}[worst])worst=lv};
+ actSt().forEach(k=>{if(k==="renal"&&rd)return;const f=i.F[k];if(!f)return;add(k,f[0],f[1])});
+ if(rd&&rd.lv)add("__rn",rd.lv,"（"+rd.by+"）"+rd.text+"｜"+SRC[rd.s]);
+ // if any avoid -> x; else if caution and prefer both, caution wins
+ return {lv:worst,why}}
+function score(i){const e=evalItem(i);let s=0;if(i.first)s+=2;e.why.forEach(w=>{s+={p:3,c:-2,x:-8}[w[1]]});return s}
+const pid=(t,i)=>t.id+"|"+i.n;
+T.forEach(t=>t.items.forEach(i=>i._t=t));
+
+/* ---------- conservative doses (adult, by chief complaint) ---------- */
+const CD={
+"Atorvastatin":"高血脂：10 mg QD 起始",
+"Rosuvastatin":"5 mg QD 起始（亞洲人暴露量約兩倍）",
+"Pitavastatin":"1–2 mg QD",
+"Pravastatin":"20 mg QD HS",
+"Lovastatin / Fluvastatin / Simvastatin":"Simvastatin 10–20 mg HS",
+"Ezetimibe":"10 mg QD",
+"Evolocumab / Alirocumab":"Evolocumab 140 mg SC Q2W",
+"Inclisiran":"284 mg SC：第 0、3 個月，之後每 6 個月",
+"Bempedoic acid":"180 mg QD",
+"Bile acid resin（Colesevelam / Colestipol / Cholestyramine）":"Cholestyramine 4 g QD，與他藥間隔 4 小時",
+"Fibrates（Fenofibrate、Gemfibrozil…）":"Fenofibrate 145–160 mg QD",
+"Niacin / Acipimox":"Niacin ER 500 mg HS 起始",
+"魚油 ω-3（pure EPA）":"Icosapent ethyl 2 g BID 隨餐",
+"Metformin (Glucophage)":"500 mg QD–BID 隨餐起始，每 1–2 週加 500 mg，最大 2000 mg/day",
+"Dapagliflozin (Forxiga) / Empagliflozin (Jardiance) / Canagliflozin (Invokana)":"Forxiga 10 mg QD（降糖可 5 mg 起）；Jardiance 10 mg QD；Invokana 100 mg QD",
+"Semaglutide (Ozempic)／口服 Rybelsus":"Ozempic 0.25 mg SC QW × 4 週 → 0.5 mg；Rybelsus 3 mg QD 空腹",
+"Tirzepatide (Mounjaro)":"2.5 mg SC QW × 4 週",
+"Dulaglutide (Trulicity) / Liraglutide (Saxenda)":"Trulicity 0.75 mg SC QW；Liraglutide 0.6 mg SC QD",
+"Linagliptin (Trajenta)":"5 mg QD",
+"Sitagliptin (Januvia) / Vildagliptin (Galvus)":"Sitagliptin 100 mg QD；Vildagliptin 50 mg QD–BID",
+"Pioglitazone (Actos)":"15 mg QD",
+"Gliclazide (Diamicron) / Glimepiride (Amaryl)":"Diamicron MR 30 mg QD 早餐；Amaryl 1 mg QD",
+"Repaglinide (Novonorm) / Mitiglinide (Glufast) / Nateglinide (Starlix)":"Repaglinide 0.5 mg 三餐前",
+"Acarbose (Glucobay)":"50 mg QD–TID 隨第一口飯",
+"Glargine (Toujeo) / Degludec (Tresiba)":"新起始：0.1–0.2 U/kg 或 10 U HS",
+"Aspart (Novorapid)":"4 U 或 basal 的 10% 餐前",
+"Regular insulin (RI) STAT":"不確定時採 sliding scale 低一階",
+"NPH / Detemir (Levemir)":"0.1–0.2 U/kg HS",
+"KCl 補充":"K 3.3–5.3：每 1 L 點滴加 KCl 20–30 mEq",
+"Captopril (Cabudan)":"高血壓 ST：12.5–25 mg PO 或 SL",
+"Amlodipine (Norvasc)":"5 mg QD（高齡 2.5 mg）",
+"Nifedipine (Adalat)":"5–10 mg PO，勿舌下",
+"Hydralazine (Stable 10 mg / Apolin 25 mg)":"10–25 mg PO",
+"NTG":"0.4–0.6 mg SL，可每 5 分鐘再給，最多 3 次",
+"Labetalol (Trandate)":"10–20 mg 慢推 IV，可每 10 分鐘重複",
+"ARB（Olmesartan > Irbesartan > Valsartan > Losartan）":"Losartan 50 mg／Valsartan 80 mg／Olmesartan 20 mg QD",
+"htn|Furosemide":"20–40 mg PO QD",
+"Thiazide":"HCTZ 12.5 mg QD",
+"Bisoprolol (Concor) / Metoprolol / Atenolol":"Bisoprolol 2.5 mg QD；Atenolol 25–50 mg QD；Metoprolol 25–50 mg BID",
+"Propranolol (Inderal) / Carvedilol":"Propranolol 10 mg TID；Carvedilol 3.125 mg BID",
+"Verapamil / Diltiazem (Herbesser)":"Diltiazem 30 mg TID",
+"htn|Doxazosin (Doxaben)":"1 mg HS 起始",
+"Clonidine (Catapres)":"0.075–0.1 mg BID",
+"NSAIDs":"痛風急性：Naproxen 500 mg BID 或 Ibuprofen 400 mg TID，3–5 天",
+"Colchicine":"急性：1 mg → 1 小時後 0.5 mg，之後 0.5 mg QD–BID（台灣 0.5 mg 錠）",
+"Hydrocortisone／Prednisolone":"Prednisolone 30–35 mg QD × 5 天",
+"Allopurinol":"100 mg QD 起始（腎差 50 mg），每 2–4 週調",
+"Febuxostat":"40 mg QD",
+"Probenecid / Benzbromarone / Sulfinpyrazone":"Probenecid 250 mg BID；Benzbromarone 50 mg QD",
+"Acetaminophen (Panadol)":"500 mg Q6H PRN，保守上限 3 g/day",
+"Acetamol":"1 g IVD Q6H（<50 kg：15 mg/kg）",
+"Ibuprofen":"200–400 mg Q6–8H PC",
+"Diclofenac (Cataflam)":"25–50 mg BID–TID PC",
+"Mefenamic acid (Ponstan)":"經痛：500 mg 起，之後 250 mg Q6H，≤7 天",
+"Ketorolac":"≥65 歲或 <50 kg：15 mg IV 或 30 mg IM；總療程 ≤5 天",
+"Celecoxib (Celebrex) / Etoricoxib (Arcoxia)":"Celecoxib 100–200 mg QD–BID；Etoricoxib 60 mg QD",
+"Parecoxib (Dynastat)":"20–40 mg IV（高齡或 <50 kg：20 mg）",
+"Ultracet / Utraphen":"1 顆 Q6H PRN，最多 8 顆/day，≤5 天",
+"Tramadol (Limadol, Tramtor)":"50 mg IM／IV Q6H PRN；最大 400 mg/day（>75 歲 300）",
+"Morphine":"PO 5 mg Q4H PRN；IV 2 mg 慢推",
+"Oxycodone（OxyContin 10 mg 長效／OxyNorm 5 mg 速效）":"OxyNorm 5 mg Q4–6H PRN",
+"Fentanyl 針劑":"25–50 μg IV",
+"Fentanyl 貼片":"12.5 μg/hr（僅適合已耐受鴉片者）",
+"Symproic（自費）":"0.2 mg QD",
+"Pregabalin (Lyrica) / Gabapentin (Neurontin)":"Pregabalin 75 mg HS–BID；Gabapentin 300 mg HS 起始",
+"Chlorzoxazone (Solaxin / Soma)":"200 mg TID",
+"Metoclopramide (Primperan / Promeran)":"5–10 mg PO／IV TID，≤5 天（高齡 5 mg）",
+"Domperidone":"10 mg TID AC，最大 30 mg/day，≤1 週",
+"Prochlorperazine (Novamin)":"5 mg PO TID；5–10 mg IM",
+"Mosapride":"5 mg TID AC",
+"Baclofen":"打嗝：5 mg TID 起始",
+"Sennoside":"2# HS",
+"MgO":"250 mg × 1–2# TID",
+"Lactulose":"15 mL BID，調到每天 2–3 次軟便",
+"Bisacodyl (Dulcolax)":"10 mg supp ST",
+"EVAC":"1 支 ENEMA ST",
+"Smecta / Hidrasec":"Smecta 3 g TID",
+"Loperamide (Imolex)":"首次 4 mg，之後每次稀便 2 mg，保守上限 8 mg/day",
+"Kascoal":"1# TID",
+"Butylbromide（Buscopan、Fucon；針劑 Hyoscon、Escopan）":"10 mg PO TID；20 mg IV／IM ST",
+"Megestrol":"160–400 mg/day 起始",
+"Pantoprazole (Pantoloc)":"一般 40 mg IV QD",
+"Famotidine (Gaster / Kimodin)":"20 mg BID（高齡 20 mg QD）",
+"Oxethazaine (Strocain)":"5–10 mg TID AC",
+"Topaal (Algitab)":"1–2# 嚼碎 PRN",
+"Omeprazole (Omezol)":"20 mg QD AC",
+"Rabeprazole (Pariet)":"10–20 mg QD AC",
+"Esomeprazole (Nexium)":"20 mg QD AC",
+"Lansoprazole (Takepron)":"15–30 mg QD AC",
+"Dexlansoprazole (Dexilant)":"30 mg QD",
+"Loratadine (Finska) / Levocetirizine (Xyzal)":"Loratadine 10 mg QD；Levocetirizine 2.5–5 mg HS",
+"uri|Diphenhydramine (Vena)":"25–30 mg QD–TID",
+"Cyproheptadine / Chlorpheniramine / Carbinoxamine":"Cyproheptadine 4 mg TID；Chlorpheniramine 4 mg TID",
+"Secorine":"5–10 mL TID",
+"Medicon":"Dextromethorphan 15–30 mg TID",
+"Brown mixture":"5 mL HS",
+"Ambroxol (Mubroxol)":"30 mg TID",
+"Acetylcysteine：ACC 口服／Ancare 吸入":"ACC 600 mg QD 或 200 mg TID",
+"Methylprednisolone (Medason)":"AE：40 mg IV QD × 5 天",
+"Hydrocortisone (Solu-cortef)":"敗血性休克 50 mg Q6H；腎上腺危象 100 mg STAT",
+"Prednisolone":"COPD AE：40 mg QD × 5 天",
+"Dexamethasone":"腦水腫：10 mg IV 起始，之後 4 mg Q6H",
+"Combivent（Salbutamol + Ipratropium）":"1 vial INHL Q6–8H；急性可 Q20min × 3",
+"Salbutamol (Ventolin) / Fenoterol (Berotec) / Terbutaline (Butanyl)":"Ventolin 2.5 mg neb + N/S Q4–6H PRN",
+"Ipratropium (Atrovent)":"0.5 mg neb Q6–8H",
+"Budesonide (Pulmicort)":"0.5–1 mg neb BID",
+"Symbicort／Seretide":"Symbicort 160/4.5 1–2 puff BID",
+"Anoro／Spiolto":"1 吸 QD",
+"Trimbow":"2 puff BID",
+"Diphenidol":"25 mg TID",
+"dizzy|Diphenhydramine (Vena)":"25–30 mg QD",
+"Nicametate":"50 mg TID",
+"Tamsulosin (Tamlosin, Harnalidge)":"0.2 mg HS（Harnalidge OCAS 0.4 mg QD）",
+"Silodosin (Urief)":"4 mg BID",
+"uro|Doxazosin (Doxaben)":"1 mg HS",
+"Bethanechol":"10–25 mg TID 空腹",
+"Dutasteride (Avodart)":"0.5 mg QD",
+"Mirabegron (Betmiga)":"25 mg QD 起始",
+"Solifenacin (Vesicare)":"5 mg QD",
+"Tranexamic acid":"PO 250–500 mg TID；IV 10 mg/kg（約 500 mg–1 g）Q8H",
+"Trazodone (Mesyrel)":"25–50 mg HS",
+"Mirtazapine":"7.5–15 mg HS",
+"Lemborexant (Dayvigo)":"5 mg HS",
+"Lorazepam (Lowen / Ativan)":"0.5 mg HS（高齡 0.25–0.5 mg）",
+"Brotizolam (Lendormin)":"0.125–0.25 mg HS",
+"Alprazolam (Xanax) / Estazolam (Eurodin)":"Alprazolam 0.25 mg HS；Estazolam 1 mg HS",
+"Diazepam / Clonazepam (Rivotril)":"Clonazepam 0.25–0.5 mg HS",
+"Zolpidem (Stilnox)":"5 mg HS",
+"Haloperidol (Haldol)":"高齡 0.5–1 mg IM；一般 2.5–5 mg IM（1 amp = 5 mg）",
+"Quetiapine (Seroquel / Qting)":"12.5–25 mg HS",
+"delirium|Lorazepam":"酒精戒斷：1–2 mg PO／IV Q4–6H，依症狀",
+"io|Furosemide":"20–40 mg IVP，再依尿量調",
+"輸液補充":"N/S 250–500 mL bolus 後再評估"
+};
+/* ---------- renal dosing: by egfr|crcl|cr ; t=[[min,lv,text]] (cr: [[maxExclusive,lv,text]]) ; s: L=仿單 G=一般建議 ---------- */
+const RD={
+"Metformin (Glucophage)":{by:"egfr",s:"L",t:[[45,"","不需調整；eGFR 30–60 打顯影劑時先停，48 小時後再評估"],[30,"c","不建議新開始；已在用者評估效益，常用最大 1000 mg/day（補充）；顯影前停用"],[0,"x","eGFR <30 禁用"]]},
+"Dapagliflozin (Forxiga) / Empagliflozin (Jardiance) / Canagliflozin (Invokana)":{by:"egfr",s:"L",t:[[60,"","不需調整"],[45,"","Canagliflozin 最大 100 mg QD"],[30,"c","Forxiga 不再用於降血糖（效果差），心腎保護 10 mg QD 可用；Canagliflozin 最大 100 mg"],[25,"c","Forxiga 僅心腎保護 10 mg；Canagliflozin 不建議新開始；Jardiance 降糖不建議（補充）"],[0,"c","不建議新開始 Forxiga；已在用者可續用 10 mg QD 作心腎保護"]]},
+"Sitagliptin (Januvia) / Vildagliptin (Galvus)":{by:"egfr",s:"L",t:[[50,"","不需調整"],[45,"c","Sitagliptin 100 mg QD；Vildagliptin 50 mg QD"],[30,"c","Sitagliptin 50 mg QD；Vildagliptin 50 mg QD"],[0,"c","Sitagliptin 25 mg QD（含透析）；Vildagliptin 50 mg QD"]]},
+"Linagliptin (Trajenta)":{by:"egfr",s:"L",t:[[0,"","不需調整，5 mg QD"]]},
+"Gliclazide (Diamicron) / Glimepiride (Amaryl)":{by:"egfr",s:"L",t:[[60,"","不需調整"],[30,"c","Amaryl 1 mg 起始、慢調，低血糖風險高（補充）"],[0,"x","重度腎功能不全禁用，改胰島素"]]},
+"Repaglinide (Novonorm) / Mitiglinide (Glufast) / Nateglinide (Starlix)":{by:"crcl",s:"L",t:[[40,"","不需起始調整"],[20,"c","Repaglinide 0.5 mg 三餐前起始，慢調"],[0,"x","CrCl <20 或透析：無研究資料，避免"]]},
+"Acarbose (Glucobay)":{by:"crcl",s:"L",t:[[25,"","不需調整"],[0,"x","CrCl <25 不應使用"]]},
+"Pioglitazone (Actos)":{by:"egfr",s:"G",t:[[0,"","不需調整劑量，注意水分滯留"]]},
+"Semaglutide (Ozempic)／口服 Rybelsus":{by:"egfr",s:"G",t:[[0,"","不需調整；嘔吐腹瀉脫水時小心 AKI"]]},
+"Tirzepatide (Mounjaro)":{by:"egfr",s:"G",t:[[0,"","不需調整；嘔吐腹瀉脫水時小心 AKI"]]},
+"Dulaglutide (Trulicity) / Liraglutide (Saxenda)":{by:"egfr",s:"G",t:[[0,"","不需調整；嘔吐腹瀉脫水時小心 AKI"]]},
+"Glargine (Toujeo) / Degludec (Tresiba)":{by:"egfr",s:"G",t:[[50,"","不需調整"],[10,"c","胰島素需求下降，TDD 約減 25%"],[0,"c","TDD 約減 50%"]]},
+"Aspart (Novorapid)":{by:"egfr",s:"G",t:[[50,"","不需調整"],[10,"c","TDD 約減 25%"],[0,"c","TDD 約減 50%"]]},
+"Regular insulin (RI) STAT":{by:"egfr",s:"G",t:[[50,"","不需調整"],[10,"c","作用延長，劑量約減 25%"],[0,"c","作用延長，劑量約減 50%"]]},
+"KCl 補充":{by:"egfr",s:"G",t:[[30,"","依 K 補充"],[0,"c","確認尿量後再補，劑量減少、頻繁追 K"]]},
+"Atorvastatin":{by:"crcl",s:"L",t:[[0,"","不需調整"]]},
+"Rosuvastatin":{by:"crcl",s:"L",t:[[30,"","不需調整"],[0,"c","非透析：起始 5 mg，最大 10 mg QD"]]},
+"Pitavastatin":{by:"egfr",s:"L",t:[[60,"","不需調整"],[0,"c","起始 1 mg，最大 2 mg QD（含透析）"]]},
+"Pravastatin":{by:"crcl",s:"G",t:[[30,"","不需調整"],[0,"c","起始 10 mg QD"]]},
+"Fibrates（Fenofibrate、Gemfibrozil…）":{by:"egfr",s:"L",t:[[60,"","不需調整"],[30,"c","需減量（Fenofibrate 低劑量起始），追 Cr"],[0,"x","eGFR <30（含透析）禁用"]]},
+"Captopril (Cabudan)":{by:"crcl",s:"L",t:[[30,"","不需調整；追 K、Cr"],[0,"c","起始劑量減少、緩慢調升，追 K、Cr"]]},
+"ARB（Olmesartan > Irbesartan > Valsartan > Losartan）":{by:"egfr",s:"G",t:[[0,"","不需調整劑量；追 K、Cr"]]},
+"Bisoprolol (Concor) / Metoprolol / Atenolol":{by:"crcl",s:"L",t:[[40,"","不需調整"],[35,"c","Bisoprolol 起始 2.5 mg（補充）"],[15,"c","Atenolol 最大 50 mg/day；Bisoprolol 起始 2.5 mg"],[0,"c","Atenolol 25 mg QD 或 50 mg QOD（透析後 50 mg）；Bisoprolol 最大 10 mg"]]},
+"Thiazide":{by:"egfr",s:"G",t:[[30,"","不需調整"],[0,"c","eGFR <30 效果差，改 loop diuretic"]]},
+"htn|Furosemide":{by:"egfr",s:"G",t:[[0,"","不需減量；腎差常需較高劑量才有效"]]},
+"io|Furosemide":{by:"egfr",s:"G",t:[[0,"","不需減量；腎差常需較高劑量才有效"]]},
+"Clonidine (Catapres)":{by:"crcl",s:"G",t:[[30,"","不需調整"],[0,"c","起始劑量降低"]]},
+"Colchicine":{by:"crcl",s:"L",t:[[30,"","不需調整，密切監測副作用"],[0,"c","急性：劑量不變，但兩週內不可重複療程；預防：0.3 mg/day 起始"]],hd:"透析：急性發作單次 0.6 mg，不重複；預防 0.3 mg 每週兩次"},
+"Allopurinol":{by:"crcl",s:"L",t:[[60,"","100 mg QD 起始，每週加 100 mg"],[20,"c","低劑量起始（50–100 mg，補充），慢調"],[10,"c","200 mg/day"],[0,"c","不超過 100 mg/day"]]},
+"Febuxostat":{by:"crcl",s:"L",t:[[30,"","不需調整"],[15,"c","最大 40 mg QD"],[0,"c","CrCl <15 資料有限（補充）"]]},
+"Probenecid / Benzbromarone / Sulfinpyrazone":{by:"crcl",s:"G",t:[[50,"","不需調整"],[30,"c","效果下降"],[0,"x","無效且禁用"]]},
+"NSAIDs":{by:"egfr",s:"G",t:[[60,"","最短療程，追 Cr"],[30,"c","盡量避免；必要時最低劑量最短期"],[0,"x","避免"]]},
+"Ibuprofen":{by:"egfr",s:"G",t:[[60,"","最短療程，追 Cr"],[30,"c","盡量避免；必要時最低劑量最短期"],[0,"x","避免"]]},
+"Diclofenac (Cataflam)":{by:"egfr",s:"G",t:[[60,"","最短療程，追 Cr"],[30,"c","盡量避免"],[0,"x","避免"]]},
+"Mefenamic acid (Ponstan)":{by:"egfr",s:"G",t:[[60,"","最短療程"],[30,"c","盡量避免"],[0,"x","避免"]]},
+"Ketorolac":{by:"egfr",s:"L",t:[[60,"","≤5 天"],[30,"c","15 mg IV 或 30 mg IM 單次，或 15 mg Q6H；最大 60 mg/day"],[0,"x","進展性腎功能不全禁用"]]},
+"Celecoxib (Celebrex) / Etoricoxib (Arcoxia)":{by:"egfr",s:"G",t:[[60,"","最短療程，追 Cr"],[30,"c","盡量避免"],[0,"x","避免"]]},
+"Parecoxib (Dynastat)":{by:"egfr",s:"G",t:[[60,"",""],[30,"c","最低劑量 20 mg"],[0,"x","避免"]]},
+"Acetaminophen (Panadol)":{by:"crcl",s:"G",t:[[10,"","不需調整"],[0,"c","間隔延長至 Q8H"]]},
+"Acetamol":{by:"crcl",s:"G",t:[[30,"","不需調整"],[0,"c","間隔延長至 Q6H 以上"]]},
+"Ultracet / Utraphen":{by:"crcl",s:"L",t:[[30,"","不需調整"],[0,"c","每 12 小時最多 2 顆"]]},
+"Tramadol (Limadol, Tramtor)":{by:"crcl",s:"L",t:[[30,"","不需調整"],[0,"c","間隔延長至 Q12H，最大 200 mg/day"]]},
+"Morphine":{by:"crcl",s:"G",t:[[50,"","不需調整"],[30,"c","減量約 25%，延長間隔"],[0,"x","代謝物蓄積，避免；改 Fentanyl"]]},
+"Oxycodone（OxyContin 10 mg 長效／OxyNorm 5 mg 速效）":{by:"crcl",s:"G",t:[[60,"","不需調整"],[0,"c","起始 1/3–1/2 劑量，慢調"]]},
+"Fentanyl 針劑":{by:"crcl",s:"G",t:[[0,"","不需調整，腎差首選"]]},
+"Pregabalin (Lyrica) / Gabapentin (Neurontin)":{by:"crcl",s:"L",t:[[60,"","不需調整"],[30,"c","Pregabalin 75–300 mg/day 分 2–3 次；Gabapentin 400–1400 mg/day 分 BID"],[15,"c","Pregabalin 25–150 mg/day QD–BID；Gabapentin 200–700 mg QD"],[0,"c","Pregabalin 25–75 mg QD；Gabapentin 100–300 mg QD"]]},
+"Metoclopramide (Primperan / Promeran)":{by:"crcl",s:"L",t:[[60,"","不需調整"],[15,"c","起始劑量減半（5 mg）"],[0,"c","ESRD：5 mg QID 或 10 mg BID，最大 20 mg/day"]],hd:"透析：5 mg BID–QID，最大 20 mg/day"},
+"Domperidone":{by:"crcl",s:"L",t:[[15,"","不需調整"],[0,"c","重度腎功能不全：頻次減為 QD–BID，可能需減量"]]},
+"Baclofen":{by:"egfr",s:"L",t:[[60,"","不需調整"],[30,"c","減量、小心使用"],[0,"x","避免（蓄積致意識改變，補充）"]]},
+"MgO":{by:"crcl",s:"G",t:[[30,"","不需調整"],[0,"x","避免（高血鎂）"]]},
+"Famotidine (Gaster / Kimodin)":{by:"crcl",s:"L",t:[[60,"","不需調整"],[30,"c","20 mg QD（或 40 mg QOD），最大 20 mg/day"],[0,"c","20 mg QOD 或 10 mg QD"]]},
+"Loratadine (Finska) / Levocetirizine (Xyzal)":{by:"crcl",s:"L",t:[[80,"","不需調整"],[50,"c","Levocetirizine 2.5 mg QD"],[30,"c","Levocetirizine 2.5 mg QOD"],[10,"c","Levocetirizine 2.5 mg 每週兩次；Loratadine 10 mg QOD"],[0,"x","Levocetirizine 禁用（ESRD／透析）；Loratadine 10 mg QOD"]]},
+"Solifenacin (Vesicare)":{by:"crcl",s:"L",t:[[30,"","不需調整"],[0,"c","最大 5 mg QD"]]},
+"Mirabegron (Betmiga)":{by:"egfr",s:"L",t:[[30,"","不需調整"],[15,"c","最大 25 mg QD"],[0,"x","ESRD／透析不建議"]]},
+"Silodosin (Urief)":{by:"crcl",s:"L",t:[[50,"","不需調整"],[30,"c","4 mg QD"],[0,"x","CrCl <30 禁用"]]},
+"Tamsulosin (Tamlosin, Harnalidge)":{by:"crcl",s:"G",t:[[10,"","不需調整"],[0,"c","CrCl <10 未研究，小心"]]},
+"Tranexamic acid":{by:"cr",s:"L",t:[[1.36,"","不需調整"],[2.83,"c","IV 10 mg/kg BID"],[5.66,"c","IV 10 mg/kg QD"],[99,"c","IV 10 mg/kg Q48H 或 5 mg/kg Q24H"]]},
+"Mirtazapine":{by:"crcl",s:"G",t:[[40,"","不需調整"],[0,"c","清除率下降，7.5 mg HS 起始"]]},
+"Diphenidol":{by:"crcl",s:"G",t:[[15,"","不需調整"],[0,"c","嚴重腎衰竭小心；無尿禁用"]]}
+};
+const SRC={L:"仿單",G:"一般建議"};
+
+/* ---------- renal values ---------- */
+function ckdepi(cr,age,sex){const f=sex==="F",k=f?0.7:0.9,a=f?-0.241:-0.302;return 142*Math.pow(Math.min(cr/k,1),a)*Math.pow(Math.max(cr/k,1),-1.2)*Math.pow(0.9938,age)*(f?1.012:1)}
+function cockcroft(cr,age,wt,sex){return (140-age)*wt/(72*cr)*(sex==="F"?0.85:1)}
+function renalCalc(){const r=S.rn||{};const n=x=>{const v=parseFloat(x);return isFinite(v)&&v>0?v:null};
+ const cr=n(r.cr),age=n(r.age),wt=n(r.wt),sex=r.sex||"M";
+ const ce=cr&&age?ckdepi(cr,age,sex):null,cc=cr&&age&&wt?cockcroft(cr,age,wt,sex):null;
+ const egfr=n(r.egfr)??ce,crcl=n(r.crcl)??cc;
+ return {cr,ce,cc,egfr,crcl,egfrSrc:n(r.egfr)?"填入":ce?"CKD-EPI 2021":null,crclSrc:n(r.crcl)?"填入":cc?"Cockcroft-Gault":null,hd:!!r.hd}}
+function RV(){if(!S.renalOn)return null;const c=renalCalc();if(c.hd)return {egfr:5,crcl:5,cr:c.cr,hd:true,label:"透析"};
+ if(c.egfr==null&&c.crcl==null)return null;
+ return {egfr:c.egfr??c.crcl,crcl:c.crcl??c.egfr,cr:c.cr,hd:false,estE:c.egfr==null,estC:c.crcl==null,
+  label:[c.egfr!=null?"eGFR "+Math.round(c.egfr):"",c.crcl!=null?"CrCl "+Math.round(c.crcl):""].filter(Boolean).join("・")}}
+function rdRule(t,i){return RD[t.id+"|"+i.n]||RD[i.n]||null}
+function cdOf(t,i){return CD[t.id+"|"+i.n]||CD[i.n]||""}
+function rdEval(t,i){const r=rdRule(t,i),rv=RV();if(!r||!rv)return null;
+ if(rv.hd&&r.hd)return {lv:"c",text:r.hd,s:r.s,by:"透析"};
+ if(r.by==="cr"){if(rv.cr==null)return null;const x=r.t.find(z=>rv.cr<z[0])||r.t[r.t.length-1];return {lv:x[1],text:x[2],s:r.s,by:"Cr "+rv.cr}}
+ const v=r.by==="egfr"?rv.egfr:rv.crcl;const x=r.t.find(z=>v>=z[0])||r.t[r.t.length-1];
+ const est=r.by==="egfr"?rv.estE:rv.estC;return {lv:x[1],text:x[2],s:r.s,by:rv.hd?"透析":(r.by==="egfr"?"eGFR":"CrCl")+(est?"≈":" ")+Math.round(v)+(est?"（以"+(r.by==="egfr"?"CrCl":"eGFR")+"代估）":"")}}
+function actSt(){const a=[...S.st];const rv=RV();if(rv&&Math.min(rv.egfr,rv.crcl)<60&&!a.includes("renal"))a.push("renal");return a}
+function autoRenal(){return !S.st.includes("renal")&&actSt().includes("renal")}
+function ckdStage(e){return e>=90?"G1":e>=60?"G2":e>=45?"G3a":e>=30?"G3b":e>=15?"G4":"G5"}
+
+function renalPanelHTML(){const r=S.rn||{};const c=renalCalc();const f=(x,d=0)=>x==null?"—":x.toFixed(d);
+ return `<div class="sumsec rcalc"><h3>腎功能與劑量調整 <label class="sw" for="rnOn"><input type="checkbox" id="rnOn" ${S.renalOn?"checked":""}><span>依腎功能調整劑量</span></label></h3>
+ <div class="row"><label for="rnAge">年齡 <input id="rnAge" data-rn="age" type="number" inputmode="decimal" value="${esc(r.age??"")}"></label>
+ <label for="rnSex">性別 <select id="rnSex" data-rn="sex"><option value="M" ${r.sex!=="F"?"selected":""}>男</option><option value="F" ${r.sex==="F"?"selected":""}>女</option></select></label>
+ <label for="rnWt">體重 kg <input id="rnWt" data-rn="wt" type="number" inputmode="decimal" value="${esc(r.wt??"")}"></label>
+ <label for="rnCr">Cr mg/dL <input id="rnCr" data-rn="cr" type="number" step="0.01" inputmode="decimal" value="${esc(r.cr??"")}"></label></div>
+ <div class="row"><span class="cat">或直接填：</span><label for="rnE">eGFR <input id="rnE" data-rn="egfr" type="number" inputmode="decimal" value="${esc(r.egfr??"")}"></label>
+ <label for="rnC">CrCl <input id="rnC" data-rn="crcl" type="number" inputmode="decimal" value="${esc(r.crcl??"")}"></label>
+ <label for="rnHd" class="sw"><input type="checkbox" id="rnHd" data-rn="hd" ${r.hd?"checked":""}><span>透析中</span></label>
+ <button type="button" class="ovlink" id="rnClr">清除</button></div>
+ <div class="out" id="rnOut">${c.hd?"<b>透析</b>：以 ESRD／透析劑量建議":`eGFR <b class="num">${f(c.egfr)}</b> mL/min/1.73m² ${c.egfrSrc?`<span class="cat">${c.egfrSrc}</span>`:""}${c.egfr!=null?` <span class="cat">CKD ${ckdStage(c.egfr)}</span>`:""}　CrCl <b class="num">${f(c.crcl)}</b> mL/min ${c.crclSrc?`<span class="cat">${c.crclSrc}</span>`:""}`}${S.renalOn?"":`　<span class="w">劑量調整已關閉</span>`}</div>
+ <p class="cat" style="margin:6px 0 0">仿單多以 CrCl（Cockcroft-Gault）分級，部分新藥以 eGFR；每個藥會依其仿單使用的指標。只填一種時，另一種以同值估算。eGFR 或 CrCl &lt;60 會自動套用「腎功能不全」狀態。</p></div>`}
+
+function wl(k){return k==="__rn"?"腎劑量":SN[k]}
+
+
+/* ---------- render: chrome ---------- */
+function renderStates(){
+ $("#schips").innerHTML=ST.map(([k,n])=>`<button type="button" class="schip" data-st="${k}" aria-pressed="${actSt().includes(k)}">${n}${k==="renal"&&autoRenal()?"（自動）":""}</button>`).join("")+`<button type="button" class="schip clear" data-st="__clear">清除狀態</button>`;
+ const A=actSt(),rv=RV();$("#activebar").innerHTML=(A.length?"病人狀態："+A.map(k=>`<span class="pill">${SN[k]}</span>`).join(""):"")+(rv?`<button type="button" class="pill rn" id="bRn">腎劑量：${esc(rv.label)}</button>`:"");
+}
+function renderNav(){
+ const gs=["三高控制","簡單症狀處理","急症處理"];
+ $("#nav").innerHTML=gs.map(g=>`<h3>${g}</h3><div class="ngrid">${T.filter(t=>t.g===g).map(t=>{
+   const nx=t.items.filter(i=>evalItem(i).lv==="x").length;const ns=t.items.filter(i=>S.pick[pid(t,i)]).length;
+   return `<button type="button" class="nb" data-tid="${t.id}" aria-current="${S.view==="topic"&&S.tid===t.id&&!q()}"><span class="nt">${t.t}</span>${nx?`<span class="b x" title="目前狀態下禁用">${nx}</span>`:""}${ns?`<span class="b s" title="已選">${ns}</span>`:""}</button>`}).join("")}</div>`).join("");
+ $("#sumct").textContent=Object.keys(S.pick).length+Object.keys(S.as).length;
+}
+const q=()=>$("#q").value.trim().toLowerCase();
+
+/* ---------- render: topic ---------- */
+function itemHTML(t,i){
+ const e=evalItem(i),sel=!!S.pick[pid(t,i)];
+ const badges=[];
+ if(i.first)badges.push(`<span class="bd first">${i.first===1?"首選":"首選："+esc(i.first)}</span>`);
+ const lvTxt={p:"狀態首選",c:"慎用",x:"禁用"};
+ if(e.lv)badges.push(`<span class="bd ${e.lv}">${lvTxt[e.lv]}</span>`);
+ return `<div class="it ${e.lv?"lv-"+e.lv:""} ${sel?"sel":""}">
+  <button type="button" class="pick" data-pick="${esc(pid(t,i))}" aria-pressed="${sel}" title="${sel?"從待辦清單移除":"選進待辦"}" aria-label="${sel?"從待辦清單移除":"選進待辦"}">${sel?'<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg>':'<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>'}</button>
+  <div class="ih"><span class="nm">${esc(i.n)}</span>${badges.join("")}<span class="cat">${esc(i.cat||"")}</span></div>
+  ${i.d?`<div class="dose num">${esc(i.d)}</div>`:""}
+  ${cdOf(t,i)?`<div class="cdl"><b>保守劑量</b>　${addTag(cdOf(t,i))}</div>`:""}
+  ${rdLine(t,i)}
+  ${(i.sp||i.se)?`<div class="tags">${(i.sp||[]).map(s=>`<span class="tg sp">${addTag(s)}</span>`).join("")}${(i.se||[]).map(s=>`<span class="tg se">${addTag(s)}</span>`).join("")}</div>`:""}
+  ${i.dg?`<div class="dg">${addTag(i.dg)}</div>`:""}
+  ${e.why.length?`<div class="why">${e.why.map(w=>`<span class="${LV[w[1]][1]}">${wl(w[0])}・${LV[w[1]][0]}：${addTag(w[2])}</span>`).join("")}</div>`:""}
+ </div>`}
+
+function rdLine(t,i){const r=rdEval(t,i);if(!r||!r.text)return"";if(r.lv)return "";/* lv shown in why */
+ return `<div class="rdl"><b>腎劑量（${esc(r.by)}）</b>：${addTag(r.text)} <span class="cat">${SRC[r.s]}</span></div>`}
+function rdLineAll(t,i){const r=rdEval(t,i);if(!r||!r.text)return"";return `<div class="rdl ${r.lv||""}"><b>腎劑量（${esc(r.by)}）</b>：${addTag(r.text)} <span class="cat">${SRC[r.s]}</span></div>`}
+function chkHTML(t){if(!t.chk.length)return"";const done=t.chk.filter((c,j)=>S.chk[t.id+":"+j]).length;
+ return `<h3>確認清單 <span class="prog">${done}/${t.chk.length}</span></h3><div class="chk">${t.chk.map((c,j)=>{const id=`c_${t.id}_${j}`;return `<label for="${id}"><input type="checkbox" id="${id}" data-chk="${t.id}:${j}" ${S.chk[t.id+":"+j]?"checked":""}><span>${addTag(c)}</span></label>`}).join("")}</div>`}
+
+function assHTML(t){if(!t.ass.length)return"";const major=t.ass.filter(a=>a.m).length;
+ const sorted=[...t.ass].sort((a,b)=>(b.m||0)-(a.m||0));
+ return `<details class="fold assess"><summary>＋ 更多評估 <small>${t.ass.length} 項・${major} 項結果會重大改變決策・勾選加入總結</small></summary><div class="fb">${sorted.map(a=>{const k=t.id+"|"+a.n;const id="a_"+t.id+"_"+t.ass.indexOf(a);
+  return `<label class="as ${a.m?"major":""}" for="${id}"><input type="checkbox" id="${id}" data-as="${esc(k)}" ${S.as[k]?"checked":""}><span class="an">${addTag(a.n)} ${a.m?'<span class="bd major">改變決策</span>':""}</span><span class="ar">${addTag(a.r)}</span></label>`}).join("")}<p class="meta" style="font-size:.78rem;color:var(--muted);margin:8px 0 0">評估項目部分為一般臨床補充，非全出自原筆記。</p></div></details>`}
+
+function calcHTML(){return `<div class="calc"><b>胰島素試算</b> <span class="add">僅供計算，需臨床判斷</span>
+ <div class="row"><label for="cw">體重 kg <input id="cw" type="number" inputmode="decimal" value="60"></label><label for="cf">係數 <select id="cf"><option value="0.3">0.3（腎差／高齡）</option><option value="0.4" selected>0.4</option><option value="0.5">0.5</option></select></label></div>
+ <div class="out" id="co1"></div>
+ <div class="row"><label for="ct">平時 TDD U <input id="ct" type="number" inputmode="decimal" value="30"></label><label for="cty">補打藥物 <select id="cty"><option value="RI">Regular insulin</option><option value="NR">Novorapid</option></select></label></div>
+ <div class="row"><label for="cg">目前血糖 <input id="cg" type="number" inputmode="decimal" value="300"></label><label for="ctg">目標 <input id="ctg" type="number" inputmode="decimal" value="150"></label><label for="cc">接下來進食醣 g <input id="cc" type="number" inputmode="decimal" value="0"></label></div>
+ <div class="out" id="co2"></div></div>`}
+function runCalc(){const g=id=>parseFloat(($("#"+id)||{}).value)||0;if(!$("#cw"))return;
+ const w=g("cw"),f=g("cf"),tdd=w*f;$("#co1").innerHTML=`TDD ≈ <b class="num">${tdd.toFixed(0)} U</b>（範圍 ${(w*.3).toFixed(0)}–${(w*.5).toFixed(0)}）→ basal <b class="num">${(tdd/2).toFixed(0)} U</b> 睡前；bolus 每餐 <b class="num">${(tdd/6).toFixed(1)} U</b>`;
+ const T2=g("ct")||1,ty=$("#cty").value,isf=(ty==="RI"?1500:1800)/T2,ci=(ty==="RI"?450:500)/T2;const corr=Math.max(0,(g("cg")-g("ctg"))/isf),carb=g("cc")/ci,tot=Math.round((corr+carb)*2)/2;
+ $("#co2").innerHTML=`ISF <b class="num">${isf.toFixed(0)}</b> mg/dL/U；C/I <b class="num">${ci.toFixed(0)}</b> g/U → 校正 <span class="num">${corr.toFixed(1)}</span> U + 進食 <span class="num">${carb.toFixed(1)}</span> U ≈ <b class="num">${tot} U</b>`}
+
+function topicHTML(t){
+ const sn=actSt().filter(k=>t.sn&&t.sn[k]).map(k=>`<div class="snote"><b>${SN[k]}</b>：${addTag(t.sn[k])}</div>`).join("");
+ const items=[...t.items].sort((a,b)=>score(b)-score(a));
+ return `<section class="topic" id="t-${t.id}"><div class="eyebrow">${t.g}</div><h2>${t.t}</h2><p class="sub">${t.sub}</p>
+ ${sn}${(t.alerts||[]).map(a=>`<div class="alert"><span>${addTag(a.t)}${a.add?'<span class="add">補充</span>':""}</span></div>`).join("")}
+ <div class="key">${t.top}</div>${t.calc?calcHTML():""}
+ ${items.length?`<h3>處置與用藥 <small>${actSt().length?"已依病人狀態排序：首選在前、禁用在後":"首選在前"}・點 ＋ 選進待辦</small></h3><div class="items">${items.map(i=>itemHTML(t,i)).join("")}</div>`:""}
+ ${chkHTML(t)}${assHTML(t)}
+ ${t.ref?`<details class="fold"><summary>參考表格與細節 <small>需要時展開</small></summary><div class="fb">${t.ref}</div></details>`:""}
+ ${t.mech?`<details class="fold"><summary>機轉・成因・生理 <small>不懂或被問時再看</small></summary><div class="fb">${t.mech}</div></details>`:""}
+ </section>`}
+
+/* ---------- overview + summary ---------- */
+function overviewHTML(){
+ if(!actSt().length)return `<section class="topic"><h2>狀態總覽</h2>${renalPanelHTML()}<p class="empty">先在上方選擇病人狀態，這裡會列出所有主題中受影響的首選、慎用、禁用處置。</p></section>`;
+ const rows={x:[],c:[],p:[]};
+ T.forEach(t=>t.items.forEach(i=>{const e=evalItem(i);if(e.lv)rows[e.lv].push([t,i,e])}));
+ const sec=(lv,title)=>`<div class="sumsec"><h3>${title} <small>${rows[lv].length} 項</small></h3>${rows[lv].length?rows[lv].map(([t,i,e])=>`<div class="srow"><span class="nm">${esc(i.n)}</span> <button type="button" class="ovlink" data-tid="${t.id}">${t.t}</button><div class="why">${e.why.map(w=>`<span class="${LV[w[1]][1]}">${wl(w[0])}・${LV[w[1]][0]}：${addTag(w[2])}</span>`).join("")}</div></div>`).join(""):'<p class="empty">無</p>'}</div>`;
+ return `<section class="topic"><div class="eyebrow">病人狀態</div><h2>狀態總覽</h2><p class="sub">${actSt().map(k=>SN[k]).join("、")}</p>${renalPanelHTML()}
+ ${actSt().map(k=>`<div class="snote"><b>${SN[k]}</b>：${addTag(GN[k])}</div>`).join("")}
+ ${sec("x","禁用")}${sec("c","慎用")}${sec("p","狀態首選")}</section>`}
+
+function summaryData(){
+ const picks=[];T.forEach(t=>t.items.forEach(i=>{if(S.pick[pid(t,i)])picks.push([t,i])}));
+ const asses=[];T.forEach(t=>t.ass.forEach(a=>{if(S.as[t.id+"|"+a.n])asses.push([t,a])}));
+ const tids=[...new Set([...picks.map(p=>p[0].id),...asses.map(a=>a[0].id)])];
+ const open=[];tids.forEach(id=>{const t=T.find(x=>x.id===id);t.chk.forEach((c,j)=>{if(!S.chk[id+":"+j])open.push([t,c])})});
+ return {picks,asses,open}}
+function impRows(){const {picks,asses,open}=summaryData();const ex=(S.imp&&S.imp.ex)||{};const on=(k,d)=>k in ex?ex[k]:d;const R=[];const rv=RV();
+ picks.forEach(([t,i])=>{const e=evalItem(i),r=rdEval(t,i),k="k:"+pid(t,i);
+  const tx=(e.lv==="x"?"⚠ 禁用 ":e.lv==="c"?"慎用 ":"")+i.n+(i.d?"　"+i.d:"")+(rv&&S.renalOn&&r&&r.text?"｜腎劑量："+r.text:"");
+  R.push({k,g:"用藥與處置",tag:"藥物",t:tx.replace(/（補充）/g,""),html:`<span class="nm">${esc(i.n)}</span> ${e.lv?`<span class="bd ${e.lv}">${{p:"狀態首選",c:"慎用",x:"禁用"}[e.lv]}</span>`:""}<span class="cat">${t.t}</span>${i.d?`<div class="num">${esc(i.d)}</div>`:""}${rv&&S.renalOn?rdLineAll(t,i):""}`,on:on(k,true),pid:pid(t,i),tt:t.t})});
+ asses.forEach(([t,a])=>{const k="a:"+t.id+"|"+a.n;R.push({k,g:"評估",tag:"評估",t:a.n.replace(/（補充）/g,""),html:`<span class="nm">${addTag(a.n)}</span> ${a.m?'<span class="bd major">改變決策</span>':""}<span class="cat">${t.t}</span>`,on:on(k,true)})});
+ open.forEach(([t,c])=>{const k="c:"+t.id+":"+t.chk.indexOf(c);R.push({k,g:"還沒勾的確認清單（需要才帶走）",tag:"確認",t:c.replace(/（補充）/g,""),html:`${addTag(c)} <span class="cat">・${t.t}</span>`,on:on(k,false)})});
+ return R}
+function summaryHTML(){
+ const R=impRows(),n=R.filter(r=>r.on).length,groups={};R.forEach(r=>(groups[r.g]=groups[r.g]||[]).push(r));
+ return `<section class="topic imp"><div class="eyebrow">匯入待辦表</div><h2>把選好的藥帶進待辦</h2>
+ <p class="sub">點左邊的 ＋ 選要帶進待辦的項目，會變成待辦表裡一張卡片的子項目；選了不代表已經開了。病人狀態：${actSt().length?actSt().map(k=>SN[k]).join("、"):"未選擇"}${RV()?"｜腎功能："+esc(RV().label):""}</p>
+ <div class="g4">開藥前確認：沒有禁忌症、不會過敏、和現有藥物沒有不良交互作用、肝腎功能可代謝。</div>
+ <div class="imptop"><label for="impBed">床號 <input id="impBed" type="text" data-hp-bed value="${esc(hubTodo.bed())}" autocomplete="off" placeholder="例：18"></label>
+  ${hubTodo.pickerHTML()}</div>
+ ${R.length?Object.keys(groups).map(g=>`<div class="sumsec"><h3>${g} <small>加入 ${groups[g].filter(r=>r.on).length}／${groups[g].length}</small></h3>${groups[g].map(r=>`<div class="irow ${r.on?"on":""}"><button type="button" class="ibox" data-imp="${esc(r.k)}" aria-pressed="${r.on}" aria-label="${r.on?"不帶進待辦":"帶進待辦"}">+</button><div class="ibody">${r.html}</div>${r.pid?`<button type="button" class="ovlink" data-pick="${esc(r.pid)}">移除</button>`:""}</div>`).join("")}</div>`).join("")
+  :'<p class="empty">還沒有選任何藥。到各主題點 ＋ 選藥，或在「更多評估」勾選，再回來這裡匯入。</p>'}
+ <div class="toolbar"><button type="button" class="btn pri" id="bImp" ${n?"":"disabled"}>匯入待辦表（${n} 項）</button><button type="button" class="btn" id="bReset">清空（換下一位病人）</button></div>
+ <p class="sub" style="margin-top:12px">劑量僅供參考，開立前請逐項核對。匯入後這裡會清空已選的藥，病人狀態保留。</p></section>`}
+function impGo(){const R=impRows().filter(r=>r.on);if(!R.length)return;const I=S.imp=S.imp||{};
+ const tops=[...new Set(R.filter(r=>r.tt).map(r=>r.tt))];
+ const ok=hubTodo.add({text:"開藥："+(tops.join("、")||"評估與確認"),src:"用藥速查",subs:R.map(r=>({t:r.t,tag:r.tag}))});
+ if(!ok){hubToast(hubTodo.lastErr||"存不進待辦表");return}
+ S.pick={};S.as={};I.ex={};save();render();window.scrollTo(0,0)}
+function hubToast(m){const o=document.querySelector(".hub-toast");if(o)o.remove();const d=document.createElement("div");d.className="hub-toast";d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),2000)}
+function summaryText(){const {picks,asses,open}=summaryData();const L=[];
+ L.push("【病人狀態】"+(actSt().length?actSt().map(k=>SN[k]).join("、"):"未選擇"));const rv=RV();if(rv)L.push("【腎功能】"+rv.label+(S.rn&&S.rn.cr?"（Cr "+S.rn.cr+"）":""));
+ L.push("","【處置】");picks.forEach(([t,i])=>{const e=evalItem(i);L.push("- "+i.n+(i.d?"："+i.d:"")+(e.lv==="x"?"（⚠ 目前狀態禁用）":e.lv==="c"?"（慎用）":""));const cd=cdOf(t,i);if(cd)L.push("  保守劑量："+cd);const r=rdEval(t,i);if(r&&r.text)L.push("  腎劑量（"+r.by+"）："+r.text)});
+ if(asses.length){L.push("","【評估】");asses.forEach(([t,a])=>L.push("- "+a.n))}
+ if(open.length){L.push("","【待確認】");open.forEach(([t,c])=>L.push("- "+c))}
+ return L.join("\n").replace(/（補充）/g,"")}
+
+/* ---------- main render ---------- */
+function hl(root,terms){if(!terms.length)return;const re=new RegExp(terms.map(s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|"),"gi");
+ const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:n=>n.parentNode.closest("button,textarea,select,option")?2:1});const ns=[];let n;while(n=w.nextNode()){re.lastIndex=0;if(re.test(n.nodeValue))ns.push(n)}
+ ns.forEach(n=>{const f=document.createDocumentFragment();let last=0;n.nodeValue.replace(re,(m,o)=>{f.append(n.nodeValue.slice(last,o));const k=document.createElement("mark");k.textContent=m;f.append(k);last=o+m.length});f.append(n.nodeValue.slice(last));n.replaceWith(f)});
+ root.querySelectorAll("details").forEach(d=>{if(d.querySelector("mark"))d.open=true})}
+function render(){
+ renderStates();renderNav();const m=$("#main");const qq=q();
+ if(qq){const terms=qq.split(/\s+/).filter(Boolean);
+  const hit=T.filter(t=>{const tmp=document.createElement("div");tmp.innerHTML=topicHTML(t);const hay=(t.t+" "+t.sub+" "+tmp.textContent).toLowerCase();return terms.every(x=>hay.includes(x))});
+  m.innerHTML=hit.length?`<p class="sub" style="margin:0 0 10px">${hit.length} 個主題符合「${esc($("#q").value.trim())}」</p>`+hit.map(topicHTML).join(""):`<section class="topic"><p class="empty">找不到符合的內容，試試中文或英文藥名、商品名。</p></section>`;
+  hl(m,terms)}
+ else if(S.view==="summary")m.innerHTML=summaryHTML();
+ else if(S.view==="overview")m.innerHTML=overviewHTML();
+ else m.innerHTML=topicHTML(T.find(t=>t.id===S.tid)||T[0]);
+ runCalc();glossify($("#main"));
+}
+function go(tid){S.view="topic";S.tid=tid;$("#q").value="";save();render();$("#main").scrollIntoView({block:"start"});window.scrollBy(0,-110)}
+
+/* ---------- events ---------- */
+document.addEventListener("click",e=>{
+ const s=e.target.closest("[data-st]");if(s){const k=s.dataset.st;if(k==="__clear")S.st=[];else if(S.st.includes(k))S.st=S.st.filter(x=>x!==k);else{const ex=EXCL[k]||[];S.st=[...S.st.filter(x=>!ex.includes(x)),k]}save();render();return}
+ const nb=e.target.closest("[data-tid]");if(nb){go(nb.dataset.tid);return}
+ const p=e.target.closest("[data-pick]");if(p){const k=p.dataset.pick;if(S.pick[k])delete S.pick[k];else S.pick[k]=1;save();const y=window.scrollY;render();window.scrollTo(0,y);return}
+ if(e.target.id==="bSum"){S.view="summary";$("#q").value="";save();render();window.scrollTo(0,0);return}
+ if(e.target.id==="bOv"){S.view="overview";$("#q").value="";save();render();window.scrollTo(0,0);return}
+ if(e.target.id==="bImp"){impGo();return}
+ const ib=e.target.closest("[data-imp]");if(ib){S.imp=S.imp||{};S.imp.ex=S.imp.ex||{};const r=impRows().find(x=>x.k===ib.dataset.imp);if(r)S.imp.ex[r.k]=!r.on;save();const y=window.scrollY;render();window.scrollTo(0,y);return}
+ const ip=e.target.closest("[data-impp]");if(ip){S.imp=S.imp||{};S.imp.p=+ip.dataset.impp;save();const y=window.scrollY;render();window.scrollTo(0,y);return}
+ if(e.target.id==="bCopy"){const txt=summaryText();const ta=$("#copytxt");ta.value=txt;ta.hidden=false;
+  const done=()=>{e.target.textContent="已複製";setTimeout(()=>{if(e.target)e.target.textContent="複製為文字"},1800)};
+  try{navigator.clipboard.writeText(txt).then(done,()=>{ta.select();e.target.textContent="請手動複製下方文字"})}catch(err){ta.select();e.target.textContent="請手動複製下方文字"}return}
+ if(e.target.id==="rnClr"){S.rn={};save();const y=window.scrollY;render();window.scrollTo(0,y);return}
+ if(e.target.id==="bRn"){S.view="overview";$("#q").value="";save();render();const p=document.querySelector(".rcalc");if(p)p.scrollIntoView({block:"center"});return}
+ if(e.target.id==="bReset"){const b=e.target;if(b.dataset.arm){S.pick={};S.chk={};S.as={};S.st=[];S.rn={};S.imp={};save();render();return}b.dataset.arm=1;b.textContent="再按一次確認清空";setTimeout(()=>{if(b.isConnected){delete b.dataset.arm;b.textContent="清空（換下一位病人）"}},3000);return}
+});
+document.addEventListener("input",e=>{const k=e.target.dataset&&e.target.dataset.rn;if(!k||e.target.type==="checkbox")return;S.rn=S.rn||{};S.rn[k]=e.target.value;save();const o=document.createElement("div");o.innerHTML=renalPanelHTML();$("#rnOut").innerHTML=o.querySelector("#rnOut").innerHTML;renderStates();renderNav()});
+document.addEventListener("focusout",e=>{const p=e.target.closest&&e.target.closest(".rcalc");if(!p||e.target.type!=="number")return;
+ setTimeout(()=>{if(document.activeElement&&document.activeElement.closest&&document.activeElement.closest(".rcalc"))return;const y=window.scrollY;render();window.scrollTo(0,y)},0)});
+document.addEventListener("change",e=>{
+ if(e.target.id==="rnOn"||(e.target.dataset&&e.target.dataset.rn)){if(e.target.id==="rnOn")S.renalOn=e.target.checked;else{S.rn=S.rn||{};S.rn[e.target.dataset.rn]=e.target.type==="checkbox"?e.target.checked:e.target.value}save();
+  if(e.target.type==="number")return;/* number fields re-render when focus leaves the panel */
+  setTimeout(()=>{const y=window.scrollY;render();window.scrollTo(0,y)},0);return}
+ const c=e.target.dataset.chk;if(c){if(e.target.checked)S.chk[c]=1;else delete S.chk[c];save();
+  if(S.view==="summary"&&!q()){const y=window.scrollY;render();window.scrollTo(0,y)}else{const sec=e.target.closest(".topic");const pr=sec&&sec.querySelector(".prog");if(pr){const id=c.split(":")[0];const t=T.find(x=>x.id===id);if(t)pr.textContent=t.chk.filter((x,j)=>S.chk[id+":"+j]).length+"/"+t.chk.length}}return}
+ const a=e.target.dataset.as;if(a){if(e.target.checked)S.as[a]=1;else delete S.as[a];save();renderNav();return}
+});
+document.addEventListener("input",e=>{if(e.target.closest(".calc"))runCalc();});
+$("#q").addEventListener("input",render);
+
+/* ---------- glossary ---------- */
+const G={
+"PCC":["Prothrombin Complex Concentrate","凝血酶原複合物，含第 II、VII、IX、X 因子。逆轉 Warfarin；沒有專一解藥時也用於 Xa 抑制劑。"],
+"DOAC":["Direct Oral Anticoagulant","直接口服抗凝血劑：Rivaroxaban、Apixaban、Edoxaban（Xa 抑制劑）、Dabigatran（凝血酶抑制劑）。INR 無法反映濃度。"],
+"LMWH":["Low Molecular Weight Heparin","低分子量肝素，例如 Enoxaparin。Protamine 只能部分逆轉。"],
+"UFH":["Unfractionated Heparin","普通肝素（heparin 點滴）。Protamine 可完全逆轉。"],
+"HIT":["Heparin-Induced Thrombocytopenia","肝素引起的血小板低下，會反而形成血栓。"],
+"FFP":["Fresh Frozen Plasma","新鮮冷凍血漿。需解凍、配血型，體積大。"],
+"TACO":["Transfusion-Associated Circulatory Overload","輸血相關循環負荷過量：輸太多太快造成肺水腫。"],
+"TRALI":["Transfusion-Related Acute Lung Injury","輸血相關急性肺損傷。"],
+"ICH":["Intracranial Hemorrhage","顱內出血。"],
+"SDH":["Subdural Hematoma","硬腦膜下血腫。老人跌倒、抗凝最常見。"],
+"Anti-Xa":["Anti-factor Xa level","抗 Xa 因子活性，可估 LMWH 或 Xa 抑制劑濃度。"],
+"TDD":["Total Daily Dose","一天胰島素總量（basal + bolus）。住院起始估算：體重 × 0.3–0.5 U。"],
+"ISF":["Insulin Sensitivity Factor","1 U 胰島素約降多少血糖。RI：1500 ÷ TDD；Novorapid：1800 ÷ TDD。"],
+"C/I":["Carb-to-Insulin ratio","1 U 胰島素可處理幾克醣。RI：450 ÷ TDD；Novorapid：500 ÷ TDD。"],
+"RI":["Regular Insulin","短效人類胰島素，唯一常規可 IV 推注者。皮下 30 分鐘起效、持續 6–8 小時；ST 降血糖與 DKA pump 用它。"],
+"NPH":["Neutral Protamine Hagedorn","中效胰島素，作用約 12–18 小時。"],
+"HbA1c":["糖化血色素","反映近 2–3 個月平均血糖；控制目標多為 <7%。估算：(HbA1c − 2) × 30 ≈ 血糖。"],
+"LDL":["Low-Density Lipoprotein","「壞膽固醇」，與 ASCVD 直接相關，越低越好。"],
+"HDL":["High-Density Lipoprotein","「好膽固醇」，偏低是心血管危險因子。"],
+"TG":["Triglyceride 三酸甘油酯",">500 mg/dL 有胰臟炎風險，才需降 TG 藥。"],
+"Lp(a)":["Lipoprotein(a)","幾乎由基因決定的獨立心血管危險因子，一生驗一次即可；>50 mg/dL 異常。"],
+"CAC":["Coronary Artery Calcium score","冠狀動脈鈣化分數（CT），用來重新分級心血管風險。"],
+"ASCVD":["Atherosclerotic Cardiovascular Disease","動脈粥狀硬化心血管疾病：冠心病、腦血管疾病、周邊動脈疾病、主動脈疾病。"],
+"FH":["Familial Hypercholesterolemia","家族性高膽固醇血症；LDL ≥190 加早發冠心病家族史要懷疑。"],
+"PCSK9i":["PCSK9 inhibitor","阻止 LDL receptor 被分解的降 LDL 藥，例：Evolocumab、Alirocumab、Inclisiran。"],
+"PCSK9":["Proprotein Convertase Subtilisin/Kexin type 9","會分解 LDL receptor 的蛋白；抑制它可大幅降低 LDL。"],
+"PREVENT":["AHA PREVENT 風險計算","2023 年 AHA 的 10／30 年心血管風險計算工具。"],
+"CKD":["Chronic Kidney Disease","慢性腎臟病。"],
+"ESRD":["End-Stage Renal Disease","末期腎病，需透析或移植。"],
+"eGFR":["estimated Glomerular Filtration Rate","估算腎絲球過濾率，用來判斷腎功能與藥物劑量；<30 停 Metformin。"],
+"UACR":["Urine Albumin-to-Creatinine Ratio","尿液白蛋白／肌酸酐比值，評估蛋白尿。"],
+"HF":["Heart Failure","心衰竭。"],
+"ACS":["Acute Coronary Syndrome","急性冠心症：不穩定型心絞痛、NSTEMI、STEMI。"],
+"MI":["Myocardial Infarction","心肌梗塞。"],
+"TIA":["Transient Ischemic Attack","暫時性腦缺血。"],
+"PAD":["Peripheral Artery Disease","周邊動脈疾病。"],
+"PAOD":["Peripheral Arterial Occlusive Disease","周邊動脈阻塞疾病。"],
+"CAD":["Coronary Artery Disease","冠狀動脈疾病。"],
+"DM":["Diabetes Mellitus","糖尿病。"],
+"DKA":["Diabetic Ketoacidosis","糖尿病酮酸中毒：血糖 >250、high anion gap 代謝性酸中毒、酮體陽性。"],
+"HHS":["Hyperosmolar Hyperglycemic State","高血糖高滲透壓狀態：血糖 >600、effective osm >320，通常無酮體。"],
+"AG":["Anion Gap","Na − (Cl + HCO3)，正常約 8–12；DKA 會升高，緩解以 AG 正常為準。"],
+"β-OHB":["β-hydroxybutyrate","最準的血酮指標；>3 mmol/L 為 DKA 急救等級。"],
+"β-hydroxybutyrate":["血酮主要成分","最準的酮體指標；>3 mmol/L 為 DKA 急救等級。"],
+"VBG":["Venous Blood Gas","靜脈血氣，看 pH、HCO3 足以評估 DKA。"],
+"ABG":["Arterial Blood Gas","動脈血氣，評估氧合與 CO2。"],
+"SGLT2i":["SGLT-2 inhibitor","讓葡萄糖從尿排出的降血糖藥，具心腎保護，例：Forxiga、Jardiance。"],
+"SGLT-2i":["SGLT-2 inhibitor","讓葡萄糖從尿排出的降血糖藥，具心腎保護，例：Forxiga、Jardiance。"],
+"GLP-1 RA":["GLP-1 Receptor Agonist","腸泌素類似物，降血糖、減重、保護心腎，例：Ozempic、Trulicity。"],
+"DPP-4i":["DPP-4 inhibitor","延長腸泌素作用的口服降血糖藥，副作用少，例：Januvia、Trajenta。"],
+"SU":["Sulfonylurea","刺激胰島素分泌的口服降血糖藥，易低血糖，例：Diamicron、Amaryl。"],
+"TZD":["Thiazolidinedione","增加胰島素敏感性，例：Pioglitazone；心衰竭禁用。"],
+"NAFLD":["Non-Alcoholic Fatty Liver Disease","非酒精性脂肪肝（新名稱 MASLD）。"],
+"ACEI":["ACE Inhibitor","血管收縮素轉化酶抑制劑，例：Captopril；副作用乾咳、高血鉀。"],
+"ARB":["Angiotensin Receptor Blocker","血管收縮素受體阻斷劑，例：Olmesartan；無乾咳。"],
+"CCB":["Calcium Channel Blocker","鈣離子通道阻斷劑。"],
+"DHP":["Dihydropyridine","以擴張血管為主的 CCB，例：Amlodipine、Nifedipine。"],
+"IICP":["Increased Intracranial Pressure","顱內壓上升。"],
+"NTG":["Nitroglycerin","硝化甘油，可舌下降壓或緩解心絞痛。"],
+"BPH":["Benign Prostatic Hyperplasia","良性攝護腺肥大。"],
+"XO":["Xanthine Oxidase","製造尿酸的酵素；Allopurinol、Febuxostat 抑制它。"],
+"SJS":["Stevens-Johnson Syndrome","嚴重皮膚黏膜藥物過敏反應。"],
+"TEN":["Toxic Epidermal Necrolysis","毒性表皮溶解症，SJS 的更嚴重型。"],
+"MTP":["Metatarsophalangeal joint","蹠趾關節；第一蹠趾關節是痛風最常見部位。"],
+"NSAID":["Non-Steroidal Anti-Inflammatory Drug","非類固醇消炎止痛藥；傷胃、傷腎、水分滯留。"],
+"NSAIDs":["Non-Steroidal Anti-Inflammatory Drugs","非類固醇消炎止痛藥；傷胃、傷腎、水分滯留。"],
+"COX-2":["Cyclooxygenase-2","選擇性 COX-2 抑制劑較不傷胃，但仍傷腎。"],
+"NAC":["N-Acetylcysteine","Acetaminophen 中毒解毒劑，也用來化痰。"],
+"EPS":["Extrapyramidal Symptoms","錐體外症狀：肌張力不全、靜坐不能、類巴金森；可給 Diphenhydramine。"],
+"PPI":["Proton Pump Inhibitor","質子幫浦抑制劑，強力抑酸。"],
+"UGI":["Upper GI","上消化道。"],
+"GERD":["Gastroesophageal Reflux Disease","胃食道逆流。"],
+"GI":["Gastrointestinal","消化道。"],
+"NG":["Nasogastric tube","鼻胃管。"],
+"H2":["Histamine-2 receptor","H2 blocker 抑制胃酸，例：Famotidine；老人注意譫妄。"],
+"ICS":["Inhaled Corticosteroid","吸入型類固醇。"],
+"SABA":["Short-Acting β2 Agonist","短效支氣管擴張劑，例：Ventolin；副作用心跳快。"],
+"SAMA":["Short-Acting Muscarinic Antagonist","短效抗膽鹼支氣管擴張劑，例：Atrovent。"],
+"LABA":["Long-Acting β2 Agonist","長效 β2 支氣管擴張劑。"],
+"LAMA":["Long-Acting Muscarinic Antagonist","長效抗膽鹼支氣管擴張劑。"],
+"AE":["Acute Exacerbation","急性惡化。"],
+"COPD":["Chronic Obstructive Pulmonary Disease","慢性阻塞性肺病。"],
+"NIV":["Non-Invasive Ventilation","非侵襲性正壓呼吸器（BiPAP）。"],
+"CPT":["Chest Physiotherapy","胸腔物理治療（拍痰、姿位引流）。"],
+"BZD":["Benzodiazepine","苯二氮平類安眠鎮靜藥；高齡易跌倒、譫妄。"],
+"CAM":["Confusion Assessment Method","譫妄評估工具：急性發作／起伏 + 注意力不集中，加上思考混亂或意識改變。"],
+"QTc":["校正後 QT 間期","男 >450、女 >470 ms 為延長；>500 ms 風險高。"],
+"QT":["QT interval","心電圖 QT 間期，延長有 Torsades de pointes 風險。"],
+"ECG":["Electrocardiogram","心電圖。"],
+"AKI":["Acute Kidney Injury","急性腎損傷：Cr 短期 ↑0.3 或 50%，或尿量 <0.5 mL/kg/hr。"],
+"I/O":["Intake / Output","輸入輸出量。"],
+"BUN":["Blood Urea Nitrogen","血中尿素氮；BUN/Cr >20 提示 pre-renal，>30 常見於上消化道出血。"],
+"Cr":["Creatinine","肌酸酐，腎功能指標。"],
+"FENa":["Fractional Excretion of Na","鈉排泄分率；<1% 支持 pre-renal（用利尿劑時不準）。"],
+"CBC/DC":["Complete Blood Count with Differential","全血球計數加白血球分類。"],
+"CBC":["Complete Blood Count","全血球計數。"],
+"CRP":["C-Reactive Protein","發炎指標。"],
+"PT":["Prothrombin Time","凝血酶原時間（外在路徑）。"],
+"APTT":["Activated Partial Thromboplastin Time","活化部分凝血活酶時間（內在路徑）。"],
+"INR":["International Normalized Ratio","標準化的 PT，用於追蹤 warfarin。"],
+"CXR":["Chest X-ray","胸部 X 光。"],
+"KUB":["Kidney-Ureter-Bladder X-ray","腹部 X 光。"],
+"CT":["Computed Tomography","電腦斷層。"],
+"CTPA":["CT Pulmonary Angiography","肺動脈電腦斷層血管攝影，診斷肺栓塞。"],
+"LP":["Lumbar Puncture","腰椎穿刺。"],
+"SAH":["Subarachnoid Hemorrhage","蜘蛛膜下腔出血；典型為 thunderclap headache。"],
+"HINTS":["Head Impulse, Nystagmus, Test of Skew","區分周邊與中樞性眩暈的床邊檢查。"],
+"NKFDA":["No Known Food and Drug Allergy","無已知食物與藥物過敏。"],
+"A+P":["Assessment + Plan","病歷的評估與計畫。"],
+"PE":["Physical Examination","理學檢查。"],
+"VS":["Vital Signs","生命徵象。"],
+"ICU":["Intensive Care Unit","加護病房。"],
+"STAT":["立即","馬上給一次。"],
+"ST":["Stat 立即","當下給一次。"],
+"PRN":["Pro Re Nata","需要時給。"],
+"QD":["每天一次",""],
+"BID":["每天兩次","飯前 0700、1700；飯後 0800、1800。"],
+"TID":["每天三次",""],
+"QID":["每天四次",""],
+"QOD":["每兩天一次",""],
+"QW":["每週",""],
+"HS":["Hora Somni 睡前","護理給藥 2100。"],
+"AC":["Ante Cibum 飯前",""],
+"PC":["Post Cibum 飯後",""],
+"AMAC":["早上飯前","0700。"],
+"AMPC":["早上飯後","0900。"],
+"Q6H":["每 6 小時","0500、1100、1700、2300。"],
+"Q8H":["每 8 小時","0500、1300、2100。"],
+"Q12H":["每 12 小時","0900、2100。"],
+"Q2–3H":["每 2–3 小時",""],
+"PO":["Per Os 口服",""],
+"SL":["Sublingual 舌下",""],
+"IV":["Intravenous 靜脈",""],
+"IVP":["IV Push 靜脈推注","通常加 N/S 20 mL。"],
+"IVD":["IV Drip 靜脈滴注","通常加 N/S 50–100 mL，100 mL/hr。"],
+"IM":["Intramuscular 肌肉注射",""],
+"SC":["Subcutaneous 皮下注射",""],
+"INHL":["Inhalation 吸入","霧化劑型加 N/S 3 mL。"],
+"TOPI":["Topical 外用","頻次開 STAT。"],
+"RECT":["Rectal 肛門塞劑",""],
+"N/S":["Normal Saline","0.9% 生理食鹽水。"],
+"D5W":["Dextrose 5% in Water","5% 葡萄糖水；每 100 mL 含 5 g 糖。"],
+"Aq":["Aqua 注射用水",""],
+"SpO2":["血氧飽和度",""],
+"LQQOPERA":["疼痛問診口訣","Location、Quality、Quantity、Onset、Precipitating、Easing、Radiation、Associated symptoms。"],
+"SNOOP4":["頭痛紅旗口訣","Systemic、Neurologic、Onset、Old、Position、Pattern、Precipitation、Papilledema。"],
+"AEIOU TIPS":["意識改變原因口訣","Alcohol、Electrolytes/Epilepsy、Insulin、Opiates/O2、Uremia、Trauma/Temp、Infection、Poisoning/Psych、Shock/Stroke。"],
+"NPO":["Nil Per Os","禁食。"],
+"CK":["Creatine Kinase","肌肉酵素；>10× ULN 考慮停 statin。"],
+"TSH":["Thyroid-Stimulating Hormone","甲狀腺刺激素。"],
+"ULN":["Upper Limit of Normal","正常值上限。"],
+"UTI":["Urinary Tract Infection","泌尿道感染。"],
+"OAB":["Overactive Bladder","膀胱過動症。"],
+"EVAC":["灌腸劑","磷酸鈉灌腸。"],
+"amp":["Ampoule 安瓿","一支針劑。"],
+"#":["顆／錠","例：1# = 一顆。"]
+};
+const GK=Object.keys(G).sort((a,b)=>b.length-a.length);
+const GRE=new RegExp("(?<![A-Za-z0-9β])("+GK.map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+")(?![A-Za-z])","g");
+const GRE_HASH=/(?<=\d)#/;
+function glossify(root){if(!S.gloss)return;
+ const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:n=>n.parentNode.closest("button,textarea,select,option,input,.gl,.calc label,.rcalc label,.rcalc h3")?2:1});
+ const ns=[];let n;while(n=w.nextNode()){GRE.lastIndex=0;if(GRE.test(n.nodeValue))ns.push(n)}
+ ns.forEach(n=>{const f=document.createDocumentFragment();let last=0;GRE.lastIndex=0;n.nodeValue.replace(GRE,(m,_,o)=>{if(m==="#"&&!/\d/.test(n.nodeValue[o-1]||""))return m;f.append(n.nodeValue.slice(last,o));const a=document.createElement("abbr");a.className="gl";a.dataset.g=m;a.tabIndex=0;a.textContent=m;f.append(a);last=o+m.length;return m});f.append(n.nodeValue.slice(last));n.replaceWith(f)})}
+const gs=$("#gsheet");let gcur=null,ghide=null;
+let gAt=0;function gshow(el){const g=G[el.dataset.g];if(!g)return;if(gcur!==el||!gs.classList.contains("show"))gAt=Date.now();clearTimeout(ghide);if(gcur)gcur.classList.remove("on");gcur=el;el.classList.add("on");
+ $("#gt").textContent=el.dataset.g;$("#gf").textContent=g[0];$("#gd").textContent=g[1];$("#gd").hidden=!g[1];{const b=el.getBoundingClientRect();if(b.bottom>window.innerHeight-170&&window.innerWidth<700)flipTop();else if(!gs.classList.contains("show"))gs.classList.remove("top")}gs.classList.add("show")}
+function ghideNow(){clearTimeout(gAuto);gs.classList.remove("show","thru","auto","hold");gReset(gs.querySelector(".gin"));if(gcur)gcur.classList.remove("on");gcur=null}
+let gpx=-1,gpy=-1;
+function inSheet(x,y){if(!gs.classList.contains("show"))return false;const r=gs.querySelector(".gin").getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom}
+function gReset(gin){gs.classList.remove("thru");gin.style.paddingLeft="";gin.style.paddingRight=""}
+function gHole(x,y){const gin=gs.querySelector(".gin");if(!gs.classList.contains("show")){gReset(gin);return}
+ if(gs.classList.contains("top")){gReset(gin);return}
+ const r=gin.getBoundingClientRect();const near=x>=r.left-40&&x<=r.right+40&&y>=r.top-60&&y<=r.bottom;
+ if(!near){gReset(gin);return}
+ const hx=x-r.left,R=120,W=r.width,MIN=240;
+ gin.style.setProperty("--mx",hx+"px");gin.style.setProperty("--my",(y-r.top)+"px");gs.classList.add("thru");
+ if(W-(hx+R)>=MIN){gin.style.paddingLeft=(hx+R)+"px";gin.style.paddingRight=""}
+ else if(hx-R>=MIN){gin.style.paddingRight=(W-hx+R)+"px";gin.style.paddingLeft=""}
+ else{gReset(gin);flipTop()}}
+function flipTop(){const h=document.querySelector("header.top");gs.style.setProperty("--gtop",(h?h.getBoundingClientRect().bottom:0)+"px");gs.classList.add("top")}
+document.addEventListener("pointermove",e=>{gpx=e.clientX;gpy=e.clientY;gHole(gpx,gpy)},{passive:true});
+gs.addEventListener("transitionend",()=>{if(gpx>=0)gHole(gpx,gpy)});
+document.addEventListener("pointerover",e=>{if(e.pointerType!=="mouse")return;const g=e.target.closest(".gl");if(g){gshow(g);gHole(e.clientX,e.clientY);return}if(e.target.closest("#gsheet")||inSheet(e.clientX,e.clientY)){clearTimeout(ghide);return}if(gs.classList.contains("show")){clearTimeout(ghide);ghide=setTimeout(()=>{if(!inSheet(gpx,gpy)||!gs.classList.contains("thru"))ghideNow()},350)}});
+document.addEventListener("click",e=>{const g=e.target.closest(".gl");if(g){e.preventDefault();e.stopPropagation();if(gcur===g&&gs.classList.contains("show")&&Date.now()-gAt>400)ghideNow();else{gshow(g);gAutoStart();const b=g.getBoundingClientRect();requestAnimationFrame(()=>setTimeout(()=>gHole(b.left+b.width/2,b.top+b.height/2),240))}return}
+ if(e.target.id==="gx"){ghideNow();return}if(!e.target.closest("#gsheet"))ghideNow()},true);
+document.addEventListener("focusin",e=>{const g=e.target.closest&&e.target.closest(".gl");if(g){gshow(g);gAutoStart()}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")ghideNow()});
+
+/* auto-dismiss for touch */
+let gLastPT="mouse",gAuto=null,gLeft=0,gStart=0;
+document.addEventListener("pointerdown",e=>{gLastPT=e.pointerType},true);
+function gAutoStart(){clearTimeout(gAuto);if(gLastPT==="mouse")return;const len=($("#gd").textContent||"").length+($("#gf").textContent||"").length;
+ const ms=Math.min(4500,1500+len*22);gs.style.setProperty("--gdur",ms+"ms");gs.classList.remove("auto","hold");void gs.offsetWidth;gs.classList.add("auto");gLeft=ms;gStart=Date.now();gAuto=setTimeout(ghideNow,ms)}
+gs.addEventListener("pointerdown",e=>{if(!gs.classList.contains("auto")||e.pointerType==="mouse")return;clearTimeout(gAuto);gLeft-=Date.now()-gStart;gs.classList.add("hold")});
+gs.addEventListener("pointerup",e=>{if(!gs.classList.contains("hold"))return;gs.classList.remove("hold");gStart=Date.now();gAuto=setTimeout(ghideNow,Math.max(800,gLeft))});
+function glBtn(){const b=$("#bGl");b.setAttribute("aria-pressed",!!S.gloss);$("#glst").textContent=S.gloss?"開":"關"}
+$("#bGl").addEventListener("click",()=>{S.gloss=!S.gloss;save();ghideNow();glBtn();const y=window.scrollY;render();window.scrollTo(0,y)});
+glBtn();
+/* 辭典彈出時通知總站，讓右下角的待辦按鈕先藏起來 */
+(function(){let last=null;const tell=on=>{if(on===last)return;last=on;try{parent.postMessage({hub:"gloss",open:on},"*")}catch(e){}};
+ new MutationObserver(()=>tell(gs.classList.contains("show"))).observe(gs,{attributes:true,attributeFilter:["class"]});
+ addEventListener("pagehide",()=>tell(false))})();
+render();
+</script>
+
+</body></html>

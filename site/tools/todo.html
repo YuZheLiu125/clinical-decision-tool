@@ -1,0 +1,740 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>待辦表</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one narrow column like a pocket card — quick-add on top, triage-sorted queue, done log at the bottom. Palette: Claude clay — ivory ground, clay accent, slate ink */
+:root {
+  --bg: #f5f4ee; --surface: #fbfaf6; --fg: #1f1e1c; --muted: #6f6c63; --line: #e3dfd3;
+  --accent: #c6613f; --accent-ink: #ffffff; --accent-soft: #f6e4db;
+  --p1: #b3322b; --p1-soft: #f7e1dd;
+  --p2: #c27416; --p2-soft: #f7ead6;
+  --p3: #4f6b8a; --p3-soft: #e3e9ef;
+  --p4: #8a867b; --p4-soft: #ecebe5;
+  --font-display: "Noto Serif TC", "Songti TC", Georgia, serif;
+  --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-num: "Source Serif 4", "Noto Serif TC", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #1d1c1a; --surface: #262522; --fg: #f3f1ea; --muted: #a29e93; --line: #3a3833;
+  --accent: #d97757; --accent-ink: #1d1c1a; --accent-soft: #3d2a22;
+  --p1: #ef6a5e; --p1-soft: #3d201d; --p2: #e3a04a; --p2-soft: #3a2c17;
+  --p3: #8fabc9; --p3-soft: #222b35; --p4: #a6a297; --p4-soft: #2e2d29; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #1d1c1a; --surface: #262522; --fg: #f3f1ea; --muted: #a29e93; --line: #3a3833;
+  --accent: #d97757; --accent-ink: #1d1c1a; --accent-soft: #3d2a22;
+  --p1: #ef6a5e; --p1-soft: #3d201d; --p2: #e3a04a; --p2-soft: #3a2c17;
+  --p3: #8fabc9; --p3-soft: #222b35; --p4: #a6a297; --p4-soft: #2e2d29; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.45 }
+.clock, .bed, .timer, .summary b, .donelist .t, #handoff { font-variant-numeric: tabular-nums lining-nums }
+.wrap { max-width: 560px; margin: 0 auto; padding-block: 18px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 16px }
+button { font: inherit; color: inherit; cursor: pointer }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap }
+h1 { font-family: var(--font-display); font-size: 22px; font-weight: 700; margin: 0; letter-spacing: .02em; display: flex; align-items: center; gap: 8px }
+h1::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex: none }
+.clock { font-family: var(--font-num); font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums }
+.tools { display: flex; gap: 6px; flex-wrap: wrap }
+.tbtn { min-height: 38px; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 14px; font-size: 14px; color: var(--muted) }
+.tbtn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 500 }
+
+/* quick add: 固定在最上方（鍵盤永遠蓋不到）。緊急、倒數、重複收進「設定」，輸入時只佔兩列 */
+html { touch-action: manipulation; -webkit-text-size-adjust: 100% }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 40; background: var(--bg) }
+form { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 10px; display: flex; flex-direction: column; gap: 8px;
+  box-shadow: 0 0 0 16px var(--bg), 0 10px 14px -8px rgba(0, 0, 0, .22) }
+/* 緊急程度四格常駐；選了「緊急／待辦」才在下一列出現倒數時間 */
+.prrow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px }
+body.kb .prrow { grid-template-columns: repeat(4, minmax(0, 1fr)) auto }
+.chip.pr { --pc: var(--p3); display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; min-height: 46px; padding: 4px; line-height: 1.2; font-weight: 500; color: var(--pc); border-color: color-mix(in srgb, var(--pc) 45%, var(--line)) }
+.chip.pr[data-p="1"] { --pc: var(--p1) } .chip.pr[data-p="2"] { --pc: var(--p2) } .chip.pr[data-p="3"] { --pc: var(--p3) } .chip.pr[data-p="4"] { --pc: var(--p4) }
+.chip.pr small { font-size: 12px; font-variant-numeric: tabular-nums }
+.chip.pr small:empty { display: none }
+.kbbtn { display: none; min-height: 46px; align-items: center; justify-content: center; border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 0 12px; font-size: 14px; font-weight: 700; white-space: nowrap }
+body.kb .kbbtn { display: flex }
+#tmChips { display: contents }
+.chips.scroll .chip { flex: none }
+#rep { width: 88px }
+.row { display: flex; gap: 8px }
+/* 輸入框字體要 16px 以上，iPhone 才不會在點進去時自動放大整個頁面 */
+input[type=text], input[type=number], input[type=date], input[type=time] { font: inherit; font-size: 16px; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; min-height: 44px; min-width: 0 }
+#bed { width: 68px; flex: none; text-align: center }
+#task { flex: 1 }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center }
+.chips.scroll { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding: 2px }
+.chips.scroll::-webkit-scrollbar { display: none }
+.chips.scroll > * { flex: none }
+.chips .lbl { flex: none; font-size: 12px; color: var(--muted); width: 2.6em; letter-spacing: .05em }
+.chip { min-height: 40px; border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 6px 14px; font-size: 15px; white-space: nowrap; font-variant-numeric: tabular-nums }
+.chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg) }
+.chip.pr[data-p="1"][aria-pressed="true"] { background: var(--p1); border-color: var(--p1); color: var(--surface) }
+.chip.pr[data-p="2"][aria-pressed="true"] { background: var(--p2); border-color: var(--p2); color: var(--surface) }
+.chip.pr[data-p="3"][aria-pressed="true"] { background: var(--p3); border-color: var(--p3); color: var(--surface) }
+.chip.pr[data-p="4"][aria-pressed="true"] { background: var(--p4); border-color: var(--p4); color: var(--surface) }
+#dDate, #dTime { min-height: 40px; padding: 5px 10px; font-size: 16px; border-radius: 999px; font-variant-numeric: tabular-nums }
+#dDate { flex: 1 1 9.5em; max-width: 12em } #dTime { flex: 0 1 7em }
+#custom, #rep { width: 76px; min-height: 40px; padding: 5px 8px; font-size: 16px; border-radius: 999px; text-align: center }
+.add { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px; min-width: 64px; min-height: 44px; padding: 0 18px; font-size: 16px; font-weight: 700; flex: none }
+.triage { margin: 0; font-size: 13px; line-height: 1.5; color: var(--p1); background: var(--p1-soft); border-radius: 10px; padding: 8px 11px }
+.triage b { font-family: var(--font-num) }
+
+/* summary strip */
+.summary { display: flex; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--muted) }
+.summary b { font-family: var(--font-num); color: var(--fg) }
+.summary .over b { color: var(--p1) }
+
+/* queue */
+.list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none }
+.item { background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--pc); border-radius: 12px;
+  padding: 10px 10px 10px 12px; display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; position: relative; overflow: hidden }
+.item[data-p="1"] { --pc: var(--p1); --ps: var(--p1-soft) }
+.item[data-p="2"] { --pc: var(--p2); --ps: var(--p2-soft) }
+.item[data-p="3"] { --pc: var(--p3); --ps: var(--p3-soft) }
+.item[data-p="4"] { --pc: var(--p4); --ps: var(--p4-soft) }
+.item.overdue { background: var(--ps); border-color: var(--pc); animation: pulse 1.2s ease-in-out infinite }
+@keyframes pulse { 50% { box-shadow: 0 0 0 3px var(--pc) } }
+@media (prefers-reduced-motion: reduce) { .item.overdue { animation: none; box-shadow: 0 0 0 2px var(--pc) } }
+.meta { display: flex; gap: 8px; align-items: baseline; min-width: 0; flex-wrap: wrap }
+.tag { font-size: 11px; font-weight: 700; color: var(--pc); letter-spacing: .06em }
+.bed { font-family: var(--font-num); font-weight: 700; font-size: 14px }
+.ex { font-size: 11px; color: var(--muted); border: 1px dashed var(--line); border-radius: 4px; padding: 0 4px }
+.repn { font-size: 12px; color: var(--muted) }
+.text { grid-column: 1 / 2; min-width: 0; overflow-wrap: anywhere; font-size: 15px }
+.timer { grid-row: 1 / 3; grid-column: 2; text-align: right; font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 700; line-height: 1.1; align-self: center }
+.timer small { display: block; font-size: 11px; font-weight: 500; color: var(--muted); font-family: var(--font-body) }
+.overdue .timer { color: var(--pc) }
+.timer.none { font-size: 13px; color: var(--muted); font-weight: 500 }
+.actions { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px }
+.act { min-height: 40px; border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 6px 16px; font-size: 14px }
+.act.done { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700 }
+.act.del { margin-left: auto; color: var(--muted) }
+.act.del.armed { color: var(--surface); background: var(--p1); border-color: var(--p1) }
+.bar { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--pc); opacity: .55 }
+
+/* 子項目（從其他工具一次匯入的一組處置）：點卡片展開 */
+.item { cursor: pointer }
+.item.new { animation: hub-in .26s var(--hub-ease) }
+.item .actions, .item .subw { cursor: auto }
+.chev { width: 14px; height: 14px; flex: none; color: var(--muted); transition: transform .2s var(--hub-ease); align-self: center }
+.item.open .chev { transform: rotate(180deg) }
+.prog { font-family: var(--font-num); font-size: 12px; font-weight: 600; color: var(--pc); background: var(--ps); border-radius: 999px; padding: 0 7px; font-variant-numeric: tabular-nums }
+.prog.all { background: var(--pc); color: var(--surface) }
+.src { font-size: 11px; color: var(--muted) }
+.subw { grid-column: 1 / -1; display: grid; grid-template-rows: 0fr; transition: grid-template-rows .24s var(--hub-ease) }
+.item.open .subw { grid-template-rows: 1fr }
+.subs-in { overflow: hidden; min-height: 0 }
+.subl { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; border-top: 1px solid var(--line) }
+.subl li { display: flex; align-items: stretch; border-bottom: 1px solid var(--line); min-width: 0 }
+.sub { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 8px; padding: 9px 2px; border: 0; background: none; text-align: left; font-size: 14.5px; line-height: 1.4 }
+.sbox { flex: none; width: 20px; height: 20px; margin-top: 0; border-radius: 6px; border: 1.5px solid var(--pc); display: grid; place-items: center; transition: background-color .15s }
+.sbox svg { width: 12px; height: 12px; stroke: var(--surface); stroke-width: 2.6; fill: none; opacity: 0; transition: opacity .15s }
+.sub[aria-pressed="true"] .sbox { background: var(--pc) }
+.sub[aria-pressed="true"] .sbox svg { opacity: 1 }
+.sub[aria-pressed="true"] .st { color: var(--muted); text-decoration: line-through }
+.stag { flex: none; font-size: 11px; font-weight: 700; color: var(--muted); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; margin-top: 1px; letter-spacing: .03em }
+.st { min-width: 0; overflow-wrap: anywhere }
+.sx { flex: none; width: 40px; border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1 }
+.subadd { position: static; display: flex; flex-direction: row; gap: 6px; margin: 8px 3px 4px; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; z-index: auto }
+.subadd input { flex: 1; min-height: 38px !important; padding: 6px 10px !important; border-radius: 999px !important }
+.subadd button { flex: none; min-height: 38px; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 0 14px; font-size: 14px }
+.act.done.ready { background: var(--accent); color: var(--accent-ink); animation: hub-pop .4s var(--hub-ease) }
+.empty { text-align: center; color: var(--muted); padding: 28px 12px; border: 1px dashed var(--line); border-radius: 12px }
+
+/* done log */
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px }
+summary { cursor: pointer; font-weight: 500 }
+.donelist { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted) }
+.donelist li { display: flex; gap: 8px; min-width: 0 }
+.donelist .t { font-family: var(--font-num); flex: none }
+.donelist .x { overflow-wrap: anywhere; min-width: 0; text-decoration: line-through }
+.donelist button { margin-left: auto; flex: none; min-height: 36px; padding: 0 8px; border: 0; background: none; color: var(--accent); font-size: 14px }
+.foot { display: flex; gap: 8px; flex-wrap: wrap; align-items: center }
+.foot .tbtn.armed { background: var(--p1); color: var(--surface); border-color: var(--p1) }
+#handoff { width: 100%; min-height: 120px; font-family: var(--font-num); font-size: 16px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 8px }
+.note { font-size: 12px; color: var(--muted); margin: 0 }
+.bedpop { position: fixed; top: 0; left: 0; right: 0; z-index: 30; background: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 18px rgba(0,0,0,.25); pointer-events: none }
+.bedpop[hidden] { display: none }
+.bedpop .bp { display: flex; align-items: center; gap: 12px; padding: 10px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)) }
+.bedpop .k { font-size: 13px; letter-spacing: .1em; flex: none; opacity: .9 }
+.bedpop .v { font-family: var(--font-num); font-size: 40px; font-weight: 700; line-height: 1; flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums lining-nums }
+.bedpop .what { flex: 1; min-width: 0; margin: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .92 }
+.bedpop .track { height: 5px; background: color-mix(in srgb, var(--accent-ink) 30%, transparent) }
+.bedpop .fill { height: 100%; width: 100%; background: var(--accent-ink) }
+.bedpop.run .fill { width: 0; transition: width 2s linear }
+.toast { position: fixed; left: 50%; top: 0; z-index: 35; transform: translateX(-50%); max-width: calc(100% - 32px); text-align: center; background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 999px; font-size: 14px }
+</style>
+<style id="hub-base">
+/* 臨床輔助決策工具 · 共用基底（每個工具都內嵌這一份）
+   字體：系統字（iPhone = 蘋方，Android = Noto CJK），不下載網路字型，開啟更快
+   色票：病房冷灰底 + 各工具辨識色；動畫：同一組曲線與時長 */
+:root{
+  --hub-bg:#EEF1F2; --hub-surface:#FFFFFF; --hub-surface2:#E6EAEC; --hub-ink:#152025; --hub-ink2:#4A575E; --hub-ink3:#6E7A81; --hub-line:#D3DADD;
+  --hub-bad:#B3261E; --hub-bad-soft:#FBE6E4; --hub-warn:#9A5B00; --hub-warn-soft:#FBEFD9; --hub-ok:#1D7A3E; --hub-ok-soft:#E1F2E6;
+  --hub-code:#C0262F; --hub-code-soft:#FBE4E5; --hub-pilot:#A35500; --hub-pilot-soft:#F6E7D2;
+  --hub-consult:#2C5C8C; --hub-consult-soft:#DFE8F2; --hub-meds:#0D6870; --hub-meds-soft:#DDEFF0;
+  --hub-labs:#5B4699; --hub-labs-soft:#EBE6F6; --hub-todo:#B4573A; --hub-todo-soft:#F5E3DA;
+  --hub-p1:#B3322B; --hub-p2:#C27416; --hub-p3:#4F6B8A; --hub-p4:#8A867B;
+  --hub-sans:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",system-ui,sans-serif;
+  --hub-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Roboto Mono",monospace;
+  --hub-ease:cubic-bezier(.2,.8,.2,1); --hub-dur:.18s;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --hub-bg:#0E1316; --hub-surface:#161D21; --hub-surface2:#1E272C; --hub-ink:#E4E9EB; --hub-ink2:#A2AEB4; --hub-ink3:#7E8B93; --hub-line:#2A353B;
+  --hub-bad:#FF7A70; --hub-bad-soft:#3A1B19; --hub-warn:#F0B04A; --hub-warn-soft:#352812; --hub-ok:#6CCF8E; --hub-ok-soft:#15301F;
+  --hub-code:#FF6B70; --hub-code-soft:#3A1A1D; --hub-pilot:#F0A23A; --hub-pilot-soft:#3A2911;
+  --hub-consult:#80B1E0; --hub-consult-soft:#162636; --hub-meds:#5CC2C8; --hub-meds-soft:#16302F;
+  --hub-labs:#B4A2EC; --hub-labs-soft:#2A2440; --hub-todo:#E08A68; --hub-todo-soft:#3A241B; --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#A6A297; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --hub-bg:#0E1316; --hub-surface:#161D21; --hub-surface2:#1E272C; --hub-ink:#E4E9EB; --hub-ink2:#A2AEB4; --hub-ink3:#7E8B93; --hub-line:#2A353B;
+  --hub-bad:#FF7A70; --hub-bad-soft:#3A1B19; --hub-warn:#F0B04A; --hub-warn-soft:#352812; --hub-ok:#6CCF8E; --hub-ok-soft:#15301F;
+  --hub-code:#FF6B70; --hub-code-soft:#3A1A1D; --hub-pilot:#F0A23A; --hub-pilot-soft:#3A2911;
+  --hub-consult:#80B1E0; --hub-consult-soft:#162636; --hub-meds:#5CC2C8; --hub-meds-soft:#16302F;
+  --hub-labs:#B4A2EC; --hub-labs-soft:#2A2440; --hub-todo:#E08A68; --hub-todo-soft:#3A241B; --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#A6A297; color-scheme:dark}
+
+/* 觸控：點擊不延遲、不閃灰框、iPhone 不自動放大字 */
+html{-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{-webkit-font-smoothing:antialiased;text-rendering:optimizeSpeed}
+::selection{background:color-mix(in srgb,var(--hub-accent,var(--hub-ink)) 22%,transparent)}
+/* iPhone 點進字小於 16px 的輸入框會自動放大、而且不會縮回來：觸控裝置上所有輸入框一律 ≥16px */
+@media (pointer:coarse){input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),textarea,select{font-size:max(16px,1em)!important}}
+/* 共用動畫：按下去微縮、顏色淡入淡出（低權重，工具自己的設定優先） */
+:where(button,.btn,.chip,.card,summary,[role="tab"],a){transition:background-color var(--hub-dur) var(--hub-ease),border-color var(--hub-dur) var(--hub-ease),color var(--hub-dur) var(--hub-ease),box-shadow var(--hub-dur) var(--hub-ease),opacity var(--hub-dur) var(--hub-ease),transform .12s var(--hub-ease)}
+:where(button,.btn,.chip,[role="tab"]):active:not(:disabled){transform:scale(.97)}
+@keyframes hub-in{from{opacity:0;transform:translateY(6px)}}
+@keyframes hub-pop{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
+.hub-toast{position:fixed;left:16px;right:16px;margin:0 auto;width:fit-content;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;max-width:min(520px,calc(100% - 32px));box-sizing:border-box;display:flex;gap:10px;align-items:center;background:var(--hub-ink);color:var(--hub-bg);font:500 14px/1.4 var(--hub-sans);padding:9px 14px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:hub-in .22s var(--hub-ease)}
+/* 待辦設定按鈕：跟待辦表的快速新增同一套（立即／緊急／待辦／有空，點緊急或待辦展開倒數） */
+.hp{display:flex;flex-direction:column;gap:8px;min-width:0}
+.hp-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.hp-pr{--pc:var(--hub-p3);display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:46px;padding:4px;border:1px solid color-mix(in srgb,var(--pc) 45%,var(--hub-line));border-radius:999px;background:transparent;color:var(--pc);font:500 15px/1.2 var(--hub-sans);cursor:pointer}
+.hp-pr[data-p="1"]{--pc:var(--hub-p1)}.hp-pr[data-p="2"]{--pc:var(--hub-p2)}.hp-pr[data-p="4"]{--pc:var(--hub-p4)}
+.hp-pr small{font-size:12px;font-variant-numeric:tabular-nums}
+.hp-pr small:empty{display:none}
+.hp-pr[aria-pressed="true"]{background:var(--pc);border-color:var(--pc);color:var(--hub-surface)}
+.hp-tm{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px}
+.hp-tm::-webkit-scrollbar{display:none}
+.hp-c{flex:none;min-height:40px;border:1px solid var(--hub-line);background:transparent;border-radius:999px;padding:6px 14px;font:15px/1 var(--hub-sans);color:var(--hub-ink);white-space:nowrap;cursor:pointer;font-variant-numeric:tabular-nums}
+.hp-c[aria-pressed="true"]{background:var(--hub-ink);border-color:var(--hub-ink);color:var(--hub-bg)}
+.hp input{flex:none;font:16px var(--hub-sans);min-height:40px;padding:5px 10px;border-radius:999px;border:1px solid var(--hub-line);background:var(--hub-bg);color:var(--hub-ink);width:80px;text-align:center}
+.hp-dt{display:flex;gap:6px}
+.hp-dt input[type="date"]{flex:1 1 9.5em;width:auto;max-width:12em}
+.hp-dt input[type="time"]{width:7em}
+/* 右滑加入待辦 */
+[data-swipe]{position:relative;touch-action:pan-y}
+[data-swipe].sw-drag{transition:none!important}
+[data-swipe].sw-back{transition:transform .22s var(--hub-ease)!important}
+[data-swipe]::before{content:"＋ 待辦";position:absolute;top:0;bottom:0;right:100%;width:var(--sw,0px);display:flex;align-items:center;justify-content:flex-end;padding-right:12px;box-sizing:border-box;background:var(--hub-todo);color:var(--hub-surface);font:700 14px/1 var(--hub-sans);white-space:nowrap;overflow:hidden;opacity:var(--swo,0);pointer-events:none}
+[data-swipe].sw-arm::before{content:"放開加入"}
+body.sw-on{-webkit-user-select:none;user-select:none}
+@keyframes hub-flash{from{background-color:var(--hub-todo-soft);box-shadow:inset 4px 0 0 var(--hub-todo)}}
+.sw-done{animation:hub-flash .9s var(--hub-ease)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+
+html:root:root{--bg:var(--hub-bg);--surface:var(--hub-surface);--line:var(--hub-line);--fg:var(--hub-ink);--muted:var(--hub-ink2);--accent:var(--hub-todo);--accent-soft:var(--hub-todo-soft);--p1:var(--hub-p1);--p1-soft:var(--hub-bad-soft);--p2:var(--hub-p2);--p3:var(--hub-p3);--p4:var(--hub-p4);--hub-accent:var(--hub-todo);--font-display:var(--hub-sans);--font-body:var(--hub-sans);--font-num:var(--hub-mono)}
+
+/* 版面放寬（11/11）：卡片、按鈕、表單的間距和字級都加大，手機抽屜和電腦側欄都不擠 */
+.wrap{gap:20px;padding-block:18px 56px}
+form{padding:14px;gap:10px}
+.row{gap:10px}
+#bed{width:76px}
+.prrow{gap:8px}
+.summary{font-size:14px;gap:12px}
+.list{gap:12px}
+.item{padding:14px 14px 14px 16px;gap:6px 12px}
+.meta{gap:10px}
+.bed{font-size:15px}
+.tag{font-size:12px}
+.src,.ex{font-size:12px}
+.text{font-size:16px;line-height:1.5}
+.timer{font-size:23px}
+.timer small{font-size:12px;margin-top:2px}
+.actions{gap:10px;margin-top:10px}
+.act{min-height:44px;padding:8px 18px;font-size:15px}
+.sub{padding:12px 4px;font-size:15px;line-height:1.5;gap:10px}
+.sbox{width:22px;height:22px}
+.subadd{gap:8px;margin:10px 3px 4px}
+.subadd input{min-height:44px!important;padding:8px 12px!important}
+.subadd button{min-height:44px;padding:0 16px;font-size:15px}
+.tbtn{min-height:42px;padding:8px 16px;font-size:14.5px}
+.foot{gap:10px}
+details{padding:12px 14px}
+.donelist{gap:8px;font-size:15px}
+.note{font-size:13px;line-height:1.6}
+.triage{font-size:14px;padding:10px 12px}
+/* 窄的時候（手機抽屜）：倒數移到卡片右上角，內容用整張卡的寬度 */
+@media (max-width:460px){
+  .item .timer{grid-row:1;grid-column:2;align-self:start;font-size:19px;white-space:nowrap}
+  .item .timer small{display:inline;margin-left:4px}
+  .item .text{grid-column:1/-1}
+  .actions{gap:8px}
+  .act{padding:8px 13px}
+}
+</style>
+
+
+<div class="bedpop" id="bedpop" hidden role="status" aria-live="polite">
+  <div class="bp"><span class="k">目前床號</span><span class="v" id="bedpopV"></span><p class="what" id="bedpopT"></p></div>
+  <div class="track"><div class="fill"></div></div>
+</div>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>待辦表</h1>
+      <div class="clock" id="clock">--:--</div>
+    </div>
+    <div class="tools">
+      <button class="tbtn" id="soundBtn" aria-pressed="false" type="button">🔔 提醒音：關</button>
+      <button class="tbtn" id="wakeBtn" aria-pressed="false" type="button">螢幕常亮：關</button>
+    </div>
+  </header>
+
+  <form id="form" autocomplete="off">
+    <div class="row">
+      <input type="text" id="bed" placeholder="床號" aria-label="床號" enterkeyhint="next" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <input type="text" id="task" placeholder="例：f/u K" aria-label="待辦內容" enterkeyhint="send" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <button class="add" type="submit">加入</button>
+    </div>
+    <div class="prrow" id="prChips" role="group" aria-label="緊急程度">
+      <button type="button" class="chip pr" data-p="1" aria-pressed="false"><span>立即</span><small></small></button>
+      <button type="button" class="chip pr" data-p="2" aria-pressed="false"><span>緊急</span><small></small></button>
+      <button type="button" class="chip pr" data-p="3" aria-pressed="true"><span>待辦</span><small></small></button>
+      <button type="button" class="chip pr" data-p="4" aria-pressed="false"><span>有空</span><small></small></button>
+      <button type="button" class="kbbtn" id="kbBtn">收鍵盤</button>
+    </div>
+    <div class="chips scroll" id="tmRow" role="group" aria-label="倒數時間" hidden>
+      <span id="tmChips"></span>
+      <input type="number" id="custom" min="1" max="1440" inputmode="numeric" placeholder="自訂分" aria-label="自訂分鐘">
+      <input type="number" id="rep" min="2" max="24" inputmode="numeric" placeholder="重複×次" aria-label="重複次數">
+    </div>
+    <div class="chips" id="dtRow" hidden>
+      <input type="date" id="dDate" aria-label="日期">
+      <input type="time" id="dTime" value="08:00" aria-label="時間">
+    </div>
+  </form>
+  <p class="triage" id="triage" hidden></p>
+
+  <div class="summary" id="summary"></div>
+  <ul class="list" id="list"></ul>
+
+  <details id="doneBox">
+    <summary id="doneSum">已完成 0</summary>
+    <ul class="donelist" id="doneList"></ul>
+  </details>
+
+  <div class="foot">
+    <button class="tbtn" id="handoffBtn" type="button">產生交班文字</button>
+    <button class="tbtn" id="clearDone" type="button">清除已完成</button>
+    <button class="tbtn" id="clearAll" type="button">下班：全部清空</button>
+  </div>
+  <textarea id="handoff" hidden readonly aria-label="交班文字"></textarea>
+  <p class="note">點卡片可展開子項目，也能在裡面再加。資料只存在這台裝置的瀏覽器裡，不會上傳。請用床號、縮寫，不要輸入病人全名或病歷號。頁面要開著倒數提醒才會響。</p>
+</div>
+
+<script>
+(() => {
+  const KEY = 'shiftboard.v1';
+  const PR = { 1: '立即', 2: '緊急', 3: '待辦', 4: '有空' };
+  const $ = id => document.getElementById(id);
+  let state = load();
+  if (state.seeded) { state.items = state.items.filter(i => !i.ex); state.done = (state.done || []).filter(i => !i.ex); state.seeded = false; }
+  let prSel = 3, tmSel = 0, timeOpen = false, soundOn = false, audio = null, wakeLock = null;
+
+  function load() {
+    try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.items)) return s; } catch (e) {}
+    return { items: [], done: [] };
+  }
+  function exampleItems() {
+    const now = Date.now();
+    return [
+      { id: 'e1', bed: '18', text: '補鈣快退了 → 重看 EKG，決定要不要再補鈣', p: 1, due: now + 4 * 60e3, start: now - 26 * 60e3, ex: true },
+      { id: 'e2', bed: '18', text: 'RI 後 finger sugar', p: 2, due: now + 38 * 60e3, start: now - 22 * 60e3, rep: 6, iv: 60, ex: true },
+      { id: 'e3', bed: '32', text: '發燒', p: 2, due: now + 12 * 60e3, start: now - 3 * 60e3, ex: true, src: '主訴處理',
+        subs: [['先做', '抽 blood culture ×2 套再給抗生素', 1], ['PE', '肺部聽診'], ['PE', 'IV 與管路部位'], ['檢驗', 'CBC/DC, CRP', 1], ['檢驗', 'Lactate'], ['影像', 'CXR'], ['藥物', 'Acetaminophen 500 mg PO q6h PRN for BT > 38.5°C']]
+          .map(([tag, t, d], k) => ({ id: 'e3.' + k, tag, t, d: d ? 1 : 0 })) },
+    ];
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  function dropExamples() {
+    if (!state.seeded) return;
+    state.items = state.items.filter(i => !i.ex); state.done = state.done.filter(i => !i.ex); state.seeded = false;
+  }
+
+  // 緊急程度一直顯示；點了「緊急／待辦」才出現倒數（緊急偏短、待辦偏長），立即和有空不計時
+  const TM = { 2: [[5, '5分'], [10, '10分'], [15, '15分'], [30, '30分']], 3: [[60, '1時'], [120, '2時'], [240, '4時'], [-1, '明天'], [-2, '日期']] };
+  const timed = p => p === 2 || p === 3;
+  const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  // 明天（-1）和日期（-2）：顯示日期與時間欄；明天預設明早 8:00，日期點下去直接開選單
+  function syncDt(pick) {
+    $('dtRow').hidden = !(timeOpen && timed(prSel) && tmSel < 0);
+    if (tmSel === -1) { const d = new Date(); d.setDate(d.getDate() + 1); $('dDate').value = ymd(d); }
+    if (tmSel === -2) { if (!$('dDate').value) $('dDate').value = ymd(new Date()); if (pick) { try { $('dDate').showPicker(); } catch (e) {} } }
+  }
+  function tmLabel() {
+    const cm = parseInt($('custom').value, 10);
+    let t = '';
+    if (cm > 0) t = cm >= 60 && cm % 60 === 0 ? `${cm / 60}時` : `${cm}分`;
+    else if (tmSel === -1) t = '明天';
+    else if (tmSel === -2) { const d = $('dDate').value; t = d ? `${+d.slice(5, 7)}/${+d.slice(8, 10)}` : '日期'; }
+    else { const hit = (TM[prSel] || []).find(x => x[0] === tmSel); t = hit ? hit[1] : ''; }
+    const rp = parseInt($('rep').value, 10);
+    return t && tmSel >= 0 && rp > 1 ? `${t}×${rp}` : t;
+  }
+  function renderPr() {
+    $('prChips').querySelectorAll('.chip').forEach(c => {
+      const p = +c.dataset.p;
+      c.setAttribute('aria-pressed', p === prSel);
+      c.querySelector('small').textContent = p === prSel && timed(p) ? tmLabel() : '';
+    });
+    const customOn = parseInt($('custom').value, 10) > 0;
+    $('tmChips').innerHTML = (TM[prSel] || []).map(([m, t]) =>
+      `<button type="button" class="chip tm" data-m="${m}" aria-pressed="${m === tmSel && !customOn}">${t}</button>`).join('');
+    $('tmRow').hidden = !(timeOpen && timed(prSel));
+    syncDt();
+  }
+  $('prChips').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    const p = +b.dataset.p;
+    if (p === prSel) timeOpen = timed(p) && !timeOpen;
+    else { prSel = p; tmSel = 0; $('custom').value = ''; $('rep').value = ''; timeOpen = timed(p); }
+    renderPr();
+  });
+  $('tmRow').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    const m = +b.dataset.m;
+    $('custom').value = '';
+    tmSel = tmSel === m ? 0 : m; // 再點一次取消，不計時
+    renderPr();
+    if (tmSel === -2) syncDt(true);
+  });
+  $('custom').addEventListener('input', () => { if (tmSel < 0) tmSel = 0; renderPr(); });
+  ['rep', 'dDate', 'dTime'].forEach(id => ['input', 'change'].forEach(ev => $(id).addEventListener(ev, renderPr)));
+
+  $('form').addEventListener('submit', e => {
+    e.preventDefault();
+    const text = $('task').value.trim(); if (!text) { closeKb(); return; } // 內容空白再按一次 = 收鍵盤
+    const cm = timed(prSel) ? parseInt($('custom').value, 10) : NaN;
+    const rep = timed(prSel) ? parseInt($('rep').value, 10) : NaN;
+    const now = Date.now();
+    let mins = 0, due = 0;
+    if (cm > 0) mins = cm;
+    else if (tmSel < 0) {
+      const d = $('dDate').value, when = d ? new Date(`${d}T${$('dTime').value || '08:00'}`).getTime() : NaN;
+      if (!(when > now)) { toast(d ? '選的時間已經過了，請選之後的時間' : '請先選日期'); return; }
+      due = when;
+    } else mins = tmSel;
+    if (mins) due = now + mins * 60e3;
+    dropExamples();
+    const it = { id: now.toString(36), bed: $('bed').value.trim(), text, p: prSel, due, start: now };
+    if (rep > 1 && mins) { it.rep = Math.min(rep, 24); it.iv = mins; }
+    state.items.push(it);
+    try { localStorage.setItem('hub.lastBed', it.bed); } catch (e) {}
+    save(); $('task').value = ''; $('rep').value = '';
+    if (cm > 0) { $('custom').value = ''; tmSel = 0; }
+    if (rep > 1 && !mins) toast('重複只能搭配倒數分鐘，這次只加一次');
+    $('task').focus(); timeOpen = false; renderPr(); render(); showBed(it);
+  });
+
+  // 加入後最上方跳出目前床號的醒目橫條（不會被鍵盤擋住），兩秒進度條跑完自動消失；床號留在欄位裡，可以接著輸入
+  let bedTimer = 0;
+  function showBed(it) {
+    const pop = $('bedpop'); clearTimeout(bedTimer);
+    if (!it.bed) { pop.hidden = true; return; }
+    $('bedpopV').textContent = it.bed; $('bedpopT').textContent = it.text;
+    pop.classList.remove('run'); pop.hidden = false;
+    pop.style.top = Math.round($('form').getBoundingClientRect().bottom + 8) + 'px'; // 貼在固定輸入列下方，不蓋住輸入框
+    void pop.offsetWidth;
+    pop.classList.add('run');
+    bedTimer = setTimeout(hideBed, 2000);
+  }
+  function hideBed() { clearTimeout(bedTimer); $('bedpop').hidden = true; $('bedpop').classList.remove('run'); }
+  $('bedpop').addEventListener('click', hideBed);
+
+  function fmt(ms) {
+    const s = Math.round(Math.abs(ms) / 1000), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), r = s % 60;
+    if (h >= 24) return `${Math.floor(h / 24)}天${h % 24}時`;
+    return h ? `${h}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}` : `${m}:${String(r).padStart(2, '0')}`;
+  }
+  const hhmm = t => new Date(t).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
+  // 到時時間的標示：今天只寫時間，明天寫「明天」，更晚寫月/日
+  const dueLbl = t => {
+    const a = new Date(); a.setHours(0, 0, 0, 0);
+    const b = new Date(t), c = new Date(t); c.setHours(0, 0, 0, 0);
+    const n = Math.round((c - a) / 864e5);
+    return n <= 0 ? hhmm(t) : n === 1 ? `明天 ${hhmm(t)}` : `${b.getMonth() + 1}/${b.getDate()} ${hhmm(t)}`;
+  };
+  const repTxt = i => i.rep > 1 ? `還剩 ${i.rep} 次，每 ${i.iv >= 60 && i.iv % 60 === 0 ? i.iv / 60 + ' 時' : i.iv + ' 分'}` : '';
+
+  function sorted(now) {
+    return [...state.items].sort((a, b) => {
+      const ao = a.due && a.due <= now, bo = b.due && b.due <= now;
+      if (ao !== bo) return ao ? -1 : 1;           // 已到時的先處理
+      if (a.p !== b.p) return a.p - b.p;           // 再依緊急程度
+      if (!a.due !== !b.due) return a.due ? -1 : 1; // 有倒數的排前面
+      return (a.due || a.start) - (b.due || b.start);
+    });
+  }
+
+  // 還有「立即」沒做完時，提醒新 call 先分流
+  function renderTriage() {
+    const p1 = state.items.filter(i => i.p === 1), el = $('triage');
+    if (!p1.length) { el.hidden = true; return; }
+    const beds = [...new Set(p1.map(i => i.bed).filter(Boolean))];
+    el.innerHTML = `<b>${beds.length ? esc(beds.join('、')) + ' 床' : p1.length + ' 項'}</b>還在「立即」。新的 call 如果穩定，先在電話上交代護理師要做什麼、什麼情況再叫你，不要離開不穩定的病人。`;
+    el.hidden = false;
+  }
+
+  const armed = new Set(), openIds = new Set(), seen = new Set();
+  let lastSig = '', firstPaint = true;
+  const CHEV = '<svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>';
+  const TICK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg>';
+  const subsDone = it => (it.subs || []).filter(x => x.d).length;
+  function progHTML(it) {
+    const n = (it.subs || []).length; if (!n) return '';
+    const d = subsDone(it); return `<span class="prog${d === n ? ' all' : ''}">${d}/${n}</span>`;
+  }
+  function subsHTML(it) {
+    return `<div class="subw"${openIds.has(it.id) ? '' : ' inert'}><div class="subs-in">
+      ${(it.subs || []).length ? `<ul class="subl">${it.subs.map(x => `<li><button type="button" class="sub" data-a="sub" data-sid="${x.id}" aria-pressed="${!!x.d}"><span class="sbox">${TICK}</span>${x.tag ? `<span class="stag">${esc(x.tag)}</span>` : ''}<span class="st">${esc(x.t)}</span></button><button type="button" class="sx" data-a="subdel" data-sid="${x.id}" aria-label="刪除子項目">×</button></li>`).join('')}</ul>` : ''}
+      <form class="subadd" data-id="${it.id}"><input type="text" placeholder="＋ 新增子項目" aria-label="新增子項目" enterkeyhint="done" autocapitalize="off" autocorrect="off" spellcheck="false"><button type="submit">加</button></form>
+    </div></div>`;
+  }
+  function timerHTML(it, now) {
+    const over = it.due && it.due <= now;
+    return it.due
+      ? `${over ? '+' : ''}${fmt(it.due - now)}<small>${over ? '已到時' : dueLbl(it.due) + ' 到'}</small>`
+      : '不計時';
+  }
+  function render() {
+    const now = Date.now(), list = $('list');
+    const items = sorted(now);
+    // 結構沒變時只更新倒數數字，避免每秒重建按鈕吃掉點擊
+    const sig = items.map(i => `${i.id}:${i.p}:${i.due}:${i.rep || 0}:${i.due && i.due <= now}:${armed.has(i.id)}:${(i.subs || []).map(x => x.d ? 1 : 0).join('')}`).join('|') + '#' + state.done.length;
+    if (sig === lastSig) {
+      for (const it of items) {
+        const li = list.querySelector(`[data-id="${it.id}"]`); if (!li) continue;
+        li.querySelector('.timer').innerHTML = timerHTML(it, now);
+        const bar = li.querySelector('.bar');
+        if (bar) bar.style.width = Math.max(0, Math.min(1, (it.due - now) / (it.due - it.start))) * 100 + '%';
+      }
+      return;
+    }
+    lastSig = sig;
+    renderTriage();
+    // 正在打子項目時重畫，保留輸入內容與焦點
+    const ae = document.activeElement, keep = ae && ae.closest && ae.closest('.subadd') ? [ae.closest('.subadd').dataset.id, ae.value] : null;
+    list.innerHTML = '';
+    if (!items.length) list.innerHTML = '<li class="empty">目前沒有待辦。上面輸入床號和內容，選緊急程度與倒數，按「加入」。<br><button type="button" id="showEx" style="margin-top:10px;border:1px solid var(--line);background:none;border-radius:8px;padding:4px 12px;color:var(--accent);cursor:pointer">看範例</button></li>';
+    const sx = $('showEx'); if (sx) sx.onclick = () => { state.items = exampleItems(); state.seeded = true; save(); render(); };
+    for (const it of items) {
+      const li = document.createElement('li');
+      const over = it.due && it.due <= now;
+      li.className = 'item' + (over ? ' overdue' : '') + (openIds.has(it.id) ? ' open' : '') + (!firstPaint && !seen.has(it.id) ? ' new' : ''); li.dataset.p = it.p; li.dataset.id = it.id;
+      seen.add(it.id);
+      const nSub = (it.subs || []).length, allDone = nSub && subsDone(it) === nSub;
+      const timer = `<div class="timer${it.due ? '' : ' none'}">${timerHTML(it, now)}</div>`;
+      const pct = it.due ? Math.max(0, Math.min(1, (it.due - now) / (it.due - it.start))) : 0;
+      li.innerHTML = `
+        <div class="meta"><span class="tag">${PR[it.p]}</span>${it.bed ? `<span class="bed">${esc(it.bed)}</span>` : ''}${progHTML(it)}${it.rep > 1 ? `<span class="repn">${repTxt(it)}</span>` : ''}${it.src ? `<span class="src">${esc(it.src)}</span>` : ''}${it.ex ? '<span class="ex">範例</span>' : ''}${CHEV}</div>
+        ${timer}
+        <div class="text">${esc(it.text)}</div>
+        ${subsHTML(it)}
+        <div class="actions">
+          <button class="act done${allDone ? ' ready' : ''}" data-a="done" type="button">${allDone ? '全部做完 → 完成' : '完成'}</button>
+          <button class="act" data-a="snooze" type="button">+10分</button>
+          <button class="act" data-a="up" type="button" ${it.p === 1 ? 'disabled' : ''}>升級</button>
+          <button class="act del${armed.has(it.id) ? ' armed' : ''}" data-a="del" type="button">${armed.has(it.id) ? '確定刪除' : '刪除'}</button>
+        </div>
+        ${it.due && !over ? `<div class="bar" style="width:${pct * 100}%"></div>` : ''}`;
+      list.appendChild(li);
+    }
+    firstPaint = false;
+    if (keep) { const f = list.querySelector(`.subadd[data-id="${keep[0]}"] input`); if (f) { f.value = keep[1]; f.focus(); } }
+    const overN = items.filter(i => i.due && i.due <= now).length;
+    const c = p => items.filter(i => i.p === p).length;
+    $('summary').innerHTML = `<span class="over">已到時 <b>${overN}</b></span> · <span>立即 <b>${c(1)}</b></span> · <span>緊急 <b>${c(2)}</b></span> · <span>待辦 <b>${c(3)}</b></span> · <span>有空 <b>${c(4)}</b></span>`;
+
+    $('doneSum').textContent = `已完成 ${state.done.length}`;
+    $('doneList').innerHTML = state.done.slice().reverse().map(d =>
+      `<li><span class="t">${hhmm(d.doneAt)}</span><span class="x">${d.bed ? esc(d.bed) + ' ' : ''}${esc(d.text)}${(d.subs || []).length ? `（${subsDone(d)}/${d.subs.length}）` : ''}</span><button type="button" data-undo="${d.id}">復原</button></li>`).join('');
+  }
+  const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function toggleOpen(li) {
+    const id = li.dataset.id, on = !openIds.has(id);
+    on ? openIds.add(id) : openIds.delete(id);
+    li.classList.toggle('open', on);
+    const w = li.querySelector('.subw'); if (w) w.inert = !on;
+    if (on && !(state.items.find(i => i.id === id) || {}).subs) setTimeout(() => { const f = li.querySelector('.subadd input'); if (f) f.focus(); }, 200);
+  }
+  $('list').addEventListener('click', e => {
+    const b = e.target.closest('[data-a]');
+    if (!b) {
+      // 點卡片（按鈕、子項目區以外）= 展開／收合子項目
+      const li = e.target.closest('.item');
+      if (li && !e.target.closest('.subw, .actions, button, input, form')) toggleOpen(li);
+      return;
+    }
+    const id = b.closest('.item').dataset.id, it = state.items.find(i => i.id === id); if (!it) return;
+    const a = b.dataset.a, now = Date.now();
+    if (a === 'sub' || a === 'subdel') {
+      const x = (it.subs || []).find(s => s.id === b.dataset.sid); if (!x) return;
+      if (a === 'sub') {
+        x.d = x.d ? 0 : 1;
+        if (x.d && subsDone(it) === it.subs.length) { toast('子項目全部做完了'); try { navigator.vibrate?.(30); } catch (e) {} }
+      } else { it.subs = it.subs.filter(s => s !== x); if (!it.subs.length) delete it.subs; }
+      save(); render(); return;
+    }
+    if (a === 'done') {
+      state.items = state.items.filter(i => i !== it); state.done.push({ ...it, doneAt: now });
+      if (it.rep > 1 && it.iv) {
+        const nid = now.toString(36);
+        state.items.push({ ...it, id: nid, rep: it.rep - 1, due: now + it.iv * 60e3, start: now, ...(it.subs ? { subs: it.subs.map((x, k) => ({ ...x, id: nid + '.' + k, d: 0 })) } : {}) });
+        toast(`已完成，下一次 ${hhmm(now + it.iv * 60e3)}（還剩 ${it.rep - 1} 次）`);
+      } else toast('已完成');
+    }
+    if (a === 'snooze') { const base = it.due && it.due > now ? it.due : now; it.due = base + 10 * 60e3; if (it.start > now) it.start = now; alerted.delete(id); }
+    if (a === 'up' && it.p > 1) it.p--;
+    if (a === 'del') {
+      if (!armed.has(id)) { armed.add(id); setTimeout(() => { armed.delete(id); render(); }, 3000); render(); return; }
+      armed.delete(id); state.items = state.items.filter(i => i !== it);
+    }
+    save(); render();
+  });
+  // 新增子項目：卡片展開後最下面的輸入列，Enter 就加
+  $('list').addEventListener('submit', e => {
+    const f = e.target.closest('.subadd'); if (!f) return;
+    e.preventDefault();
+    const it = state.items.find(i => i.id === f.dataset.id), inp = f.querySelector('input'), t = inp.value.trim();
+    if (!it || !t) return;
+    it.subs = it.subs || [];
+    it.subs.push({ id: it.id + '.' + Date.now().toString(36), t, tag: '', d: 0 });
+    inp.value = ''; save(); render();
+    const n = $('list').querySelector(`.subadd[data-id="${it.id}"] input`); if (n) n.focus();
+  });
+  $('doneList').addEventListener('click', e => {
+    const id = e.target.dataset.undo; if (!id) return;
+    const d = state.done.find(i => i.id === id); if (!d) return;
+    state.done = state.done.filter(i => i !== d); delete d.doneAt; state.items.push(d); save(); render();
+  });
+
+  // two-tap buttons in footer
+  function twoTap(btn, label, armedLabel, fn) {
+    let t = null;
+    btn.addEventListener('click', () => {
+      if (!t) { btn.classList.add('armed'); btn.textContent = armedLabel; t = setTimeout(reset, 3000); return; }
+      reset(); fn();
+    });
+    function reset() { clearTimeout(t); t = null; btn.classList.remove('armed'); btn.textContent = label; }
+  }
+  twoTap($('clearDone'), '清除已完成', '再按一次確認', () => { state.done = []; save(); render(); });
+  twoTap($('clearAll'), '下班：全部清空', '再按一次全部清空', () => { state = { items: [], done: [] }; save(); $('handoff').hidden = true; render(); toast('已清空'); });
+
+  $('handoffBtn').addEventListener('click', () => {
+    const now = Date.now();
+    const lines = sorted(now).map(i => `[${PR[i.p]}] ${i.bed ? i.bed + ' ' : ''}${i.text}${i.due ? (i.due <= now ? '（已到時）' : `（${dueLbl(i.due)} 前）`) : ''}${i.rep > 1 ? `（${repTxt(i)}）` : ''}` +
+      ((i.subs || []).length ? `（${subsDone(i)}/${i.subs.length}）` + i.subs.filter(x => !x.d).map(x => `\n    - ${x.tag ? x.tag + '：' : ''}${x.t}`).join('') : ''));
+    const txt = `交班 ${new Date().toLocaleString('zh-TW', { hour12: false })}\n未完成 ${lines.length} 項：\n${lines.join('\n') || '（無）'}\n已完成 ${state.done.length} 項`;
+    const ta = $('handoff'); ta.value = txt; ta.hidden = false;
+    navigator.clipboard?.writeText(txt).then(() => toast('交班文字已複製'), () => { ta.select(); toast('請長按選取複製'); })
+      ?? (ta.select(), toast('請長按選取複製'));
+  });
+
+  // alerts
+  const alerted = new Set();
+  $('soundBtn').addEventListener('click', () => {
+    soundOn = !soundOn;
+    if (soundOn && !audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+    audio?.resume?.();
+    $('soundBtn').setAttribute('aria-pressed', soundOn);
+    $('soundBtn').textContent = `🔔 提醒音：${soundOn ? '開' : '關'}`;
+    if (soundOn) beep(1);
+  });
+  function beep(n = 3) {
+    if (!soundOn || !audio) return;
+    for (let k = 0; k < n; k++) {
+      const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + k * 0.35;
+      o.frequency.value = 880; o.connect(g); g.connect(audio.destination);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.4, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+      o.start(t); o.stop(t + 0.3);
+    }
+  }
+  function checkAlerts() {
+    const now = Date.now(); let fire = false;
+    for (const it of state.items) if (it.due && it.due <= now && !alerted.has(it.id)) { alerted.add(it.id); if (!it.ex) fire = true; }
+    if (fire) { beep(); try { navigator.vibrate?.([300, 150, 300]); } catch (e) {} }
+  }
+  // don't re-alert things already overdue at load
+  state.items.forEach(i => { if (i.due && i.due <= Date.now()) alerted.add(i.id); });
+
+  $('wakeBtn').addEventListener('click', async () => {
+    if (wakeLock) { await wakeLock.release().catch(() => {}); wakeLock = null; setWake(false); return; }
+    try { wakeLock = await navigator.wakeLock.request('screen'); setWake(true); wakeLock.addEventListener('release', () => { wakeLock = null; setWake(false); }); }
+    catch (e) { toast('這個瀏覽器不支援螢幕常亮'); }
+  });
+  function setWake(on) { $('wakeBtn').setAttribute('aria-pressed', on); $('wakeBtn').textContent = `螢幕常亮：${on ? '開' : '關'}`; }
+
+  let toastEl = null;
+  function toast(msg) {
+    toastEl?.remove(); toastEl = document.createElement('div'); toastEl.className = 'toast'; toastEl.textContent = msg;
+    toastEl.style.top = Math.round($('form').getBoundingClientRect().bottom + 8) + 'px';
+    document.body.appendChild(toastEl); const el = toastEl; setTimeout(() => el.remove(), 1800);
+  }
+
+  function tick() {
+    $('clock').textContent = new Date().toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    checkAlerts(); render();
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+  // 值班總站的其他分頁（例如會診稿）寫入待辦時，這裡跟著更新
+  // 床號預設 = 最近一次輸入的床號（副駕、用藥速查、這裡共用）
+  try { $('bed').value = localStorage.getItem('hub.lastBed') || ''; } catch (e) {}
+  window.addEventListener('storage', e => {
+    if (e.key === 'hub.lastBed') { if (document.activeElement !== $('bed')) $('bed').value = e.newValue || ''; return; }
+    if (e.key !== KEY) return;
+    state = load(); lastSig = ''; render();
+  });
+  // 鍵盤：連續輸入時一直開著，只在你「不打字了」的時候收
+  const kbOpen = () => /^(INPUT|TEXTAREA)$/.test((document.activeElement && document.activeElement.tagName) || '');
+  function syncKb() { document.body.classList.toggle('kb', kbOpen()); }
+  function closeKb() {
+    const a = document.activeElement;
+    if (a && a !== document.body && a.blur) a.blur();
+    timeOpen = false; renderPr(); syncKb();
+  }
+  document.addEventListener('focusin', syncKb);
+  document.addEventListener('focusout', () => setTimeout(syncKb, 60));
+  $('kbBtn').addEventListener('click', closeKb);
+  // 點輸入列裡的按鈕時，輸入框不失焦，鍵盤才不會收起又彈起
+  ['pointerdown', 'mousedown'].forEach(ev => $('form').addEventListener(ev, e => {
+    const b = e.target.closest('button');
+    if (b && b.id !== 'kbBtn') e.preventDefault();
+  }));
+  // 床號按 Enter 跳到內容（注音選字中的 Enter 不算）
+  $('bed').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); $('task').focus(); }
+  });
+  // 往下捲清單、或點清單空白處，自動收鍵盤與設定面板
+  let ty0 = 0, fromForm = false;
+  document.addEventListener('touchstart', e => { ty0 = e.touches[0].clientY; fromForm = !!e.target.closest('#form'); }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (fromForm || !(kbOpen() || !$('tmRow').hidden)) return;
+    if (Math.abs(e.touches[0].clientY - ty0) > 14) closeKb();
+  }, { passive: true });
+  document.addEventListener('click', e => {
+    if (!(kbOpen() || !$('tmRow').hidden)) return;
+    if (e.target.closest('#form, button, input, textarea, summary, a')) return;
+    closeKb();
+  });
+
+  renderPr();
+  tick(); setInterval(tick, 1000);
+})();
+</script>
+
+</body></html>
