@@ -1563,6 +1563,9 @@ document.addEventListener('click', e => {
     case 'sendNext': if (send.i < send.parts.length - 1) { send.i++; render(); } return;
     case 'sendDel': {
       const sb = bedById(send.bedId); if (!sb) return;
+      // 這台電腦登入了你的帳號、雲端同步開著：資料本來就會同步到手機，這裡刪等於手機也刪
+      let synced = false; try { const s = parent !== window && parent.document.getElementById('sync'); synced = !!s && /^(ok|busy)$/.test(s.dataset.s); } catch (er) {}
+      if (synced) { ask(`這台電腦登入了你的帳號，雲端同步開著：${label(sb)} 已經會自動同步到手機，不需要 QR。\n在這裡刪除會連手機上的一起刪掉，所以這裡不刪。\n用完請登出 claude.ai，資料就不會留在這台電腦。`, { ok: '知道了' }); return; }
       ask(`確定手機已經收到了？\n會從這台電腦刪除 ${label(sb)} 和這床的待辦。`, { ok: '從這台電腦刪除', danger: true }).then(y => { if (!y) return;
       try {
         const st = JSON.parse(get(TODO) || 'null');
@@ -1620,7 +1623,7 @@ $('fileJSON').addEventListener('change', e => {
   f.text().then(t => restoreFrom(t)).then(ok => { if (ok) go('list'); }, () => toast('這不是查房板的存檔'));
 });
 // 其他分頁（例如待辦表）改了資料 → 重畫
-addEventListener('storage', e => { if (e.key === KEY) { S = load(); render(); } else if (e.key === TODO) { syncFromTodo(); if (view === 'bed') render(); } });
+addEventListener('storage', e => { if (e.key === KEY) { S = load(); if (view === 'bed' && !bedNow()) { round = null; go('list'); } else if (view === 'send' && !(send && bedById(send.bedId))) { send = null; go('list'); } else render(); } else if (e.key === TODO) { syncFromTodo(); if (view === 'bed') render(); } });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { sweep(); if (view === 'list') render(); } });
 
 sweep();

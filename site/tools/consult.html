@@ -345,16 +345,17 @@ html:root:root{--paper:var(--hub-bg);--card:var(--hub-surface);--line:var(--hub-
     _read() { try { const st = JSON.parse(get(KEY) || 'null'); if (st && Array.isArray(st.items)) return st; } catch (e) {} return null; },
     // 這一項在待辦表裡的狀態：'open'（還沒做）、'done'（已完成）或 null（不在／被刪掉）
     status(id) { if (!id) return null; const st = api._read(); if (!st) return null; if (st.items.some(i => i.id === id)) return 'open'; return (st.done || []).some(i => i.id === id) ? 'done' : null; },
+    // 子項目用自己的 id（建立時是「待辦 id.k」）找，不用陣列位置：待辦表刪掉其中一項，其他項不會對錯
     subStatus(id, k) {
       const st = api._read(); if (!st) return null;
       const it = st.items.find(i => i.id === id), d = it ? null : (st.done || []).find(i => i.id === id);
-      const x = it || d; if (!x || !x.subs || !x.subs[k]) return null;
-      return x.subs[k].d || d ? 'done' : 'open';
+      const x = it || d, s = x && x.subs && x.subs.find(y => y.id === id + '.' + k); if (!s) return null;
+      return s.d || d ? 'done' : 'open';
     },
     subDone(id, k) {
       const st = api._read(); if (!st) return false;
-      const it = st.items.find(i => i.id === id); if (!it || !it.subs || !it.subs[k]) return false;
-      it.subs[k].d = 1; set(KEY, JSON.stringify(st)); return true;
+      const it = st.items.find(i => i.id === id), s = it && it.subs && it.subs.find(y => y.id === id + '.' + k); if (!s) return false;
+      s.d = 1; set(KEY, JSON.stringify(st)); return true;
     },
     complete(id) {
       const st = api._read(); if (!st) return false;

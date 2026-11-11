@@ -833,7 +833,7 @@ html:root:root{--bg:var(--hub-bg);--surface:var(--hub-surface);--line:var(--hub-
     if(sc.extra!=='rh'){$('extra').innerHTML='';$('extra').hidden=true;return}
     $('extra').hidden=false;
     $('extra').innerHTML='<div class="rhsel"><span>心律</span>'+Object.keys(RH).map(k=>'<button data-r="'+k+'" aria-pressed="'+(S.rhythm===k)+'">'+RH[k].l+'</button>').join('')+'</div>';
-    $('extra').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.rhythm=b.dataset.r;if(S.t0)log('心律判讀：'+RH[S.rhythm].l);renderExtra();tick()});
+    $('extra').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.rhythm=b.dataset.r;if(S.t0){log('心律判讀：'+RH[S.rhythm].l);saveRun()}renderExtra();tick()});
   }
   function peek(ids,on){$('fc').querySelectorAll('.nd').forEach(li=>{const s=stepOf(SC[scen],li.dataset.id);li.classList.toggle('peek',on&&s.ac.includes(ids))})}
   function renderActions(){
@@ -902,7 +902,7 @@ html:root:root{--bg:var(--hub-bg);--surface:var(--hub-surface);--line:var(--hub-
     const [sid,msg,o]=r;
     cur[scen]=sid;ov[scen]=o||null;const vs=V(scen);vs.add(sid);
     if(sc.linear){const i=sc.steps.findIndex(s=>s.id===sid);sc.steps.slice(0,i).forEach(s=>vs.add(s.id))}
-    log(msg);renderFlow();peek(id,$('actions').querySelector('[data-a="'+id+'"]')===document.activeElement);tick();
+    log(msg);renderFlow();peek(id,$('actions').querySelector('[data-a="'+id+'"]')===document.activeElement);tick();saveRun();
   }
   function switchTo(k){
     if(k===scen)return;
@@ -913,6 +913,7 @@ html:root:root{--bg:var(--hub-bg);--surface:var(--hub-surface);--line:var(--hub-
       log('切換情境 → '+sc.n);
       if(!cur[k]&&sc.steps[0].ac.includes('start')){cur[k]=sc.steps[0].id;V(k).add(cur[k])}
       if(sc.arrest&&!S.cyc)S.cyc=now();
+      saveRun();
     }
     renderAll();
   }
@@ -946,7 +947,25 @@ html:root:root{--bg:var(--hub-bg);--surface:var(--hub-surface);--line:var(--hub-
   };
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AU.ctx&&AU.on&&AU.ctx.state!=='running')AU.ctx.resume()});
 
-  $('b-reset').onclick=()=>{clearInterval(tickId);tickId=null;fresh();$('log').innerHTML='';renderAll()};
+  // 重設要按兩次（3 秒內），急救中誤觸不會把整段時間軸清掉
+  let rsT=null;
+  $('b-reset').onclick=()=>{
+    const b=$('b-reset');
+    if(S.t0&&!rsT){b.textContent='再按一次重設';b.classList.add('armed');rsT=setTimeout(()=>{rsT=null;b.textContent='重設';b.classList.remove('armed')},3000);return}
+    clearTimeout(rsT);rsT=null;b.textContent='重設';b.classList.remove('armed');
+    clearInterval(tickId);tickId=null;fresh();$('log').innerHTML='';clearRun();renderAll()};
+  // 急救進行中的狀態存在這台裝置（acls-run，不上雲端）：工具被重新載入、App 被滑掉再打開都接得回來；最後一個動作超過 6 小時就不接
+  const RUN='acls-run';
+  function saveRun(){try{localStorage.setItem(RUN,JSON.stringify({S,cur,ov,scen,at:Date.now(),visited:Object.fromEntries(Object.entries(visited).map(([k,v])=>[k,[...v]])),log:[...$('log').children].slice(0,300).map(e=>e.textContent)}))}catch(e){}}
+  function clearRun(){try{localStorage.removeItem(RUN)}catch(e){}}
+  (function(){
+    let r=null;try{r=JSON.parse(localStorage.getItem(RUN)||'null')}catch(e){}
+    if(!r||!r.S||!r.S.t0||Date.now()-(r.at||0)>6*3600e3){if(r)clearRun();return}
+    S=r.S;cur=r.cur||{};ov=r.ov||{};visited={};Object.entries(r.visited||{}).forEach(([k,v])=>visited[k]=new Set(v));
+    if(SC[r.scen])scen=r.scen;
+    $('log').innerHTML='';(r.log||[]).forEach(t=>{const el=document.createElement('div');el.textContent=t;$('log').appendChild(el)});
+    if(!tickId)tickId=setInterval(tick,500);
+  })();
   renderAll();
 
   // quiz

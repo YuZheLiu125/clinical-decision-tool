@@ -376,6 +376,8 @@ button,a{font:inherit;color:inherit}
   let glOpen = false, sheetOpen = false;
   function applyFab() { document.body.classList.toggle('gl-open', (glOpen && cur === 'meds') || (sheetOpen && cur === 'pilot')); }
   window.addEventListener('message', e => { if (e.data && e.data.hub === 'sheet') { sheetOpen = !!e.data.open; applyFab(); } });
+  $('f-meds').addEventListener('load', () => { glOpen = false; applyFab(); });
+  $('f-pilot').addEventListener('load', () => { sheetOpen = false; applyFab(); });
   window.addEventListener('message', e => {
     const f = $('f-meds');
     if (!f || e.source !== f.contentWindow || !e.data || e.data.hub !== 'gloss') return;
@@ -541,7 +543,7 @@ button,a{font:inherit;color:inherit}
     local: '沒有登入 claude.ai 或沒有寫入權限：資料只存在這台裝置，被清掉就沒了', err: '雲端同步失敗，資料暫時只在這台裝置' };
   const ind = s => { el.dataset.s = s; el.textContent = LABEL[s]; el.title = TIP[s]; };
   const META = 'hub.sync.meta', CH = 60000;
-  const skip = k => !k || k.startsWith('hub.sync');
+  const skip = k => !k || k.startsWith('hub.sync') || k === 'acls-run';
   const enc = k => 'k' + Array.from(new TextEncoder().encode(k), b => b.toString(16).padStart(2, '0')).join('');
   const dec = id => new TextDecoder().decode(new Uint8Array(id.slice(1).match(/../g).map(h => parseInt(h, 16))));
   const ls = {
@@ -550,7 +552,10 @@ button,a{font:inherit;color:inherit}
     keys: () => { try { return Object.keys(localStorage).filter(k => !skip(k) && enc(k).length <= 190); } catch (e) { return []; } },
   };
   let meta = {}; try { meta = JSON.parse(ls.get(META) || '{}') || {}; } catch (e) {}
-  const saveMeta = () => ls.set(META, JSON.stringify(meta));
+  const SIG = 'hub.sync.sig';
+  let sig = {}; try { sig = JSON.parse(ls.get(SIG) || '{}') || {}; } catch (e) {}
+  const fp = v => { if (v == null) return null; let h = 5381; for (let i = 0; i < v.length; i++) h = (h * 33 ^ v.charCodeAt(i)) >>> 0; return v.length + ':' + h; };
+  const saveMeta = () => { ls.set(META, JSON.stringify(meta)); ls.set(SIG, JSON.stringify(sig)); };
   const within = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej({ code: 'timeout' }), ms))]);
 
   let db = null, uid = null;
@@ -576,20 +581,44 @@ button,a{font:inherit;color:inherit}
       let v = d.del ? null : d.n ? Array.from({ length: d.n }, (_, i) => (parts[id + '~' + i] || {}).v || '').join('') : d.v;
       if (typeof v !== 'string') v = null;
       chunksN[k] = d.n || 0;
-      if ((d.t || 0) > (meta[k] || 0)) {            // 雲端比較新（或這台裝置被清空了）→ 用雲端的
-        if (ls.get(k) !== v) { ls.set(k, v); changed.push(k); }
+      if ((d.t || 0) > (meta[k] || 0)) {            // 雲端比較新（或這台裝置被清空了）
+        // 本機有沒有「還沒上傳的修改」：跟上次和雲端一致時的指紋比（存在本機，重開 App 也記得）
+        const local = ls.get(k), dirty = local != null && local !== v && (k in sig ? sig[k] !== fp(local) : true);
+        if (dirty && local != null && v != null && local !== v) {
+          // 兩邊都改過：待辦表逐項合併；其他資料用雲端的，本機那份留一份備份（查房板「⋯」可以從快照救回）
+          const m = merge(k, local, v);
+          if (m != null) { ls.set(k, m); changed.push(k); }
+          else { ls.set('hub.sync.bak:' + k, local); ls.set(k, v); changed.push(k); }
+        } else if (local !== v) { ls.set(k, v); changed.push(k); }
         meta[k] = d.t;
       }
-      known[k] = v;
+      known[k] = v; sig[k] = fp(ls.get(k) === v ? v : known[k]);
     }
     saveMeta();
-    if (changed.length) {
-      document.querySelectorAll('.pane iframe[src]').forEach(f => {
-        if (f.id === 'f-acls' && !changed.some(k => k.startsWith('acls'))) return;
-        try { f.contentWindow.location.reload(); } catch (e) { f.src = f.src; }
-      });
-      if (!first) window.dispatchEvent(new Event('storage'));
-    }
+    if (changed.length) notify(changed);
+  }
+  // 待辦表：兩台裝置各自加的都留著；任一邊完成就算完成
+  function merge(k, a, b) {
+    if (k !== 'shiftboard.v1') return null;
+    try {
+      const A = JSON.parse(a), B = JSON.parse(b);
+      if (!A || !B || !Array.isArray(A.items) || !Array.isArray(B.items)) return null;
+      const done = new Map(), items = new Map();
+      [...(A.done || []), ...(B.done || [])].forEach(i => { if (!done.has(i.id)) done.set(i.id, i); });
+      [...A.items, ...B.items].forEach(i => { if (!done.has(i.id) && !items.has(i.id)) items.set(i.id, i); });
+      return JSON.stringify({ ...B, items: [...items.values()], done: [...done.values()] });
+    } catch (e) { return null; }
+  }
+  // 雲端帶來新資料：送一個 storage 事件給每個工具，各自就地更新（不整頁重載，查房板跑到哪一床、OCR、急救計時都不會被打斷）。
+  // 只有不會自己聽 storage 的工具，而且是它自己的資料變了，才重新載入它。
+  const OWN = { 'f-consult': ['consult-draft', 'consult-example'], 'f-meds': ['wr3'], 'f-pilot': ['oncall.prefs.v1'] };
+  function notify(changed) {
+    document.querySelectorAll('.pane iframe[src]').forEach(f => {
+      const own = OWN[f.id];
+      if (own && changed.some(k => own.includes(k))) { try { f.contentWindow.location.reload(); } catch (e) { f.src = f.src; } return; }
+      changed.forEach(k => { try { f.contentWindow.dispatchEvent(new StorageEvent('storage', { key: k, newValue: ls.get(k) })); } catch (e) {} });
+    });
+    window.dispatchEvent(new Event('storage'));
   }
 
   async function write(k, v) {
@@ -603,7 +632,7 @@ button,a{font:inherit;color:inherit}
       for (let i = n; i < (chunksN[k] || 0); i++) await col.doc(id + '~' + i).delete().catch(() => {});
       chunksN[k] = n;
     }
-    known[k] = v; meta[k] = t; saveMeta();
+    known[k] = v; sig[k] = fp(v); meta[k] = t; saveMeta();
   }
 
   let busy = false, again = false, ready = false, tick = 0;
@@ -640,7 +669,7 @@ button,a{font:inherit;color:inherit}
   // 切到背景（滑回主畫面、鎖螢幕）時立刻存；回到前景時拉一次別台裝置的變更
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') flush();
-    else if (ready) pull(false).then(flush).catch(() => {});
+    else if (ready) pull(false).then(flush).catch(() => {}); // pull 會先處理本機沒上傳完的修改（合併或備份），不會直接蓋掉
   });
   window.addEventListener('pagehide', flush);
 })();
