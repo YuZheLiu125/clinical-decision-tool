@@ -19,7 +19,12 @@
 
 1. `python3 scripts/release.py patch|minor|major`：會跑檢查和測試、改版本號、整理 CHANGELOG、commit、打 tag，並寫出 `dist/publish.json`
 2. 用 `publish_files` 發布 `dist/publish.json` 裡的檔案到 slug `dd7bba5d-4f79-4d51-9ce8-bae6b37db5da`。這個 artifact 是 public，要帶 `shared_live: "public"` 和 `artifact_title: "臨床輔助決策工具"`；base_version 用 `RELEASES.md` 最後一列的版本。只改了幾個檔案的話，可以只列那幾個（patch 模式，其他檔案保留）
-3. `python3 scripts/release.py record <publish 回傳的 version>`，然後 push（連同 tag：`git push --follow-tags`）
+3. `python3 scripts/release.py record <publish 回傳的 version>`，然後 `git -c push.negotiate=false push`
+   - Claude 的工作環境推不上 tag（會 403），不要一直重試：請使用者在 GitHub 的 Releases 頁面用同名 tag（vX.Y.Z）建立 release，目標選 release.py 印出的那個 commit
+
+## 開工
+
+工作環境不會保留。新對話先把 repo 接上（add_repo：YuZheLiu125/clinical-decision-tool），clone 下來，再 `pip install pytest playwright --break-system-packages && python3 -m playwright install chromium`
 
 ## 架構上要注意的地方（改之前先讀）
 
