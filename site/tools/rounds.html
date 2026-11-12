@@ -374,6 +374,7 @@ details.snap summary{cursor:pointer;font-size:14px}
 
 <input type="file" id="fileImg" accept="image/*" hidden>
 <input type="file" id="fileQR" accept="image/*" capture="environment" hidden>
+<input type="file" id="fileCam" accept="image/*" capture="environment" hidden>
 <input type="file" id="fileJSON" accept="application/json,.json" hidden>
 
 <script>
@@ -1176,7 +1177,7 @@ function renderImp() {
     </div>
     <div class="sec">
       <div class="sub" style="font-weight:600">B. 截圖或照片 → 在本機辨識（不上傳）</div>
-      <div class="drop" id="drop">把截圖拖到這裡、在上面的框按 Ctrl+V，或<br><button class="btn" data-act="impPick" style="margin-top:6px">選擇圖片／拍照</button></div>
+      <div class="drop" id="drop">把截圖拖到這裡、在上面的框按 Ctrl+V，或<br><span class="row" style="margin-top:6px;justify-content:center"><button class="btn" data-act="impCam">📷 拍照</button><button class="btn" data-act="impPick">從相簿選圖片</button></span></div>
       <p class="muted">第一次用要下載辨識引擎（約 10 MB），之後會快很多。電腦截圖比用手機拍螢幕準很多。</p>
     </div>
     <div class="sec">
@@ -1803,6 +1804,8 @@ document.addEventListener('click', e => {
     // 匯入
     case 'impParse': impSync(); if (!imp.text.trim()) { toast('先貼上文字'); return; } impParsed(imp.text); return;
     case 'impPick': impSync(); $('fileImg').value = ''; $('fileImg').click(); return;
+    // Android 14 起，沒有 capture 的 image/* 會直接開系統相簿、沒有相機可選：拍照要另外一個帶 capture 的 input
+    case 'impCam': impSync(); $('fileCam').value = ''; $('fileCam').click(); return;
     case 'impScan': impSync(); $('fileQR').value = ''; $('fileQR').click(); return;
     case 'impBack': impSync(); imp.stage = 'in'; imp.scanned = false; imp.multi = null; imp.dateNote = false; render(); return;
     case 'impSpec': impSync(); imp.spec = el.dataset.v; if (imp.stage === 'ok' && imp.text) impParsed(imp.text); else render(); return;
@@ -1881,6 +1884,7 @@ document.addEventListener('keydown', e => {
   if (e.target.dataset.fuin) { e.preventDefault(); document.querySelector(`[data-act="fuAdd"][data-p="${e.target.dataset.fuin}"]`)?.click(); }
 });
 $('fileImg').addEventListener('change', e => { const f = e.target.files[0]; if (f) ocr(f); });
+$('fileCam').addEventListener('change', e => { const f = e.target.files[0]; if (f) ocr(f); });
 $('fileQR').addEventListener('change', e => { const f = e.target.files[0]; if (f) scanQR(f); });
 $('fileJSON').addEventListener('change', e => {
   const f = e.target.files[0]; if (!f) return;

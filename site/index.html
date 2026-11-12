@@ -330,7 +330,14 @@ button,a{font:inherit;color:inherit}
     if (!k || loaded.has(k)) return;
     const f = $('f-' + k); if (!f) return;
     loaded.add(k);
-    f.addEventListener('load', () => $('pane-' + k).classList.add('loaded'), { once: true });
+    // 保險：如果這次 load 到的是空白頁（載入被打斷），重新指定一次 src，不要讓工具停在空白
+    const onLoad = () => {
+      let blank = false; try { blank = f.contentWindow.location.href === 'about:blank'; } catch (e) {}
+      if (blank && !f.__retry) { f.__retry = 1; f.src = f.dataset.src; return; }
+      f.removeEventListener('load', onLoad);
+      $('pane-' + k).classList.add('loaded');
+    };
+    f.addEventListener('load', onLoad);
     f.src = f.dataset.src;
   }
   const idle = cb => (window.requestIdleCallback ? requestIdleCallback(cb, { timeout: 1500 }) : setTimeout(cb, 300));
@@ -622,7 +629,13 @@ button,a{font:inherit;color:inherit}
   function notify(changed) {
     document.querySelectorAll('.pane iframe[src]').forEach(f => {
       const own = OWN[f.id];
-      if (own && changed.some(k => own.includes(k))) { try { f.contentWindow.location.reload(); } catch (e) { f.src = f.src; } return; }
+      if (own && changed.some(k => own.includes(k))) {
+        // 還在第一次載入中（pane 還沒 loaded）就不用重載：它載完會自己讀到新資料。
+        // 這時候 reload 會重載的是佔位的 about:blank，把正在載的工具打斷，畫面就停在空白（11/12 用藥速查、會診稿載不出來）
+        if (!f.closest('.pane').classList.contains('loaded')) return;
+        try { f.contentWindow.location.reload(); } catch (e) { f.src = f.dataset.src; }
+        return;
+      }
       changed.forEach(k => { try { f.contentWindow.dispatchEvent(new StorageEvent('storage', { key: k, newValue: ls.get(k) })); } catch (e) {} });
     });
     window.dispatchEvent(new Event('storage'));

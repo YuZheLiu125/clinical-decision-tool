@@ -139,3 +139,19 @@ def test_admission_note_is_saved_to_synced_storage(page, base_url):
     page.click('[data-act="admit-clear-yes"]')
     page.wait_for_timeout(600)
     assert page.evaluate("localStorage.getItem('oncall.admit.v1')") is None
+
+
+@pytest.mark.parametrize('tool,key,value', [('meds', 'wr3', '{}'), ('consult', 'consult-draft', '{}')])
+def test_tool_still_loads_when_cloud_arrives_mid_load(phone, base_url, tool, key, value):
+    """雲端帶來這個工具自己的資料、而它還在第一次載入中：不可以把載入打斷、停在空白頁。"""
+    phone.add_init_script(MOCK_CLOUD)
+    phone.add_init_script(f"if (window.__store) __store[__enc({json.dumps(key)})] = {{t: Date.now() + 1e6, v: {json.dumps(value)}}};")
+    def slow(route):   # 模擬手機網路慢：工具檔案晚一點才到，雲端先回來
+        phone.wait_for_timeout(1500)
+        route.continue_()
+    phone.route(f'**/tools/{tool}.html', slow)
+    phone.goto(base_url + 'index.html#' + tool)
+    phone.wait_for_timeout(5000)
+    href = phone.evaluate(f"document.getElementById('f-{tool}').contentWindow.location.href")
+    assert href.endswith(f'tools/{tool}.html')
+    assert phone.evaluate(f"document.getElementById('f-{tool}').contentDocument.body.innerText.length") > 100

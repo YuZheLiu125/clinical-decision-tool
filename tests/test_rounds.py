@@ -154,3 +154,19 @@ def test_report_date_line_is_not_a_table(page, base_url):
     go_import(page, '採檢日期 2026/11/10 報告日期 2026/11/11\nNa 138 135-145\nK 4.0')
     assert page.locator('[data-mdate]').count() == 0
     assert page.locator('[data-iv="Na"]').input_value() == '138'
+
+
+def test_import_has_camera_buttons_that_ask_for_camera(phone, base_url):
+    """Android 14 以後 accept="image/*" 沒有 capture 會直接開系統相簿（沒有相機選項）：拍照、掃 QR 都要有 capture。"""
+    seed(phone, base_url, bed())
+    phone.click('[data-act="import"]')
+    for act in ('impCam', 'impScan'):
+        with phone.expect_file_chooser() as fc:
+            phone.click(f'[data-act="{act}"]')
+        el = fc.value.element
+        assert el.get_attribute('capture') == 'environment', act
+        assert el.get_attribute('accept') == 'image/*'
+    with phone.expect_file_chooser() as fc:   # 從相簿選截圖的按鈕還在
+        phone.click('[data-act="impPick"]')
+    assert fc.value.element.get_attribute('capture') is None
+    assert phone.errors == []
