@@ -482,7 +482,7 @@ function sweep() {
       if (f.due === 'daily') {
         // 每日：今天還沒確認、今天還沒送 → 送一項（不計時，免得一打開就「已到時」響鈴）；昨天沒做完的那項直接換掉
         if (fuIsDone(f) || f.pushedOn === t) continue;
-        if (f.todoId) { const st = readTodo(), n = st.items.length; st.items = st.items.filter(i => i.id !== f.todoId); if (st.items.length !== n) set(TODO, JSON.stringify(st)); }
+        if (f.todoId) { const st = readTodo(), n = st.items.length; st.items = st.items.filter(i => i.id !== f.todoId); if (st.items.length !== n) { st.del = { ...(st.del || {}), [f.todoId]: Date.now() }; set(TODO, JSON.stringify(st)); } }
         const did = todoAdd(b.bed, `${p.name}：${f.what}（每日）`, 3, 0);
         if (did) { f.todoId = did; f.pushedOn = t; ch = true; }
         continue;
@@ -1463,7 +1463,7 @@ document.addEventListener('click', e => {
       const open = st.items.filter(i => ids.has(i.id));
       ask(`刪除「${p.name}」？${open.length ? `\n待辦表裡它還有 ${open.length} 項沒完成的追蹤點，會一起刪掉。` : ''}`, { ok: '刪除', danger: true }).then(y => {
         if (!y) return;
-        if (open.length) { const s2 = readTodo(); s2.items = s2.items.filter(i => !ids.has(i.id)); set(TODO, JSON.stringify(s2)); }
+        if (open.length) { const s2 = readTodo(); s2.items = s2.items.filter(i => !ids.has(i.id)); s2.del = { ...(s2.del || {}) }; ids.forEach(id => { s2.del[id] = Date.now(); }); set(TODO, JSON.stringify(s2)); }
         b.problems = b.problems.filter(x => x !== p); save();
       });
       return;

@@ -83,3 +83,29 @@ def test_hubtodo_add_and_complete(page, base_url):
     assert page.evaluate(f"hubTodo.complete('{tid}')") is True
     assert page.evaluate(f"hubTodo.status('{tid}')") == 'done'
     assert page.evaluate(f"hubTodo.subStatus('{tid}', 0)") == 'done'
+
+
+def test_delete_and_clear_leave_tombstones(page, base_url):
+    """刪除、清除已完成、下班清空都要留下「已刪除」紀錄，雲端合併時才不會被另一台的舊資料補回來。"""
+    page.goto(base_url + 'tools/todo.html')
+    seed(page, [rep_item(), {'id': 'x', 'bed': '', 'text': 'x', 'p': 3, 'due': 0, 'start': 1}],
+         [{'id': 'd', 'bed': '', 'text': 'd', 'p': 3, 'due': 0, 'start': 1, 'doneAt': 1}])
+    page.reload()
+    page.click('[data-id="x"] [data-a="del"]')
+    page.click('[data-id="x"] [data-a="del"]')
+    assert set(board(page)['del']) == {'x'}
+    page.click('#clearDone'); page.click('#clearDone')
+    assert set(board(page)['del']) == {'x', 'd'}
+    page.click('#clearAll'); page.click('#clearAll')
+    st = board(page)
+    assert st['items'] == [] and set(st['del']) == {'x', 'd', 'r1'}
+
+
+def test_hub_undo_toast_leaves_tombstone(page, base_url):
+    page.goto(base_url + 'index.html#pilot')
+    page.wait_for_timeout(1500)
+    tid = page.evaluate("document.getElementById('f-pilot').contentWindow.hubTodo.add({bed: '3', text: '抽血', p: 3})")
+    page.wait_for_timeout(300)
+    page.click('.hub-toast .undo')
+    st = board(page)
+    assert all(i['id'] != tid for i in st['items']) and tid in st['del']

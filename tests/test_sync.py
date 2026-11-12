@@ -74,3 +74,44 @@ def test_fab_unhides_after_tool_reload(phone, base_url):
     phone.evaluate("document.getElementById('f-pilot').contentWindow.location.reload()")
     phone.wait_for_timeout(1500)
     assert 'gl-open' not in phone.evaluate("document.body.className")
+
+
+def todo_items(pg):
+    st = json.loads(pg.evaluate("localStorage.getItem('shiftboard.v1')"))
+    return sorted(i['id'] for i in st['items']), sorted(i['id'] for i in st.get('done', []))
+
+
+def it(i):
+    return {'id': i, 'bed': '', 'text': i, 'p': 3, 'due': 0, 'start': 1}
+
+
+def test_delete_on_this_device_survives_conflict(hub):
+    """這台刪掉 X（還沒上傳），另一台加了 Z、但它那份還有 X：合併後 X 不能再出現。"""
+    hub.evaluate("localStorage.setItem('shiftboard.v1', JSON.stringify({items: [%s, %s], done: []}))"
+                 % (json.dumps(it('X')), json.dumps(it('Y'))))
+    hub.evaluate("window.dispatchEvent(new Event('storage'))")
+    hub.wait_for_timeout(4000)                                   # 上傳，兩邊一致
+    todo = hub.frame_locator('#f-todo')
+    hub.evaluate("document.getElementById('f-todo').contentWindow.dispatchEvent(new StorageEvent('storage', {key: 'shiftboard.v1'}))")
+    todo.locator('[data-id="X"] [data-a="del"]').click()
+    todo.locator('[data-id="X"] [data-a="del"]').click()         # 第二下確認
+    remote(hub, 'shiftboard.v1', json.dumps({'items': [it('X'), it('Y'), it('Z')], 'done': []}))
+    foreground(hub)
+    assert todo_items(hub) == (['Y', 'Z'], [])
+
+
+def test_delete_on_other_device_survives_conflict(hub):
+    """另一台刪掉 X，這台還沒上傳的版本裡還有 X（而且這台加了 L）：合併後 X 不能再出現。"""
+    hub.evaluate("localStorage.setItem('shiftboard.v1', JSON.stringify({items: [%s, %s], done: [%s]}))"
+                 % (json.dumps(it('X')), json.dumps(it('L')), json.dumps(it('D'))))
+    remote(hub, 'shiftboard.v1', json.dumps({'items': [it('R')], 'done': [], 'del': {'X': 1e13, 'D': 1e13}}))
+    foreground(hub)
+    assert todo_items(hub) == (['L', 'R'], [])                  # 刪掉的、清掉的已完成都不回來
+
+
+def test_old_tombstones_are_pruned(hub):
+    hub.evaluate("localStorage.setItem('shiftboard.v1', JSON.stringify({items: [%s], done: [], del: {old: 1}}))" % json.dumps(it('L')))
+    remote(hub, 'shiftboard.v1', json.dumps({'items': [it('R')], 'done': [], 'del': {'old2': 1}}))
+    foreground(hub)
+    st = json.loads(hub.evaluate("localStorage.getItem('shiftboard.v1')"))
+    assert st.get('del', {}) == {}

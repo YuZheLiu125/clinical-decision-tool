@@ -360,11 +360,18 @@ details{padding:12px 14px}
   }
   // 存檔前先讀一次目前存的：別的工具（主訴處理、會診稿、查房板…）剛加進來、這裡還沒看到的項目一起留著，不會被整包蓋掉
   const gone = new Set(); // 這裡刪掉／清空的 id，不要被補回來
+  // del：刪掉的 id → 刪除時間（tombstone）。雲端合併時靠它知道「這項是被刪的，不是另一台新加的」，14 天後清掉
+  const TOMB_MS = 14 * 864e5;
   function save() {
     try {
-      const cur = load(), have = new Set([...state.items, ...state.done].map(i => i.id));
-      cur.items.forEach(i => { if (!have.has(i.id) && !gone.has(i.id)) { state.items.push(i); have.add(i.id); } });
-      (cur.done || []).forEach(i => { if (!have.has(i.id) && !gone.has(i.id)) { state.done.push(i); have.add(i.id); } });
+      const cur = load(), now = Date.now(), del = { ...(cur.del || {}), ...(state.del || {}) };
+      gone.forEach(id => { if (!del[id]) del[id] = now; });
+      for (const id in del) if (now - del[id] > TOMB_MS) delete del[id];
+      state.del = del;
+      state.items = state.items.filter(i => !del[i.id]); state.done = (state.done || []).filter(i => !del[i.id]);
+      const have = new Set([...state.items, ...state.done].map(i => i.id));
+      cur.items.forEach(i => { if (!have.has(i.id) && !gone.has(i.id) && !del[i.id]) { state.items.push(i); have.add(i.id); } });
+      (cur.done || []).forEach(i => { if (!have.has(i.id) && !gone.has(i.id) && !del[i.id]) { state.done.push(i); have.add(i.id); } });
       localStorage.setItem(KEY, JSON.stringify(state));
     } catch (e) {}
   }

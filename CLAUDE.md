@@ -34,17 +34,16 @@
 **現況**：線上 artifact `1794400593-d511` = repo v1.1.0（commit 434ac7c）。27 項測試全過。
 
 **還沒做完**
-- [ ] tag `v1.0.0`（8b068e5）、`v1.1.0`（434ac7c）在本機 bundle 有，GitHub 上還沒有。在 Claude Code 可以直接補：`git tag -a v1.0.0 8b068e5 -m v1.0.0 && git tag -a v1.1.0 434ac7c -m v1.1.0 && git push --tags`
+- [x] tag `v1.0.0`（8b068e5）、`v1.1.0`（434ac7c）在本機 bundle 有，GitHub 上還沒有。在 Claude Code 可以直接補：`git tag -a v1.0.0 8b068e5 -m v1.0.0 && git tag -a v1.1.0 434ac7c -m v1.1.0 && git push --tags`（2026-11-12 已補）
 
 **已知限制（使用者知道，可以接著做）**
-- 待辦表衝突合併是取聯集：一台刪掉、另一台還沒上傳的版本裡還有，刪掉的那項會再出現一次。要根治就加 tombstone（被刪的 id＋時間）
 - 查房板 `rounds.v1` 衝突時用雲端版本，本機那份備份在 `hub.sync.bak:rounds.v1`，但沒有介面可以還原。可以在查房板「⋯」加一個「還原同步前的版本」
 - 雲端同步只用假的雲端（tests/conftest.py 的 MOCK_CLOUD）測過，兩台真實裝置的情境還沒實測
 - 主訴處理進行中的 call 存在 sessionStorage：不上雲端，iOS 把分頁殺掉就沒了
 - `hubTodo` 有三份一樣的程式（consult／copilot／meds），抽成共用檔案能少一個出錯的地方，但每個工具要能單獨打開，所以要注意載入方式
 
 **下一步建議**（依價值排序，動手前先問使用者要做哪個）
-1. 待辦表 tombstone，讓刪除可以跨裝置同步
+1. ~~待辦表 tombstone~~（已做，未發布版）
 2. 查房板加還原同步前版本的按鈕
 3. 把隱式狀態機明確化：先從待辦項目做（pending → overdue → alerted → snoozed／done），寫成一張狀態轉換表加測試
 
@@ -52,6 +51,7 @@
 
 - **總站與工具同源**：總站 `index.html` 用 iframe 載入 `tools/*.html`，大家共用同一份 localStorage。工具之間靠 `storage` 事件和 `postMessage({hub: ...})` 溝通。
 - **待辦表 `shiftboard.v1` 有很多寫入者**：主訴處理、會診稿、用藥速查透過內嵌的 `hubTodo`（三份一樣的程式，改一份要三份一起改），查房板則有自己的 `todoAdd`。每個寫入者都是先讀、改、再寫回整包。待辦表存檔前會先讀回別人新加的項目，靠 `gone` 記住自己刪掉的。
+- **待辦表的刪除紀錄 `del`**（id → 刪除時間，14 天後清掉）：從待辦表移除項目（不是移到已完成）的地方都要寫進 `del`，雲端合併（`index.html` 的 `merge`）才知道那是刪的。目前寫入的地方：待辦表 `save()`（由 `gone` 轉入）、總站「撤銷」、查房板每日追蹤點換新和刪 problem。查房板「從這台電腦刪除這床」故意不寫（只在未同步的電腦上能用）。
 - **子項目一律用 id 對應**（`<待辦 id>.<k>`），不要用陣列位置。
 - **雲端同步**（`index.html` 最後一段）：以 key 為單位、整包同步。雲端有新資料時，對每個 iframe 送一個合成的 `StorageEvent`。只有 `OWN` 表裡列的工具，在自己的 key 變了時才重新載入。新增會被其他裝置改到的 key 時，要確認對應的工具有聽 `storage` 事件，不然就加進 `OWN`。
 - **只存本機的 key** 加在 `skip()`（目前是 `hub.sync.*` 和 `acls-run`）。

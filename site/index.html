@@ -401,7 +401,7 @@ button,a{font:inherit;color:inherit}
       u.onclick = () => {
         try {
           const st = JSON.parse(localStorage.getItem('shiftboard.v1') || 'null');
-          if (st && Array.isArray(st.items)) { st.items = st.items.filter(i => i.id !== e.data.id); localStorage.setItem('shiftboard.v1', JSON.stringify(st)); }
+          if (st && Array.isArray(st.items)) { st.items = st.items.filter(i => i.id !== e.data.id); st.del = { ...(st.del || {}), [e.data.id]: Date.now() }; localStorage.setItem('shiftboard.v1', JSON.stringify(st)); }
         } catch (er) {}
         msg.textContent = '已撤銷'; u.remove(); t.querySelector('button')?.remove(); status(); clearTimeout(hubT); hubT = setTimeout(() => t.remove(), 1200);
       };
@@ -607,10 +607,13 @@ button,a{font:inherit;color:inherit}
     try {
       const A = JSON.parse(a), B = JSON.parse(b);
       if (!A || !B || !Array.isArray(A.items) || !Array.isArray(B.items)) return null;
+      // 任一邊刪掉的（del：id → 刪除時間）就算刪掉，不會被另一邊的舊資料補回來；14 天前的刪除紀錄清掉
+      const now = Date.now(), del = {};
+      [A.del, B.del].forEach(d => { for (const id in d || {}) if (now - d[id] <= 14 * 864e5) del[id] = Math.max(del[id] || 0, d[id]); });
       const done = new Map(), items = new Map();
-      [...(A.done || []), ...(B.done || [])].forEach(i => { if (!done.has(i.id)) done.set(i.id, i); });
-      [...A.items, ...B.items].forEach(i => { if (!done.has(i.id) && !items.has(i.id)) items.set(i.id, i); });
-      return JSON.stringify({ ...B, items: [...items.values()], done: [...done.values()] });
+      [...(A.done || []), ...(B.done || [])].forEach(i => { if (!del[i.id] && !done.has(i.id)) done.set(i.id, i); });
+      [...A.items, ...B.items].forEach(i => { if (!del[i.id] && !done.has(i.id) && !items.has(i.id)) items.set(i.id, i); });
+      return JSON.stringify({ ...B, items: [...items.values()], done: [...done.values()], del });
     } catch (e) { return null; }
   }
   // 雲端帶來新資料：送一個 storage 事件給每個工具，各自就地更新（不整頁重載，查房板跑到哪一床、OCR、急救計時都不會被打斷）。
