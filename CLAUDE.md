@@ -30,9 +30,9 @@
 - claude.ai 雲端工作環境（不會保留）：先 add_repo `YuZheLiu125/clinical-decision-tool` 並 clone，再 `pip install pytest playwright --break-system-packages && python3 -m playwright install chromium`
 - 開工先跑一次 `python3 scripts/check.py && python3 -m pytest -q tests`，確定起點是綠的
 
-## 交班（2026-11-12，v1.3.1）
+## 交班（2026-11-12，v1.3.2）
 
-**現況**：線上 artifact `1794494973-f037` = repo v1.3.1（commit 3f70cbd；修同步打斷工具載入、Android 相機選項，等使用者在 Android Chrome／Claude App 實測「📷 掃 QR」）；使用手冊 artifact `1794463981-845e` = `docs/guide/index.html`。46 項測試全過。v1.2.0 沒有單獨發布過，內容包含在 v1.3.0 裡。
+**現況**：線上 artifact `1794496654-a425` = repo v1.3.2（v1.3.1 修同步打斷工具載入、Android 相機選項；v1.3.2 加工具載入自我修復，等使用者回報 iPhone 主畫面 App 是否還載不出來；等使用者在 Android Chrome／Claude App 實測「📷 掃 QR」）；使用手冊 artifact `1794463981-845e` = `docs/guide/index.html`。53 項測試全過（test_delete_on_this_device_survives_conflict 在電腦忙時偶爾失敗，重跑會過）。v1.2.0 沒有單獨發布過，內容包含在 v1.3.0 裡。
 
 **等使用者回饋**
 - 累積報告解析用的是猜的 HIS 格式：使用者第一次實際貼的時候，請他把去識別化的畫面貼來對
