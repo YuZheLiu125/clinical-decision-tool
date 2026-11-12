@@ -155,6 +155,9 @@ button,a{font:inherit;color:inherit}
 .pane.loaded iframe{opacity:1}
 .pane:not(.loaded)::after{content:"載入中";position:absolute;left:50%;top:40%;transform:translateX(-50%);font-size:13px;letter-spacing:.2em;color:var(--ink-2);animation:hub-blink 1.2s ease-in-out infinite}
 @keyframes hub-blink{50%{opacity:.35}}
+.pane .reload{display:none;position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);z-index:2;max-width:calc(100% - 32px);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:10px 18px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.15)}
+.pane.failed .reload{display:block}
+.pane.failed iframe{opacity:.15}
 .fab.pop{animation:hub-pop .45s var(--hub-ease)}
 @media (max-width:900px){.hub-toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}}
 .hub-toast .undo{background:transparent;color:var(--bg);box-shadow:inset 0 0 0 1px currentColor}
@@ -326,20 +329,61 @@ button,a{font:inherit;color:inherit}
 
   // 延遲載入：先載現在看的工具和待辦表，其他的等畫面閒下來再一個一個載（副駕和用藥速查很大）
   const loaded = new Set();
+  // 工具有沒有真的載出來：空白頁、錯誤頁（contentDocument 是 null）、body 是空的都算沒有
+  function healthy(f) {
+    try {
+      const d = f.contentDocument;
+      if (!d || d.location.href === 'about:blank') return false;
+      return !!(d.body && d.body.childElementCount);
+    } catch (e) { return true; }
+  }
+  // 自我修復：沒載出來就自動重載一次；還是不行就在畫面上放「重新載入」按鈕，不會只停在空白或「載入中」
+  // （11/12：iPhone 主畫面 App 開，用藥速查、會診稿有時載不出來，Claude App 開正常）
+  const tries = {}, wt = {};
+  function failUI(k) {
+    const p = $('pane-' + k);
+    let b = p.querySelector('.reload');
+    if (!b) {
+      b = document.createElement('button'); b.type = 'button'; b.className = 'reload';
+      b.textContent = '這個工具沒載出來，點這裡重新載入';
+      b.onclick = () => { tries[k] = 0; reloadTool(k); };
+      p.appendChild(b);
+    }
+    p.classList.add('loaded', 'failed');
+  }
+  function watch(k) {
+    clearTimeout(wt[k]);
+    wt[k] = setTimeout(() => {
+      const f = $('f-' + k);
+      if ($('pane-' + k).classList.contains('loaded') && healthy(f)) return;
+      (tries[k] || 0) < 2 ? reloadTool(k) : failUI(k);
+    }, 15000);
+  }
+  function reloadTool(k) {
+    const f = $('f-' + k);
+    tries[k] = (tries[k] || 0) + 1;
+    $('pane-' + k).classList.remove('failed');
+    f.src = f.dataset.src;
+    watch(k);
+  }
   function ensure(k) {
     if (!k || loaded.has(k)) return;
     const f = $('f-' + k); if (!f) return;
     loaded.add(k);
-    // 保險：如果這次 load 到的是空白頁（載入被打斷），重新指定一次 src，不要讓工具停在空白
-    const onLoad = () => {
-      let blank = false; try { blank = f.contentWindow.location.href === 'about:blank'; } catch (e) {}
-      if (blank && !f.__retry) { f.__retry = 1; f.src = f.dataset.src; return; }
-      f.removeEventListener('load', onLoad);
+    f.addEventListener('load', () => {
+      if (!healthy(f)) { (tries[k] || 0) < 2 ? reloadTool(k) : failUI(k); return; }
+      clearTimeout(wt[k]);
+      $('pane-' + k).classList.remove('failed');
       $('pane-' + k).classList.add('loaded');
-    };
-    f.addEventListener('load', onLoad);
+    });
     f.src = f.dataset.src;
+    watch(k);
   }
+  // 從背景回來（iOS 可能把內嵌的工具回收掉）：檢查一遍，空掉的重載
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    loaded.forEach(k => { const f = $('f-' + k); if ($('pane-' + k).classList.contains('loaded') && !healthy(f)) { tries[k] = 0; reloadTool(k); } });
+  });
   const idle = cb => (window.requestIdleCallback ? requestIdleCallback(cb, { timeout: 1500 }) : setTimeout(cb, 300));
   function warmRest() {
     const order = [...MAIN].sort((a, b) => Math.abs(MAIN.indexOf(a) - MAIN.indexOf(cur)) - Math.abs(MAIN.indexOf(b) - MAIN.indexOf(cur)));
