@@ -17,6 +17,7 @@ VERSION               目前版本號
 CHANGELOG.md          每版改了什麼
 RELEASES.md           git 版本 ↔ artifact 版本對照
 CLAUDE.md             給 Claude 的維護規則
+docs/guide/index.html 使用手冊（簡報），發布到另一個 artifact（`4246Z8nszEfYM84gL5PeF8`）
 ```
 
 ## 改東西的流程
@@ -44,12 +45,13 @@ python3 -m pytest -q tests
 |---|---|---|---|
 | `shiftboard.v1` | 待辦表、主訴處理、會診稿、用藥速查、查房板 | 待辦（items／done） | ✓（衝突時逐項合併） |
 | `rounds.v1` | 查房板 | 每床資料 | ✓（衝突時用雲端的，本機留 `hub.sync.bak:rounds.v1`） |
-| `hub.lastBed`、`hub.todoPick`、`hub.pane` | 共用 | 最近床號、待辦預設、目前分頁 | ✓ |
+| `hub.lastBed`、`hub.todoPick`、`hub.pane`、`hub.todoView` | 共用 | 最近床號、待辦預設、目前分頁、待辦排列方式 | ✓ |
 | `acls-run` | ACLS | 急救進行中的狀態 | ✗ 只存本機 |
 | `acls-tab`、`acls-scen`、`acls-dx-set` | ACLS | 介面偏好 | ✓（不會觸發重載） |
 | `consult-draft`、`consult-example` | 會診稿 | 草稿 | ✓ |
 | `wr3` | 用藥速查 | 目前主題、病人條件 | ✓ |
 | `oncall.prefs.v1` | 主訴處理 | 偏好（UpToDate 網址） | ✓ |
-| sessionStorage `oncall.draft.v1` | 主訴處理 | 進行中的 call、admission note | ✗ |
+| `oncall.admit.v1` | 主訴處理 | 撰寫中的 admission note | ✓（衝突時用雲端的） |
+| sessionStorage `oncall.draft.v1` | 主訴處理 | 進行中的 call | ✗ |
 | IndexedDB `rounds-snap` | 查房板 | 自動快照（3 天、50 份） | ✗ |
 | `hub.sync.*` | 總站 | 同步的時間戳、指紋、衝突備份 | ✗ |

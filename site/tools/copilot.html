@@ -3632,7 +3632,7 @@ function getProto(id){
 const allProtos = () => [...BUILTIN, ...Object.keys(PROG.custom).map(getProto).filter(Boolean)];
 
 /* ===== settings (per-device) ===== */
-const LS_KEY = 'oncall.prefs.v1', DRAFT_KEY = 'oncall.draft.v1';
+const LS_KEY = 'oncall.prefs.v1', DRAFT_KEY = 'oncall.draft.v1', ADMIT_KEY = 'oncall.admit.v1';
 const DEFAULT_PROG = {custom:{}, prefs:{utd:'https://www.uptodate.com/contents/search?search='}};
 const clone = o => JSON.parse(JSON.stringify(o));
 let PROG = clone(DEFAULT_PROG);
@@ -3643,14 +3643,41 @@ function loadLocal(){ try { const d = JSON.parse(localStorage.getItem(LS_KEY) ||
 const UI = {view:'home', calls:[], cid:null, admit:null, review:null, drawer:null, sel:'', gen:null, ccq:'', confirm:null};
 const cur = () => UI.calls.find(c => c.id === UI.cid) || null;
 let draftT;
+// 進行中的 call 只存在這個分頁（sessionStorage）。
+// Admission note 存在 localStorage（oncall.admit.v1），總站的雲端同步會帶到你其他的裝置：手機問診打的，電腦打開就能接著寫、複製貼到 EMR。
+function writeAdmit(){ try { const v = UI.admit ? JSON.stringify(UI.admit) : null; if (v == null) localStorage.removeItem(ADMIT_KEY); else if (localStorage.getItem(ADMIT_KEY) !== v) localStorage.setItem(ADMIT_KEY, v); } catch {} }
 function saveDraft(){
   clearTimeout(draftT);
-  draftT = setTimeout(() => { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({calls:UI.calls, admit:UI.admit})); } catch {} }, 400);
+  draftT = setTimeout(() => { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({calls:UI.calls})); } catch {} writeAdmit(); }, 400);
 }
 function loadDraft(){
-  try { const d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null'); if (d){ UI.calls = Array.isArray(d.calls) ? d.calls : []; UI.admit = d.admit || null; } } catch {}
+  let old = null;
+  try { const d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null'); if (d){ UI.calls = Array.isArray(d.calls) ? d.calls : []; old = d.admit || null; } } catch {}
+  try { UI.admit = JSON.parse(localStorage.getItem(ADMIT_KEY) || 'null') || old; } catch { UI.admit = old; }
+  if (old && UI.admit === old) writeAdmit();   // 舊版存在分頁裡的 note，搬過去
   restoreDraftValidity();
 }
+// 別台裝置改了 admission note：正在這裡打字時先不換（免得游標跳走、打的字被蓋掉），停下來（離開輸入框）再換
+let admitRemote;
+function applyRemoteAdmit(){
+  if (admitRemote === undefined) return;
+  const raw = admitRemote; admitRemote = undefined;
+  let a = null; try { a = JSON.parse(raw || 'null'); } catch { return; }
+  if (JSON.stringify(UI.admit) === JSON.stringify(a)) return;
+  clearTimeout(draftT);
+  UI.admit = a;
+  if (UI.view === 'admit' && !a) { go('home'); toast('Admission note 在另一台裝置清除了'); return; }
+  const y = window.scrollY; render(); window.scrollTo(0, y);
+  if (UI.view === 'admit') toast('已載入另一台裝置的最新內容');
+}
+addEventListener('storage', e => {
+  if (e.key !== ADMIT_KEY) return;
+  admitRemote = e.newValue === undefined ? localStorage.getItem(ADMIT_KEY) : e.newValue;
+  const ae = document.activeElement;
+  if (UI.view === 'admit' && ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
+  applyRemoteAdmit();
+});
+document.addEventListener('focusout', () => setTimeout(() => { const ae = document.activeElement; if (!(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))) applyRemoteAdmit(); }, 0));
 function restoreDraftValidity(){ UI.calls = UI.calls.filter(c => getProto(c.pid)); }
 
 /* ===== render root ===== */
@@ -4516,6 +4543,7 @@ function vHelp(){
         ${step(3, '整理 PI', '左邊是依你床邊紀錄算出的貝氏機率；右邊補病程事件細節、到院經過與 Impression，調整段落順序後產生草稿。相關症狀每一句對應一個鑑別，讀者讀到就知道你在排除什麼。出現理學檢查字眼會提醒。最後「放進 Present Illness」，「帶入 PE 欄位」把床邊的檢查結果填進 PE。')}
         ${step(4, '病歷欄位', '必填清單，依下面順序補完。')}
       </div>
+      <div class="callout">手機問診、電腦貼 EMR：在手機寫的 admission note 會自動同步到你登入同一個帳號的電腦（右上角要顯示「已同步」）。電腦打開「主訴處理」，首頁的「撰寫中 Admission note」按「繼續」，到「輸出 Note」複製。兩台同時在改時，以最後存的那台為準。</div>
       <h3>4 病歷欄位的建議順序</h3>
       <ol>
         <li><b>基本・主訴：</b>性別、年齡、職業、TOCC、Chief complaint。姓名、生日、病歷號 EMR 會自動帶入，這裡不要輸入。</li>
@@ -4545,7 +4573,8 @@ function vHelp(){
 
     <section id="h-safe"><h2>隱私與病人安全</h2>
       <ul>
-        <li>病人資料（call 內容、admission note）只存在這個瀏覽器分頁，關閉分頁就清除，不會上傳。</li>
+        <li>進行中的 call 只存在這個瀏覽器分頁，關閉分頁就清除，不會上傳。</li>
+        <li>Admission note 會跟著總站的雲端同步（右上角「已同步」時）存到你自己的雲端空間，只有你看得到；在別台登入同一個帳號的裝置打開「主訴處理」，首頁就會出現「撰寫中」，按「繼續」接著寫或複製。寫完貼回 EMR 後，按「清除這份 note」，所有裝置一起清掉。姓名、病歷號一律不要輸入。</li>
         <li>這是決策輔助工具，不取代臨床判斷與上級醫師指示。劑量是成人常用參考，請以院內藥典、腎肝功能、過敏史核對；實習醫學生的醫囑須經住院醫師覆核。</li>
       </ul>
     </section>

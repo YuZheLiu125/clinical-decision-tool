@@ -109,3 +109,33 @@ def test_hub_undo_toast_leaves_tombstone(page, base_url):
     page.click('.hub-toast .undo')
     st = board(page)
     assert all(i['id'] != tid for i in st['items']) and tid in st['del']
+
+
+def test_group_by_bed(phone, base_url):
+    phone.goto(base_url + 'tools/todo.html')
+    seed(phone, [
+        {'id': 'a', 'bed': '21', 'text': 'f/u K', 'p': 3, 'due': 0, 'start': 1},
+        {'id': 'b', 'bed': '5', 'text': 'CXR', 'p': 1, 'due': 0, 'start': 2},
+        {'id': 'c', 'bed': '', 'text': '回電心臟科', 'p': 2, 'due': 0, 'start': 3},
+        {'id': 'd', 'bed': '21', 'text': '換藥', 'p': 1, 'due': 0, 'start': 4},
+    ])
+    phone.reload()
+    order = lambda: phone.locator('#list > li').evaluate_all("els => els.map(e => e.classList.contains('grp') ? '#' + e.querySelector('b').textContent : e.dataset.id)")
+    assert order() == ['b', 'd', 'c', 'a']                      # 預設：依緊急程度
+    phone.click('.vsw [data-view="bed"]')
+    assert order() == ['#5', 'b', '#21', 'd', 'a', '#—', 'c']   # 依床號：5 床、21 床、沒填床號
+    phone.reload()                                              # 記得上次選的
+    assert order()[0] == '#5'
+    phone.click('[data-id="d"] [data-a="done"]')
+    assert order() == ['#5', 'b', '#21', 'a', '#—', 'c']
+    assert phone.errors == []
+
+
+def test_untimed_urgent_item_sorts_above_timed_routine_item(page, base_url):
+    page.goto(base_url + 'tools/todo.html')
+    seed(page, [
+        {'id': 'later', 'bed': '21', 'text': '下週一 f/u CXR', 'p': 3, 'due': 9e12, 'start': 1},
+        {'id': 'now', 'bed': '21', 'text': '換藥', 'p': 1, 'due': 0, 'start': 2},
+    ])
+    page.reload()
+    assert page.locator('#list .item').evaluate_all('els => els.map(e => e.dataset.id)') == ['now', 'later']

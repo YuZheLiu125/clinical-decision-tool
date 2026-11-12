@@ -87,6 +87,16 @@ input[type=text], input[type=number], input[type=date], input[type=time] { font:
 .summary b { font-family: var(--font-num); color: var(--fg) }
 .summary .over b { color: var(--p1) }
 
+/* 排列方式切換 */
+.viewrow { display: flex; flex-direction: column; gap: 8px }
+.vsw { display: flex; gap: 6px }
+.vsw button { flex: 1; min-height: 40px; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; font-size: 14px; color: var(--muted) }
+.vsw button[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: var(--bg); font-weight: 700 }
+.grp { display: flex; align-items: baseline; gap: 10px; margin: 8px 2px -2px; padding-bottom: 4px; border-bottom: 2px solid var(--fg) }
+.grp b { font-family: var(--font-num); font-size: 20px }
+.grp span { font-size: 13px; color: var(--muted) }
+.grp .o { color: var(--p1); font-weight: 700 }
+.grp:first-child { margin-top: 0 }
 /* queue */
 .list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none }
 .item { background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--pc); border-radius: 12px;
@@ -318,7 +328,8 @@ details{padding:12px 14px}
   </form>
   <p class="triage" id="triage" hidden></p>
 
-  <div class="summary" id="summary"></div>
+  <div class="viewrow"><div class="summary" id="summary"></div>
+    <div class="vsw" role="group" aria-label="排列方式"><button type="button" data-view="pr" aria-pressed="true">依緊急程度</button><button type="button" data-view="bed" aria-pressed="false">依床號</button></div></div>
   <ul class="list" id="list"></ul>
 
   <details id="doneBox">
@@ -487,9 +498,14 @@ details{padding:12px 14px}
   };
   const repTxt = i => i.rep > 1 ? `還剩 ${i.rep} 次，每 ${i.iv >= 60 && i.iv % 60 === 0 ? i.iv / 60 + ' 時' : i.iv + ' 分'}` : '';
 
+  // 排列方式：pr = 依緊急程度（預設）；bed = 同一床的放在一起，床號由小到大，沒填床號的放最後，每床裡面一樣依緊急程度
+  let view = 'pr';
+  try { view = localStorage.getItem('hub.todoView') === 'bed' ? 'bed' : 'pr'; } catch (e) {}
+  const bedCmp = (a, b) => (!a.bed) - (!b.bed) || String(a.bed).localeCompare(String(b.bed), 'zh-Hant', { numeric: true });
   function sorted(now) {
     return [...state.items].sort((a, b) => {
-      const ao = a.due && a.due <= now, bo = b.due && b.due <= now;
+      if (view === 'bed') { const c = bedCmp(a, b); if (c) return c; }
+      const ao = !!(a.due && a.due <= now), bo = !!(b.due && b.due <= now);   // !!：不計時的 due 是 0，不轉成布林會跟 false 比成「不一樣」
       if (ao !== bo) return ao ? -1 : 1;           // 已到時的先處理
       if (a.p !== b.p) return a.p - b.p;           // 再依緊急程度
       if (!a.due !== !b.due) return a.due ? -1 : 1; // 有倒數的排前面
@@ -531,7 +547,7 @@ details{padding:12px 14px}
     const now = Date.now(), list = $('list');
     const items = sorted(now);
     // 結構沒變時只更新倒數數字，避免每秒重建按鈕吃掉點擊
-    const sig = items.map(i => `${i.id}:${i.p}:${i.due}:${i.rep || 0}:${i.due && i.due <= now}:${armed.has(i.id)}:${(i.subs || []).map(x => x.d ? 1 : 0).join('')}`).join('|') + '#' + state.done.length;
+    const sig = view + '|' + items.map(i => `${i.id}:${i.p}:${i.due}:${i.rep || 0}:${i.due && i.due <= now}:${armed.has(i.id)}:${(i.subs || []).map(x => x.d ? 1 : 0).join('')}`).join('|') + '#' + state.done.length;
     if (sig === lastSig) {
       for (const it of items) {
         const li = list.querySelector(`[data-id="${it.id}"]`); if (!li) continue;
@@ -548,7 +564,15 @@ details{padding:12px 14px}
     list.innerHTML = '';
     if (!items.length) list.innerHTML = '<li class="empty">目前沒有待辦。上面輸入床號和內容，選緊急程度與倒數，按「加入」。<br><button type="button" id="showEx" style="margin-top:10px;border:1px solid var(--line);background:none;border-radius:8px;padding:4px 12px;color:var(--accent);cursor:pointer">看範例</button></li>';
     const sx = $('showEx'); if (sx) sx.onclick = () => { state.items = exampleItems(); state.seeded = true; save(); render(); };
+    let grp = null;
     for (const it of items) {
+      if (view === 'bed' && (it.bed || '') !== grp) {
+        grp = it.bed || '';
+        const g = items.filter(x => (x.bed || '') === grp), o = g.filter(x => x.due && x.due <= now).length;
+        const h = document.createElement('li'); h.className = 'grp';
+        h.innerHTML = grp ? `<b>${esc(grp)}</b><span>床・${g.length} 項</span>${o ? `<span class="o">已到時 ${o}</span>` : ''}` : `<b>—</b><span>沒填床號・${g.length} 項</span>${o ? `<span class="o">已到時 ${o}</span>` : ''}`;
+        list.appendChild(h);
+      }
       const li = document.createElement('li');
       const over = it.due && it.due <= now;
       li.className = 'item' + (over ? ' overdue' : '') + (openIds.has(it.id) ? ' open' : '') + (!firstPaint && !seen.has(it.id) ? ' new' : ''); li.dataset.p = it.p; li.dataset.id = it.id;
@@ -582,6 +606,13 @@ details{padding:12px 14px}
   }
   const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+  function setView(v) {
+    view = v; try { localStorage.setItem('hub.todoView', v); } catch (e) {}
+    document.querySelectorAll('.vsw button').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === v));
+    lastSig = ''; render();
+  }
+  document.querySelectorAll('.vsw button').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+  document.querySelectorAll('.vsw button').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === view));
   function toggleOpen(li) {
     const id = li.dataset.id, on = !openIds.has(id);
     on ? openIds.add(id) : openIds.delete(id);
@@ -718,6 +749,7 @@ details{padding:12px 14px}
   try { $('bed').value = localStorage.getItem('hub.lastBed') || ''; } catch (e) {}
   window.addEventListener('storage', e => {
     if (e.key === 'hub.lastBed') { if (document.activeElement !== $('bed')) $('bed').value = e.newValue || ''; return; }
+    if (e.key === 'hub.todoView') { setView(e.newValue === 'bed' ? 'bed' : 'pr'); return; }
     if (e.key !== KEY) return;
     state = load(); gone.clear(); lastSig = ''; render();
   });

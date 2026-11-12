@@ -115,3 +115,27 @@ def test_old_tombstones_are_pruned(hub):
     foreground(hub)
     st = json.loads(hub.evaluate("localStorage.getItem('shiftboard.v1')"))
     assert st.get('del', {}) == {}
+
+
+def test_admission_note_reaches_other_device(hub):
+    pilot = "document.getElementById('f-pilot').contentWindow"
+    note = {'f': {'age': '78', 'gender': 'M', 'cc': 'fever for 3 days'}, 'sec': 'basic', 'pid': None, 'hx': {}, 'started': 1, 'done': None, 'ph': 'prep', 'w': None}
+    remote(hub, 'oncall.admit.v1', json.dumps(note))
+    hub.evaluate("window.dispatchEvent(new Event('focus'))")   # 電腦切回這個視窗
+    hub.wait_for_timeout(2500)
+    txt = hub.evaluate(f"{pilot}.document.querySelector('.resume')?.innerText || ''")
+    assert 'Admission note' in txt and 'fever for 3 days' in txt
+    assert hub.errors == []
+
+
+def test_admission_note_is_saved_to_synced_storage(page, base_url):
+    page.goto(base_url + 'tools/copilot.html')
+    page.click('[data-act="admit-new"]')
+    page.wait_for_timeout(600)
+    a = json.loads(page.evaluate("localStorage.getItem('oncall.admit.v1')"))
+    assert a['ph'] == 'prep'
+    # 清除後所有裝置一起清掉
+    page.evaluate("document.querySelector('[data-act=\"admit-clear\"]').click()")
+    page.click('[data-act="admit-clear-yes"]')
+    page.wait_for_timeout(600)
+    assert page.evaluate("localStorage.getItem('oncall.admit.v1')") is None

@@ -158,6 +158,7 @@ h2 .btn{margin-left:auto;letter-spacing:0}
 .tag.bad{background:var(--hub-bad-soft);color:var(--hub-bad);font-weight:600}
 .tag.warn{background:var(--hub-warn-soft);color:var(--hub-warn)}
 .tag.ac{background:var(--ac-soft);color:var(--ac)}
+.tag.dnr{white-space:normal;overflow-wrap:anywhere;background:var(--hub-ink);color:var(--hub-bg);font-weight:700}
 /* 詳細頁 */
 .sec{background:var(--hub-surface);border:1px solid var(--hub-line);border-radius:14px;padding:14px;margin-top:10px}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -187,6 +188,7 @@ textarea{min-height:88px;resize:vertical;line-height:1.55}
 .chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;border:1px solid var(--hub-line);background:var(--hub-surface);border-radius:999px;padding:6px 13px;font-size:14px;min-height:38px}
+.chip[aria-pressed=true]{background:var(--hub-ink);border-color:var(--hub-ink);color:var(--hub-bg)}
 .fu{display:flex;gap:10px;align-items:center;font-size:15px;padding:7px 0;line-height:1.45}
 .fu+.fu{border-top:1px solid color-mix(in srgb,var(--hub-line) 60%,transparent)}
 .fu input[type=checkbox]{width:22px;height:22px;flex:none}
@@ -196,7 +198,19 @@ textarea{min-height:88px;resize:vertical;line-height:1.55}
 .fu-daily input{width:22px;height:22px}
 input[type=date]:disabled{opacity:.4}
 .fu .x{margin-left:auto;flex:none;border:0;background:none;color:var(--hub-ink3);font-size:20px;min-width:40px;min-height:40px;padding:0}
-.lab{display:grid;grid-template-columns:minmax(4.5em,auto) auto auto minmax(0,1fr);gap:2px 10px;align-items:baseline;font-variant-numeric:tabular-nums}
+.lab{display:grid;gap:0;font-variant-numeric:tabular-nums}
+.labr{display:grid;grid-template-columns:5.6em 5.2em minmax(0,1fr) auto;gap:2px 10px;align-items:baseline;text-align:left;width:100%;border:0;border-bottom:1px solid color-mix(in srgb,var(--hub-line) 60%,transparent);background:none;padding:8px 2px;min-height:44px}
+.labr.on{background:var(--ac-soft)}
+.labr .n{overflow-wrap:anywhere}
+.labr .tr{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.labh .rgh{font-size:12px;color:var(--hub-ink3);margin-bottom:4px}
+/* 手機：正常範圍收進展開的面板，讓「前一次」那欄有位置 */
+@media (max-width:520px){.labr{grid-template-columns:5em 5em minmax(0,1fr)}.labr .rg{display:none}}
+.labh{padding:8px 4px 10px;border-bottom:1px solid var(--hub-line)}
+.spark{display:block;width:100%;height:64px;margin-bottom:6px}
+.labl .fu{padding:3px 0;font-variant-numeric:tabular-nums}
+.labl .v{font:600 15px var(--hub-mono)}
+.labl .v.H,.labl .v.L{color:var(--hub-bad)}
 .lab .n{font-weight:600}
 .lab .v{font:600 15px var(--hub-mono)}
 .lab .v.H,.lab .v.L{color:var(--hub-bad)}
@@ -221,6 +235,24 @@ input[type=date]:disabled{opacity:.4}
 .howto .src{margin-top:8px;font-size:11.5px;color:var(--hub-ink3)}
 .howto .wh{display:flex;gap:6px;align-items:center}
 .draft{font-size:11.5px;color:var(--hub-warn);margin-top:6px}
+/* 單床總覽卡片與分頁 */
+.btabs{flex:1 1 auto;min-width:0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:6px 0 2px;overscroll-behavior-x:contain}
+.btabs::-webkit-scrollbar{display:none}
+.btabs button{flex:none;border:1px solid var(--hub-line);background:var(--hub-surface);border-radius:999px;padding:5px 13px;font-size:14px;min-height:36px;white-space:nowrap}
+.btabs button[aria-selected=true]{background:var(--ac);border-color:var(--ac);color:var(--hub-surface);font-weight:700}
+.bgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+@media (min-width:640px){.bgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.bcard{display:flex;flex-direction:column;gap:4px;text-align:left;background:var(--hub-surface);border:1px solid var(--hub-line);border-top:4px solid var(--ac);border-radius:12px;padding:10px 12px;min-height:96px;min-width:0}
+.bcard.wide{grid-column:1/-1}
+.bcard.bad{border-top-color:var(--hub-bad)}
+.bcard .bh{font-size:13px;font-weight:700;color:var(--hub-ink2);letter-spacing:.05em}
+.bcard .bn{font:700 24px/1.1 var(--hub-mono)}
+.bcard .bl{display:flex;flex-direction:column;gap:3px;font-size:14px;line-height:1.4;min-width:0;overflow-wrap:anywhere}
+.bcard .bl small{display:block;font-size:12.5px;color:var(--hub-ink3)}
+.item.pcol{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;text-align:left;width:100%;align-items:center}
+.item.pcol .sub{grid-column:1/-1;overflow-wrap:anywhere}
+.tag.st-worse{background:var(--hub-bad-soft);color:var(--hub-bad);font-weight:700}
+.tag.st-better{background:var(--hub-ok-soft);color:var(--hub-ok)}
 /* 疊層 */
 .view{display:none}
 .view.on{display:block}
@@ -241,6 +273,8 @@ input[type=date]:disabled{opacity:.4}
 .imp input[type=number]{min-height:34px;padding:3px 6px;font-family:var(--hub-mono)}
 .imp .fl{font-weight:700;color:var(--hub-bad);font-family:var(--hub-mono)}
 .imp .rg{font-size:12px;color:var(--hub-ink3)}
+.imp b{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0}
+.imp .spsw{font-size:12px;font-weight:400;min-height:28px}
 .ask{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px}
 .ask-box{background:var(--hub-surface);color:var(--hub-ink);border:1px solid var(--hub-line);border-radius:14px;padding:16px;width:100%;max-width:420px;box-shadow:0 12px 40px rgba(0,0,0,.35)}
 .ask-box p{margin:0 0 12px;font-size:15px;line-height:1.55;white-space:pre-line}
@@ -282,7 +316,7 @@ details.snap summary{cursor:pointer;font-size:14px}
     <button class="btn ghost" data-act="back">← 返回</button>
     <span class="ti" id="bedTitle" style="font-weight:800;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
     <span class="prog" id="roundProg" style="margin:0"></span>
-  </div><div class="wrap"><div class="stepper" id="stepper" hidden></div></div></div>
+  </div><div class="wrap"><div class="stepper" id="stepper" hidden></div><div class="btabs" id="btabs" role="tablist" hidden></div></div></div>
   <div class="wrap" id="bedBody"></div>
   <div class="bottom" id="roundBar" hidden><div class="wrap">
     <button class="btn" data-act="roundPrev">← 上一床</button>
@@ -397,34 +431,142 @@ const LABS = [
   ['BNP', ['BNP'], null, 100, 'pg/mL'],
   ['NT-proBNP', ['NT-proBNP', 'NT-pro BNP', 'NTproBNP'], null, 300, 'pg/mL'],
 ].map(([id, al, lo, hi, u]) => ({ id, al, lo, hi, u }));
-const LAB = Object.fromEntries(LABS.map(l => [l.id, l]));
+// 尿液：和血液分開存（U- 開頭），不標正常範圍（尿液的值要看臨床情境判讀）。
+// 同名項目（Na、K、Cr…）由檢體決定存到哪一邊；SG、UPCR 這類只有尿液才有的，一律算尿液。
+const URINE_OF = { Na: 'U-Na', K: 'U-K', Cl: 'U-Cl', Cr: 'U-Cr', BUN: 'U-UN', Glu: 'U-Glu', pH: 'U-pH', WBC: 'U-WBC', Ca: 'U-Ca', P: 'U-P', Mg: 'U-Mg' };
+const BLOOD_OF = Object.fromEntries(Object.entries(URINE_OF).map(([b, u]) => [u, b]));
+const ULABS = [
+  ...Object.values(URINE_OF).map(id => [id, []]),
+  ['U-RBC', ['RBC']], ['U-Osm', ['Osmolality', 'Osm']], ['U-Prot', ['Protein', 'Prot']],
+  ['U-SG', ['Specific gravity', 'Sp.Gr', 'S.G.', 'SG'], 1], ['UPCR', ['UPCR', 'Protein/Cr', 'UPCR ratio'], 1], ['UACR', ['UACR', 'Alb/Cr', 'Microalbumin/Cr'], 1],
+].map(([id, al, always]) => ({ id, al, lo: null, hi: null, u: '', sp: 'U', always: !!always }));
+const ALL_LABS = [...LABS, ...ULABS];
+const LAB = Object.fromEntries(ALL_LABS.map(l => [l.id, l]));
+const isU = id => LAB[id] && LAB[id].sp === 'U';
+const labName = id => /^U-/.test(id) ? '尿 ' + id.slice(2) : id;
 // 有填性別時，Hb、Cr 用性別範圍；沒填就用較寬的範圍。PaO2 只標偏低（給氧時偏高是正常的）
 const SEXR = { Hb: { M: [13.5, 17.5], F: [12, 16] }, Cr: { M: [0.7, 1.3], F: [0.5, 1.1] } };
 const lim = (id, sex) => { const l = LAB[id]; if (!l) return null; const r = SEXR[id] && SEXR[id][sex]; return r ? { ...l, lo: r[0], hi: r[1] } : l; };
 const flag = (id, v, sex) => { const l = lim(id, sex); if (!l || v == null || isNaN(v)) return ''; if (l.lo != null && v < l.lo) return 'L'; if (l.hi != null && v > l.hi) return 'H'; return ''; };
-const rangeTxt = (id, sex) => { const l = lim(id, sex); if (!l) return ''; return (l.lo != null && l.hi != null ? `${l.lo}–${l.hi}` : l.lo != null ? `≥ ${l.lo}` : `≤ ${l.hi}`) + (l.u ? ' ' + l.u : ''); };
+const rangeTxt = (id, sex) => { const l = lim(id, sex); if (!l || (l.lo == null && l.hi == null)) return ''; return (l.lo != null && l.hi != null ? `${l.lo}–${l.hi}` : l.lo != null ? `≥ ${l.lo}` : `≤ ${l.hi}`) + (l.u ? ' ' + l.u : ''); };
 
 // 從貼上或 OCR 的文字抓「項目 數值」。長的別名先比對（NT-proBNP 先於 BNP、eGFR 先於 GFR）；
 // 名稱前後不能緊貼英文字母（避免 K 吃到 CK、P 吃到 PT），每個項目只取第一次出現的數值。
 const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const ALIASES = LABS.flatMap(l => l.al.map(a => [a, l.id])).sort((a, b) => b[0].length - a[0].length);
-function parseLabs(text) {
+const ALIASES = ALL_LABS.flatMap(l => l.al.map(a => [a, l.id])).sort((a, b) => b[0].length - a[0].length);
+// 檢體：spec = 'auto'（看段落標題和項目旁的註記）、'B'（全部當血液）、'U'（全部當尿液）
+const U_HEAD = /^\s*[【\[(（]?\s*(?:urine|urinalysis|u\/a|ua|尿液?|尿沉渣|sediment)/i;
+const B_HEAD = /^\s*[【\[(（]?\s*(?:blood|serum|plasma|cbc|biochem|chemistry|生化|血液|血清|全血|abg|血液氣體)/i;
+const U_MARK_AFTER = /[(（]\s*(?:u|ur|urine|尿液?)\s*[)）]/i;
+const U_MARK_BEFORE = /(?:(?<![A-Za-z])U[-\s.]|urine\s*|尿液?\s*)$/i;
+// 段落標題行：短、沒有數字，例如「尿液檢查」「Urinalysis」「生化」
+function headSpec(line) {
+  if (/\d/.test(line) || line.replace(/[\s:：\-–—=*#【】\[\]()（）]/g, '').length > 14) return null;
+  return U_HEAD.test(line) ? 'U' : B_HEAD.test(line) ? 'B' : null;
+}
+function specSegments(src, spec) {
+  if (spec !== 'auto') return [[0, src.length, spec]];
+  const segs = []; let cur = 'B', start = 0, pos = 0;
+  for (const line of src.split('\n')) {
+    const nx = headSpec(line);
+    if (nx && nx !== cur) { segs.push([start, pos, cur]); cur = nx; start = pos; }
+    pos += line.length + 1;
+  }
+  segs.push([start, src.length + 1, cur]);
+  return segs;
+}
+// 同一個名稱要存成哪一項：spec 是使用者選的（auto／B／U），segSpec 是段落判斷的結果，marked = 名稱旁有 (U)、U-、Urine 等註記
+function pickId(id, spec, segSpec, marked) {
+  const L = LAB[id];
+  if (L.sp === 'U') return L.always || spec === 'U' || (spec === 'auto' && segSpec === 'U') ? id : null;   // RBC、Osm、Protein 在血液段落不收
+  if (spec === 'B') return id;
+  if (spec === 'U') return URINE_OF[id] || null;
+  return segSpec === 'U' || marked ? (URINE_OF[id] || null) : id;
+}
+function parseLabs(text, spec = 'auto') {
   const out = {}, taken = [];
   const src = String(text).replace(/[，：]/g, ' ').replace(/ /g, ' ');
+  const segs = specSegments(src, spec);
+  const segAt = s => (segs.find(([a, b]) => s >= a && s < b) || segs[segs.length - 1])[2];
   for (const [a, id] of ALIASES) {
-    if (out[id] != null) continue;
     // 名稱和數值之間只允許空白、冒號、旗標符號或一個括號註記（例如 Na(B)），不能夾別的英文字，避免「K/uL Hb 12」被當成 K 12
-    const re = new RegExp('(?<![A-Za-z])' + reEsc(a) + '(?![A-Za-z])[\\s:=*#<>]*(?:\\([^)\\n]{0,15}\\))?[\\s:=*#<>]*(?:[\\u4e00-\\u9fff]{1,6}[\\s:=*#<>]*)?(-?\\d+(?:\\.\\d+)?)', a.length <= 2 ? 'g' : 'gi');
+    const re = new RegExp('(?<![A-Za-z])' + reEsc(a) + '(?![A-Za-z])([\\s:=*#<>]*(?:[(（][^)）\\n]{0,15}[)）])?)[\\s:=*#<>]*(?:[\\u4e00-\\u9fff]{1,6}[\\s:=*#<>]*)?(-?\\d+(?:\\.\\d+)?)', a.length <= 2 ? 'g' : 'gi');
     let m;
     while ((m = re.exec(src))) {
       const s = m.index, e = s + a.length;
       if (taken.some(([x, y]) => s < y && e > x)) continue;
-      const v = parseFloat(m[1]);
+      const v = parseFloat(m[2]);
       if (isNaN(v)) continue;
-      out[id] = v; taken.push([s, e]); break;
+      const marked = U_MARK_AFTER.test(m[1]) || U_MARK_BEFORE.test(src.slice(Math.max(0, s - 8), s));
+      const tid = pickId(id, spec, segAt(s), marked);
+      if (!tid || out[tid] != null) continue;   // 每一項只取第一次出現的數值
+      out[tid] = v; taken.push([s, e]);
     }
   }
   return out;
+}
+
+// ── 歷史紀錄：一次貼好幾天（HIS 的累積報告）。
+// 表格：有一行是好幾個日期（欄位標題），之後每行「項目 值 值 值」；Tab 分隔時照欄位對，空格分隔時數字個數要剛好對上才收。
+// 分段：一行一個日期，下面是那天的檢驗，再一個日期一行……
+// 民國年（115/11/10）換成西元；只有月／日的，年份取不晚於明天的最近一年。
+const DATE_RE = /(?<![\d.])(?:(\d{3,4})[\/.-](\d{1,2})[\/.-](\d{1,2})|(\d{1,2})\/(\d{1,2}))(?![\d.\/])/g;
+function toYmd(y, m, d) {
+  m = +m; d = +d; if (m < 1 || m > 12 || d < 1 || d > 31) return '';
+  if (y) { y = +y; if (y < 1911) y += 1911; if (y < 2000 || y > 2100) return ''; return `${y}-${pad(m)}-${pad(d)}`; }
+  const yy = new Date().getFullYear(); let s = `${yy}-${pad(m)}-${pad(d)}`;
+  if (s > addDays(today(), 1)) s = `${yy - 1}-${pad(m)}-${pad(d)}`;
+  return s;
+}
+function datesIn(line) { const out = []; let m; DATE_RE.lastIndex = 0; while ((m = DATE_RE.exec(line))) { const d = toYmd(m[1], m[2] || m[4], m[3] || m[5]); if (d) out.push({ d, i: m.index, len: m[0].length }); } return out; }
+const NOT_DATE_LINE = /報告|採檢|採集|收件|簽收|列印|出生|生日|入院|report|collect|print|birth/i;
+const restLen = (line, ds) => { let r = line; ds.slice().reverse().forEach(x => { r = r.slice(0, x.i) + r.slice(x.i + x.len); }); return r.replace(/\d{1,2}:\d{2}(?::\d{2})?/g, '').replace(/[\s|,;:：、\-–—()（）]/g, '').length; };
+function parseHistory(text, spec = 'auto') {
+  const lines = String(text).replace(/\r/g, '').replace(/ /g, ' ').split('\n'), days = new Map(), skipped = new Set();
+  const put = (d, id, v) => { if (!days.has(d)) days.set(d, {}); const o = days.get(d); if (o[id] == null) o[id] = v; };
+  let head = null, rows = 0, segSpec = 'B';
+  for (const line of lines) {
+    const ds = datesIn(line);
+    if (ds.length >= 2 && !NOT_DATE_LINE.test(line) && new Set(ds.map(x => x.d)).size === ds.length && restLen(line, ds) <= 12) {
+      const cells = line.includes('\t') ? line.split('\t') : null;
+      head = { dates: ds.map(x => x.d), cols: cells ? cells.map((c, i) => datesIn(c).length ? i : -1).filter(i => i >= 0) : null };
+      if (head.cols && head.cols.length !== head.dates.length) head.cols = null;
+      continue;
+    }
+    const hs = headSpec(line); if (hs) { segSpec = hs; continue; }
+    if (!head) continue;
+    const fd = line.search(/(?<![A-Za-z0-9.])-?\d/); if (fd < 0) continue;   // HCO3、PaO2 名稱裡的數字不算
+    const name = line.slice(0, fd).replace(/\t/g, ' ');
+    // 名稱只認一個項目；名稱旁有尿液註記就存成尿液
+    const ids = Object.keys(parseLabs(name + ' 0', spec === 'auto' ? (segSpec === 'U' || U_MARK_AFTER.test(name) || /(?:^|\s)(?:U[-\s.]|urine|尿)/i.test(name) ? 'U' : 'B') : spec));
+    if (ids.length !== 1) continue;
+    const id = ids[0];
+    let vals;
+    if (head.cols && line.includes('\t')) {
+      const cells = line.split('\t');
+      vals = head.cols.map(c => { const m = /-?\d+(?:\.\d+)?/.exec(cells[c] || ''); return m ? parseFloat(m[0]) : null; });
+    } else {
+      // 去掉參考範圍（135-145、3.5~5.0）和括號內的註記，剩下的數字依序對到日期
+      const rest = line.slice(fd).replace(/[(（\[][^)）\]]*[)）\]]/g, ' ').replace(/\d+(?:\.\d+)?\s*[-~–～]\s*\d+(?:\.\d+)?/g, ' ');
+      const nums = (rest.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+      if (nums.length < head.dates.length) { skipped.add(labName(id)); continue; }
+      vals = nums.slice(0, head.dates.length);
+    }
+    vals.forEach((v, i) => { if (v != null && !isNaN(v)) put(head.dates[i], id, v); });
+    rows++;
+  }
+  if (!rows) {
+    let cur = null, buf = [];
+    const flush = () => { if (cur && buf.length) { const v = parseLabs(buf.join('\n'), spec); for (const k in v) put(cur, k, v[k]); } buf = []; };
+    for (const line of lines) {
+      const ds = datesIn(line);
+      if (ds.length === 1 && !NOT_DATE_LINE.test(line) && restLen(line, ds) <= 12) { flush(); cur = ds[0].d; continue; }
+      buf.push(line);
+    }
+    flush();
+  }
+  const out = [...days.entries()].filter(([, v]) => Object.keys(v).length).sort((a, b) => a[0] < b[0] ? -1 : 1).map(([d, vals]) => ({ d, vals, on: true }));
+  return { days: out, skipped: [...skipped] };
 }
 
 // ── 狀態
@@ -467,7 +609,7 @@ function todosOf(bed) {
 // 交班用：沒設時間的，或 24 小時內到期（含已過期）的
 const todosSoon = bed => todosOf(bed).filter(i => !i.due || i.due <= Date.now() + 24 * 3600e3);
 
-// problem 追蹤點：到期（含今天）的自動進待辦，一次就好
+// problem 追蹤點：有日期的一新增就進待辦（一次就好）；每日的每天送一項
 function whenToDue(w, since) {
   const m = /^D(\d+)$/.exec(w); if (m) return addDays(since, +m[1] - 1);
   const h = /^\+(\d+)h$/.exec(w); if (h) return addDays(since, Math.round(+h[1] / 24));
@@ -487,7 +629,8 @@ function sweep() {
         if (did) { f.todoId = did; f.pushedOn = t; ch = true; }
         continue;
       }
-      if (f.done || f.pushed || !f.due || f.due > t) continue;
+      // 有日期的追蹤點一新增就進待辦（以後的日期會倒數到那天早上 8 點），不用等到當天
+      if (f.done || f.pushed || !f.due) continue;
       const id = todoAdd(b.bed, `${p.name}：${f.what}`, 3, at8(f.due));
       if (id) { f.pushed = true; f.todoId = id; ch = true; }
     }
@@ -607,6 +750,9 @@ function renderSave() {
 }
 
 // ── 床卡列表
+// DNR 欄位只寫「NO」「全簽」時，列表上看不出是什麼：前面一律補上「DNR：」
+const dnrText = v => /dnr|full\s*code|code|急救|插管|cpr|安寧/i.test(v) ? String(v).trim() : `DNR：${String(v).trim()}`;
+const DNR_OPTS = ['未簽（Full code）', 'DNR 全簽', '部分 DNR（不插管）', '部分 DNR（不壓胸）', '還沒討論'];
 function bedFlags(b) {
   const t = today(), out = [];
   const ab = latestAbn(b);
@@ -620,7 +766,7 @@ function bedFlags(b) {
   const wait = b.pending.filter(p => !p.done).length - over;
   if (wait > 0) out.push(['warn', `等結果 ${wait}`]);
   b.abx.forEach(a => out.push(['ac', `${a.name} D${diffDays(a.start, t) + 1}${a.days ? '/' + a.days : ''}`]));
-  if (b.dnr) out.push(['', b.dnr]);
+  if (b.dnr) out.unshift(['dnr', dnrText(b.dnr)]);
   return out;
 }
 function renderList() {
@@ -653,6 +799,30 @@ const STN = Object.fromEntries(ST);
 const CHIPS = ['f/u lab', '開 order', '會診', '家屬說明', '換藥', 'D/C 管路', '看片子', '改口服'];
 let openHow = null, openTpl = false;
 
+const TABS = [['basic', '基本'], ['prob', 'Problem'], ['labs', '檢驗'], ['order', '待辦'], ['pend', '等結果'], ['abx', '抗生素'], ['lines', '管路'], ['check', '每日清單'], ['notes', '筆記'], ['learn', '學到']];
+let bedTab = null;
+const openP = new Set();
+// 總覽：每一區一張卡片，卡片上先給重點，點進去才看全部
+function overview(b, t) {
+  const act = b.problems.filter(p => p.status !== 'resolved'), nofu = act.filter(p => !hasNext(p)).length;
+  const abn = latestAbn(b), labN = Object.values(b.labs || {}).filter(a => a.length).length;
+  const td = todosOf(b.bed), pend = b.pending.filter(p => !p.done), over = pend.filter(p => p.expect && p.expect < t).length;
+  const day = b.checks[t] || {}, items = CHECKLIST.filter(c => !S.hidden.includes(c.id)), ckN = items.filter(c => day[c.id]).length, ckW = items.filter(c => day[c.id] && day[c.id].s === 'w').length;
+  const nextFu = p => { const f = p.fus.filter(x => !fuIsDone(x) && x.due && x.due !== 'daily').sort((x, y) => x.due < y.due ? -1 : 1)[0]; return f ? `${md(f.due)} ${f.what}` : p.fus.some(isDaily) ? '每日追蹤' : ''; };
+  const card = (k, title, big, lines, cls = '') => `<button class="bcard ${cls}" data-act="tab" data-v="${k}"><span class="bh">${title}</span>${big !== '' ? `<span class="bn">${big}</span>` : ''}<span class="bl">${lines.filter(Boolean).map(x => `<span>${x}</span>`).join('') || '<span class="muted">—</span>'}</span></button>`;
+  return `<div class="bgrid">
+    ${card('basic', '基本資料', '', [b.dnr ? `<b>${esc(dnrText(b.dnr))}</b>` : '<span style="color:var(--hub-warn)">DNR 還沒填</span>', esc(b.dx || ''), esc(b.hx || '')], 'wide')}
+    ${card('prob', 'Problem', act.length, [nofu ? `<b style="color:var(--hub-bad)">${nofu} 個缺追蹤點</b>` : '', ...act.slice(0, 4).map(p => `${esc(p.name)}<small>${esc(STN[p.status] || '')}${nextFu(p) ? '・' + esc(nextFu(p)) : ''}</small>`), act.length > 4 ? `還有 ${act.length - 4} 個…` : ''], nofu ? 'bad wide' : 'wide')}
+    ${card('labs', '檢驗', labN ? (abn.length ? `<span style="color:var(--hub-bad)">${abn.length}</span>` : '✓') : '', [abn.length ? abn.slice(0, 4).map(a => `${esc(labName(a.id))} ${a.v}${a.f === 'H' ? '↑' : '↓'}`).join('、') : labN ? `${labN} 項，最新都在範圍內` : '還沒有檢驗值'], abn.length ? 'bad' : '')}
+    ${card('order', '待辦', td.length, td.slice(0, 3).map(i => esc(i.text)))}
+    ${card('pend', '等結果', pend.length, [over ? `<b style="color:var(--hub-bad)">逾期 ${over}</b>` : '', ...pend.slice(0, 2).map(p => esc(p.what))], over ? 'bad' : '')}
+    ${card('abx', '抗生素', b.abx.length, b.abx.map(a => `${esc(a.name)} D${diffDays(a.start, t) + 1}${a.days ? '/' + a.days : ''}`))}
+    ${card('lines', '管路', b.lines.length, b.lines.map(l => `${esc(l.t)} D${diffDays(l.since, t) + 1}`))}
+    ${card('check', '每日清單', `${ckN}/${items.length}`, [ckW ? `<b style="color:var(--hub-bad)">${ckW} 項有問題</b>` : ckN === items.length ? '今天都看過了' : '今天還沒看完'], ckW ? 'bad' : '')}
+    ${card('notes', '筆記與交班', '', [esc((b.hand || '').slice(0, 60)), esc((b.note || '').slice(0, 60))])}
+    ${card('learn', '今天學到', b.learned.filter(x => x.d === t).length, [])}
+  </div>`;
+}
 function renderBed() {
   const b = bedById(curBed); if (!b) { go('list'); return; }
   const t = today();
@@ -677,34 +847,53 @@ function renderBed() {
       <p class="muted" style="margin-bottom:0">在院內電腦把這床打好，按這裡產生 QR；手機查房板「匯入 → 📷 掃 QR」拍下來。基本資料、problem、檢驗、抗生素、管路、等待中結果、筆記、今天的清單和這床的待辦都會一起傳。</p></div>`,
     del: `<div class="sec"><div class="row"><button class="btn bad" data-act="discharge">出院／移除這床（刪除資料）</button></div></div>`,
   };
-  const order = inRound
-    ? ['labs', 'prob', 'check', 'pend', 'order', 'learn', 'abx', 'lines', 'notes', 'basic']
-    : ['basic', 'order', 'prob', 'labs', 'abx', 'lines', 'check', 'pend', 'notes', 'learn', 'send', 'del'];
-  $('bedBody').innerHTML = order.map(k => sec[k]).join('');
+  // 逐床跑：照步驟一路往下。單床：先看總覽卡片，點卡片（或上方分頁）只看那一區，不用一直往下滑
+  $('btabs').hidden = inRound;
+  if (inRound) {
+    $('bedBody').innerHTML = ['labs', 'prob', 'check', 'pend', 'order', 'learn', 'abx', 'lines', 'notes', 'basic'].map(k => sec[k]).join('');
+    return;
+  }
+  if (bedTab && !sec[bedTab]) bedTab = null;
+  $('btabs').innerHTML = [['', '總覽'], ...TABS].map(([k, n]) => `<button role="tab" data-act="tab" data-v="${k}" aria-selected="${(bedTab || '') === k}">${n}</button>`).join('');
+  const on = $('btabs').querySelector('[aria-selected="true"]'); if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  $('bedBody').innerHTML = bedTab ? sec[bedTab] : overview(b, t) + sec.send + sec.del;
 }
 const fld = (b, k, lab, ph = '', w = '') => `<label class="fld" ${w ? `style="flex:${w}"` : ''}><span>${lab}</span><input type="text" data-f="${k}" value="${esc(b[k])}" placeholder="${esc(ph)}" autocomplete="off"></label>`;
 function secBasic(b) {
   return `<h2>基本資料</h2><div class="sec">
-    <div class="row">${fld(b, 'bed', '床號', '', '0 0 6em')}${fld(b, 'code', '代號', '姓氏縮寫等，不寫全名')}${fld(b, 'dnr', 'DNR／code status', '例：DNR 全簽')}</div>
+    <div class="row">${fld(b, 'bed', '床號', '', '0 0 6em')}${fld(b, 'code', '代號', '姓氏縮寫等，不寫全名')}${fld(b, 'dnr', 'DNR／code status', '點下面的選項，或自己寫')}</div>
+    <div class="chips" style="margin-top:6px;flex-wrap:wrap">${DNR_OPTS.map(o => `<button class="chip" data-act="dnrPick" data-v="${esc(o)}" aria-pressed="${b.dnr === o}">${esc(o)}</button>`).join('')}</div>
     <div class="row">${fld(b, 'dx', 'Dx 一句話', '例：CAP with sepsis')}<label class="fld" style="flex:0 0 8em"><span>性別（Hb、Cr 範圍）</span><select data-f="sex"><option value="">未填</option><option value="M" ${b.sex === 'M' ? 'selected' : ''}>男</option><option value="F" ${b.sex === 'F' ? 'selected' : ''}>女</option></select></label></div>
     <div class="row">${fld(b, 'hx', '重要病史', '例：DM、CKD3b、AF on DOAC')}</div>
     <div class="row">${fld(b, 'io', 'I/O', '例：I 1800／O 1200，UO 0.6 mL/kg/h')}</div>
   </div>`;
 }
+// 小折線：一項檢驗的所有數值（依時間），超出範圍的點標紅
+function spark(id, arr, sex) {
+  if (arr.length < 2) return '';
+  const W = 300, H = 64, P = 6, vs = arr.map(x => x.v), l = lim(id, sex) || {};
+  let lo = Math.min(...vs), hi = Math.max(...vs); if (lo === hi) { lo -= 1; hi += 1; }
+  const X = i => P + i * (W - 2 * P) / (arr.length - 1), Y = v => H - P - (v - lo) * (H - 2 * P) / (hi - lo);
+  const band = l.lo != null && l.hi != null && l.hi > lo && l.lo < hi ? `<rect x="0" width="${W}" y="${Y(Math.min(hi, l.hi))}" height="${Math.max(0, Y(Math.max(lo, l.lo)) - Y(Math.min(hi, l.hi)))}" fill="var(--ac-soft)"/>` : '';
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(labName(id))} 趨勢">${band}<polyline fill="none" stroke="var(--ac)" stroke-width="2" vector-effect="non-scaling-stroke" points="${arr.map((x, i) => `${X(i)},${Y(x.v)}`).join(' ')}"/>${arr.map((x, i) => `<circle cx="${X(i)}" cy="${Y(x.v)}" r="3.5" fill="${flag(id, x.v, sex) ? 'var(--hub-bad)' : 'var(--ac)'}"/>`).join('')}</svg>`;
+}
+let openLab = null;
 function secLabs(b) {
-  const ids = Object.keys(b.labs || {}).filter(id => b.labs[id].length);
+  const ids = ALL_LABS.map(l => l.id).filter(id => (b.labs[id] || []).length).concat(Object.keys(b.labs || {}).filter(id => !LAB[id] && b.labs[id].length));
   const abn = latestAbn(b);
   const lastDays = [...new Set(ids.map(id => b.labs[id][b.labs[id].length - 1].d))].sort();
-  const rows = ids.map(id => {
+  const mk = id => {
     const arr = b.labs[id], last = arr[arr.length - 1], prev = arr.length > 1 ? arr[arr.length - 2] : null;
-    const f = flag(id, last.v, b.sex);
+    const f = flag(id, last.v, b.sex), open = openLab === id;
     let tr = '';
     if (prev) { const ar = last.v > prev.v ? '↑' : last.v < prev.v ? '↓' : '→'; tr = `前 ${prev.v} ${ar}`; }
-    return { f, html: `<span class="n">${esc(id)}</span><span class="v ${f}">${last.v}${f ? (f === 'H' ? ' H' : ' L') : ''}</span><span class="tr">${tr}</span><span class="rg">${esc(rangeTxt(id, b.sex))}</span>` };
-  }).sort((x, y) => (y.f ? 1 : 0) - (x.f ? 1 : 0));
+    const hist = open ? `<div class="labh">${rangeTxt(id, b.sex) ? `<div class="rgh">正常範圍 ${esc(rangeTxt(id, b.sex))}</div>` : ''}${spark(id, arr, b.sex)}<div class="labl">${arr.slice().reverse().map((x, i) => `<div class="fu"><span class="w">${md(x.d)}</span><span class="v ${flag(id, x.v, b.sex)}" style="flex:1">${x.v}</span><button class="x" data-act="labDel" data-id="${esc(id)}" data-i="${arr.length - 1 - i}" aria-label="刪除這筆">×</button></div>`).join('')}</div></div>` : '';
+    return { f, html: `<button class="labr ${open ? 'on' : ''}" data-act="labOpen" data-id="${esc(id)}" aria-expanded="${open}"><span class="n">${esc(labName(id))}</span><span class="v ${f}">${last.v}${f ? (f === 'H' ? ' H' : ' L') : ''}</span><span class="tr">${tr}${arr.length > 2 ? `・${arr.length} 筆` : ''}</span><span class="rg">${esc(rangeTxt(id, b.sex))}</span></button>${hist}` };
+  };
+  const blood = ids.filter(id => !isU(id)).map(mk).sort((x, y) => (y.f ? 1 : 0) - (x.f ? 1 : 0)), urine = ids.filter(isU).map(mk);
   return `<h2>${round ? '① 新異常值' : '檢驗值與趨勢'} <button class="btn sm" data-act="impFor">匯入</button></h2><div class="sec">
-    ${rows.length ? `<div class="lab">${rows.map(r => r.html).join('')}</div>` : '<p class="empty">還沒有檢驗值。按「匯入」貼上 HIS 的文字或截圖，或從電腦掃 QR。</p>'}
-    ${rows.length ? `<p class="sub" style="margin:8px 0 0">最新一次：${lastDays.map(md).join('、')}${abn.length ? `・異常 ${abn.length} 項排在最上面` : ''}・「前 x ↑」是這次比前一次高</p>` : ''}
+    ${ids.length ? `<div class="lab">${blood.map(r => r.html).join('')}</div>${urine.length ? `<div class="sub" style="margin:12px 0 4px;font-weight:600">尿液</div><div class="lab">${urine.map(r => r.html).join('')}</div>` : ''}` : '<p class="empty">還沒有檢驗值。按「匯入」貼上 HIS 的文字或截圖，或從電腦掃 QR。</p>'}
+    ${ids.length ? `<p class="sub" style="margin:8px 0 0">最新一次：${lastDays.map(md).join('、')}${abn.length ? `・異常 ${abn.length} 項排在最上面` : ''}・點一項看全部紀錄和變化</p>` : ''}
   </div>`;
 }
 // 每日追蹤點：只記「哪一天確認過」（doneOn），今天勾了才算完成，隔天自動回到未勾選。
@@ -722,7 +911,13 @@ function secProb(b) {
   const list = b.problems.map(p => {
     const red = p.status !== 'resolved' && !hasNext(p);
     const tpl = PROBLEMS.find(x => x.id === p.tpl);
-    return `<div class="item ${red ? 'red' : ''} ${p.status === 'resolved' ? 'done' : ''}">
+    // 單床頁：problem 預設收起來（一行：名稱、狀態、下一個追蹤點），點開才編輯；逐床跑全部展開
+    if (!round && !openP.has(p.id)) {
+      const nx = p.fus.filter(f => !fuIsDone(f) && f.due && f.due !== 'daily').sort((x, y) => x.due < y.due ? -1 : 1)[0];
+      return `<button class="item pcol ${red ? 'red' : ''} ${p.status === 'resolved' ? 'done' : ''}" data-act="pOpen" data-p="${p.id}"><span class="t">${esc(p.name)}</span><span class="tag st-${p.status}">${esc(STN[p.status] || '—')}</span>
+        <span class="sub">${red ? '⚠ 沒有追蹤點' : nx ? `下一步 ${md(nx.due)}：${esc(nx.what)}` : p.fus.some(isDaily) ? '每日追蹤' : '追蹤點都完成了'}${p.plan ? `・${esc(p.plan.split('\n')[0].slice(0, 40))}` : ''}</span></button>`;
+    }
+    return `<div class="item ${red ? 'red' : ''} ${p.status === 'resolved' ? 'done' : ''}">${!round ? `<div class="row" style="justify-content:flex-end;margin:-4px 0 4px"><button class="lnk" data-act="pOpen" data-p="${p.id}">收起</button></div>` : ''}
       <div class="row"><input type="text" data-p="${p.id}" data-pf="name" value="${esc(p.name)}" style="flex:1;font-weight:700"><span class="muted">${md(p.since)} 起</span></div>
       <div class="seg" style="margin-top:6px">${ST.map(([k, n]) => `<button data-act="pStatus" data-p="${p.id}" data-v="${k}" class="st-${k}" aria-pressed="${p.status === k}">${n}</button>`).join('')}</div>
       ${tpl ? `<details style="margin-top:6px"><summary class="sub">怎麼判斷改善／惡化、什麼時候找學長</summary><div class="howto" style="border:0;padding-left:0">
@@ -929,21 +1124,40 @@ function renderImp() {
     return;
   }
   if (imp.stage === 'ok') {
-    const ids = LABS.map(l => l.id).filter(id => imp.vals[id] != null);
-    const extra = LABS.filter(l => imp.vals[l.id] == null);
     const ib = S.beds.find(x => String(x.bed) === String(imp.bed)), isex = ib && ib.sex;
-    const dupN = ib ? ids.filter(id => (ib.labs[id] || []).some(x => x.d === imp.date && x.v !== imp.vals[id])).length : 0;
-    el.innerHTML = `<h2>核對數值（一定要看過再存）</h2>
+    const specSeg = imp.text && !imp.scanned ? `<div class="row" style="margin-top:4px"><span class="sub" style="flex:none">檢體</span><div class="seg">${SPECS.map(([k, n]) => `<button data-act="impSpec" data-v="${k}" aria-pressed="${(imp.spec || 'auto') === k}">${n}</button>`).join('')}</div></div>` : '';
+    const row = (id, v, key) => {
+      const f = flag(id, v, isex), dp = decimalSuspect(id, v), other = URINE_OF[id] || BLOOD_OF[id];
+      return `<input type="checkbox" ${key.ok} checked style="width:20px;height:20px"><b>${esc(labName(id))}${other ? `<button class="lnk spsw" data-act="impSwap" data-id="${id}" ${key.day} aria-label="改成${isU(id) ? '血液' : '尿液'}">${isU(id) ? '改血' : '改尿'}</button>` : ''}</b><input type="number" step="any" inputmode="decimal" ${key.v} value="${v}"><span><span class="fl">${f ? (f === 'H' ? 'H ↑' : 'L ↓') : ''}</span> <span class="rg">${esc(rangeTxt(id, isex))}</span>${dp != null ? `<br><button class="btn sm bad" data-act="impFix" data-id="${id}" ${key.day} data-v="${dp}">⚠ 可能少了小數點，是 ${dp} 嗎？</button>` : ''}</span>`;
+    };
+    const head = `<h2>核對數值（一定要看過再存）</h2>
       <div class="row"><label class="fld" style="flex:0 0 7em"><span>床號</span><input type="text" id="impBed" value="${esc(imp.bed)}" list="bedList"></label>
-        <label class="fld" style="flex:0 0 10em"><span>檢驗日期</span><input type="date" id="impDate" value="${esc(imp.date)}"></label></div>
-      <datalist id="bedList">${bedOpts}</datalist>
+        ${imp.multi ? '' : `<label class="fld" style="flex:0 0 10em"><span>檢驗日期</span><input type="date" id="impDate" value="${esc(imp.date)}"></label>`}</div>
+      <datalist id="bedList">${bedOpts}</datalist>${specSeg}
       ${imp.scanned ? '<p class="sub">從 QR 讀到的數值，已在電腦上核對過；確認床號後存入。</p>' : ''}
-      <div class="sec"><div class="imp">
-        ${ids.map(id => { const f = flag(id, imp.vals[id], isex), dp = decimalSuspect(id, imp.vals[id]); return `<input type="checkbox" data-iok="${id}" checked style="width:20px;height:20px"><b>${esc(id)}</b><input type="number" step="any" inputmode="decimal" data-iv="${id}" value="${imp.vals[id]}"><span><span class="fl">${f ? (f === 'H' ? 'H ↑' : 'L ↓') : ''}</span> <span class="rg">${esc(rangeTxt(id, isex))}</span>${dp != null ? `<br><button class="btn sm bad" data-act="impFix" data-id="${id}" data-v="${dp}">⚠ 可能少了小數點，是 ${dp} 嗎？</button>` : ''}</span>`; }).join('') || '<span class="empty" style="grid-column:1/-1">沒有抓到任何項目。可以用下面手動加，或回去換一張更清楚的截圖。</span>'}
+      ${imp.dateNote ? `<p class="sub">日期是從貼上的內容抓到的：<b>${esc(md(imp.date))}</b>，不對請改。</p>` : ''}`;
+    const tail = `<p class="sub">⚠ OCR 最常錯在小數點和 1／7、0／8。紅字是超出範圍，請特別對照原畫面。「改尿／改血」可以把同名項目換成另一種檢體（例如尿液的 Na、K 被當成血液）。</p>`;
+    if (imp.multi) {
+      const days = imp.multi.days, onN = days.filter(x => x.on).length;
+      el.innerHTML = head + `<p class="sub" style="font-weight:600">抓到 ${days.length} 天的紀錄，會分別存到各自的日期。</p>
+        ${imp.multi.skipped.length ? `<p class="sub" style="color:var(--hub-bad)">${esc(imp.multi.skipped.join('、'))} 的數值個數和日期對不起來（可能有空格），沒有收。用 HIS 的表格複製（保留 Tab）或分天匯入。</p>` : ''}
+        ${days.map((day, i) => { const ids = ALL_LABS.map(l => l.id).filter(id => day.vals[id] != null); return `<div class="sec"><div class="row"><label class="fu-daily"><input type="checkbox" data-mon="${i}" ${day.on ? 'checked' : ''}>存這天</label><input type="date" data-mdate="${i}" value="${esc(day.d)}" style="flex:0 1 10em"><span class="muted">${ids.length} 項</span></div>
+          <div class="imp" style="margin-top:8px">${ids.map(id => row(id, day.vals[id], { ok: `data-miok="${i}|${id}"`, v: `data-mv="${i}|${id}"`, day: `data-day="${i}"` })).join('')}</div></div>`; }).join('')}
+        ${tail}
+        <p class="sub">同一天已有一樣的數值會略過；不一樣的當成重驗，兩筆都留。</p>
+        <div class="row" style="margin-top:8px"><button class="btn pri" data-act="impSave" style="flex:1">存入 ${onN} 天</button></div>
+        <div class="row" style="margin-top:6px"><button class="btn ghost" data-act="impBack">← 重新貼</button></div>`;
+      return;
+    }
+    const ids = ALL_LABS.map(l => l.id).filter(id => imp.vals[id] != null);
+    const extra = ALL_LABS.filter(l => imp.vals[l.id] == null);
+    const dupN = ib ? ids.filter(id => (ib.labs[id] || []).some(x => x.d === imp.date && x.v !== imp.vals[id])).length : 0;
+    el.innerHTML = head + `<div class="sec"><div class="imp">
+        ${ids.map(id => row(id, imp.vals[id], { ok: `data-iok="${id}"`, v: `data-iv="${id}"`, day: '' })).join('') || '<span class="empty" style="grid-column:1/-1">沒有抓到任何項目。可以用下面手動加，或回去換一張更清楚的截圖。</span>'}
       </div>
-      <div class="row" style="margin-top:8px"><select id="impAddId" style="flex:1 1 8em"><option value="">＋ 手動加項目</option>${extra.map(l => `<option>${esc(l.id)}</option>`).join('')}</select><input type="number" step="any" inputmode="decimal" id="impAddV" placeholder="數值" style="flex:0 0 6em"><button class="btn sm" data-act="impAdd">加</button></div></div>
+      <div class="row" style="margin-top:8px"><select id="impAddId" style="flex:1 1 8em"><option value="">＋ 手動加項目</option><optgroup label="血液">${extra.filter(l => !isU(l.id)).map(l => `<option value="${esc(l.id)}">${esc(l.id)}</option>`).join('')}</optgroup><optgroup label="尿液">${extra.filter(l => isU(l.id)).map(l => `<option value="${esc(l.id)}">${esc(labName(l.id))}</option>`).join('')}</optgroup></select><input type="number" step="any" inputmode="decimal" id="impAddV" placeholder="數值" style="flex:0 0 6em"><button class="btn sm" data-act="impAdd">加</button></div></div>
       ${dupN ? `<div class="sec"><div class="sub" style="font-weight:600">這天已經有 ${dupN} 項不同的數值</div><div class="seg" style="margin-top:6px"><button data-act="impMode" data-v="add" aria-pressed="${imp.mode !== 'replace'}">當成重驗（保留兩筆）</button><button data-act="impMode" data-v="replace" aria-pressed="${imp.mode === 'replace'}">取代舊值（修正錯誤）</button></div></div>` : ''}
-      <p class="sub">⚠ OCR 最常錯在小數點和 1／7、0／8。紅字是超出範圍，請特別對照原畫面。</p>
+      ${tail}
       <div class="row" style="margin-top:8px"><button class="btn pri" data-act="impSave" style="flex:1">存入這支裝置</button><button class="btn" data-act="impQR" style="flex:1">產生 QR 給手機掃</button></div>
       <div class="row" style="margin-top:6px"><button class="btn ghost" data-act="impBack">← 重新貼</button></div>`;
     return;
@@ -955,6 +1169,8 @@ function renderImp() {
     <h2>2. 給我數值（三種方式擇一）</h2>
     <div class="sec">
       <div class="sub" style="font-weight:600">A. 貼上 HIS 複製出來的文字（最準）</div>
+      <div class="row" style="margin:6px 0"><span class="sub" style="flex:none">檢體</span><div class="seg">${SPECS.map(([k, n]) => `<button data-act="impSpec" data-v="${k}" aria-pressed="${(imp.spec || 'auto') === k}">${n}</button>`).join('')}</div></div>
+      <p class="muted" style="margin:0 0 6px">自動判斷：看「尿液檢查」這類標題，或項目旁的 (U)、U-、Urine。累積報告（好幾天並排）會自動分成每天存，之後點檢驗值就看得到變化。</p>
       <textarea id="impText" rows="5" placeholder="在 HIS 選取檢驗結果 → Ctrl+C → 這裡 Ctrl+V&#10;也可以直接在這裡 Ctrl+V 貼上截圖">${esc(imp.text)}</textarea>
       <div class="row" style="margin-top:6px"><button class="btn pri" data-act="impParse" style="flex:1">抓數值</button></div>
     </div>
@@ -991,12 +1207,46 @@ function impSync() {
   if (tx) imp.text = tx.value;
   document.querySelectorAll('[data-iv]').forEach(i => { const v = parseFloat(i.value); if (!isNaN(v)) imp.vals[i.dataset.iv] = v; });
   document.querySelectorAll('[data-iok]').forEach(c => { if (!c.checked) delete imp.vals[c.dataset.iok]; });
+  if (imp.multi) {
+    const D = imp.multi.days;
+    document.querySelectorAll('[data-mv]').forEach(i => { const [k, id] = i.dataset.mv.split('|'), v = parseFloat(i.value); if (D[k] && !isNaN(v)) D[k].vals[id] = v; });
+    document.querySelectorAll('[data-miok]').forEach(c => { const [k, id] = c.dataset.miok.split('|'); if (!c.checked && D[k]) delete D[k].vals[id]; });
+    document.querySelectorAll('[data-mon]').forEach(c => { if (D[c.dataset.mon]) D[c.dataset.mon].on = c.checked; });
+    document.querySelectorAll('[data-mdate]').forEach(i => { if (D[i.dataset.mdate] && i.value) D[i.dataset.mdate].d = i.value; });
+  }
 }
+const SPECS = [['auto', '自動判斷'], ['B', '全部是血液'], ['U', '全部是尿液']];
 function impParsed(text) {
-  const v = parseLabs(text);
-  imp.vals = v; imp.text = text; imp.msg = '';
+  const spec = imp.spec || 'auto';
+  imp.text = text; imp.msg = ''; imp.multi = null; imp.dateNote = false;
+  const h = parseHistory(text, spec);
+  if (h.days.length >= 2) { imp.multi = h; imp.vals = {}; imp.stage = 'ok'; render(); return; }
+  const v = parseLabs(text, spec);
+  imp.vals = v;
+  if (h.days.length === 1 && h.days[0].d !== imp.date) { imp.date = h.days[0].d; imp.dateNote = true; }
   if (!Object.keys(v).length) { imp.msg = '沒有認出任何檢驗項目。可以把原文貼給 Claude 調整解析規則，或改用手動加。'; }
   imp.stage = 'ok'; render();
+}
+// 同名項目換檢體（血液 Na ⇄ 尿液 Na）；另一邊已經有值就兩個互換
+function impSwap(id, day) {
+  const vals = day == null || day === '' ? imp.vals : imp.multi.days[day].vals;
+  const o = URINE_OF[id] || BLOOD_OF[id]; if (!o || vals[id] == null) return;
+  const a = vals[id], b = vals[o];
+  vals[o] = a; if (b == null) delete vals[id]; else vals[id] = b;
+}
+// 存一天的檢驗：一樣的值略過；不一樣的當重驗（保留兩筆），mode = 'replace' 時取代那天的舊值
+function addLabs(b, date, vals, mode, now) {
+  let add = 0, re = 0, same = 0;
+  for (const [id, v] of Object.entries(vals)) {
+    let arr = b.labs[id] = b.labs[id] || [];
+    const sd = arr.filter(x => x.d === date);
+    if (mode === 'replace') arr = b.labs[id] = arr.filter(x => x.d !== date);
+    else if (sd.length) { if (sd.some(x => x.v === v)) { same++; continue; } re++; }
+    arr.push({ d: date, v, ts: now }); add++;
+    arr.sort((x, y) => x.d < y.d ? -1 : x.d > y.d ? 1 : (x.ts || 0) - (y.ts || 0));
+    if (arr.length > 60) arr.splice(0, arr.length - 60);
+  }
+  return { add, re, same };
 }
 function qrPayload() { return `RB2|${imp.bed.replace(/[|;=]/g, '')}|${imp.date}|` + Object.entries(imp.vals).map(([k, v]) => `${k}=${v}`).join(';'); }
 function drawQR(text) {
@@ -1012,19 +1262,17 @@ async function impCommit() {
   if (!imp.bed) { toast('請填床號'); return; }
   let b = S.beds.find(x => String(x.bed) === String(imp.bed));
   if (!b) { if (!(await ask(`還沒有 ${imp.bed} 床，要新增嗎？`, { ok: '新增' }))) return; b = newBed(imp.bed, ''); S.beds.push(b); }
-  const n = Object.keys(imp.vals).length;
-  // 同一天可以有多筆：預設「不同的值 = 重驗，保留兩筆」、一樣的值略過；選「取代舊值」才覆蓋
-  const now = Date.now(); let add = 0, re = 0;
-  for (const [id, v] of Object.entries(imp.vals)) {
-    let arr = b.labs[id] = b.labs[id] || [];
-    const same = arr.filter(x => x.d === imp.date);
-    if (imp.mode === 'replace') arr = b.labs[id] = arr.filter(x => x.d !== imp.date);
-    else if (same.length) { if (same.some(x => x.v === v)) continue; re++; }
-    arr.push({ d: imp.date, v, ts: now }); add++;
-    arr.sort((x, y) => x.d < y.d ? -1 : x.d > y.d ? 1 : (x.ts || 0) - (y.ts || 0));
-    if (arr.length > 40) arr.splice(0, arr.length - 40);
+  const now = Date.now();
+  if (imp.multi) {
+    const on = imp.multi.days.filter(x => x.on && Object.keys(x.vals).length);
+    if (!on.length) { toast('沒有勾選要存的日期'); return; }
+    let add = 0, same = 0;
+    on.forEach(x => { const r = addLabs(b, x.d, x.vals, 'add', now); add += r.add; same += r.same; });
+    save(true); toast(`已存入 ${label(b)}：${on.length} 天、${add} 筆${same ? `；${same} 筆已經有了，略過` : ''}`);
+  } else {
+    const n = Object.keys(imp.vals).length, r = addLabs(b, imp.date, imp.vals, imp.mode, now);
+    save(true); toast(`已存入 ${label(b)}：${r.add} 項${r.re ? `（${r.re} 項是同日重驗，保留兩筆）` : ''}${r.add < n ? `；${n - r.add} 項與已有的相同，略過` : ''}`);
   }
-  save(true); toast(`已存入 ${label(b)}：${add} 項${re ? `（${re} 項是同日重驗，保留兩筆）` : ''}${add < n ? `；${n - add} 項與已有的相同，略過` : ''}`);
   curBed = b.id; imp = null; go('bed');
 }
 
@@ -1429,7 +1677,9 @@ document.addEventListener('click', e => {
         $('nbBed').value = ''; $('nbCode').value = ''; curBed = nb.id; round = null; go('bed');
       })(); return;
     }
-    case 'open': curBed = el.dataset.id; round = null; go('bed'); return;
+    case 'open': curBed = el.dataset.id; round = null; bedTab = null; openP.clear(); go('bed'); return;
+    case 'tab': bedTab = el.dataset.v || null; openHow = null; scrollTo(0, 0); render(); return;
+    case 'pOpen': openP.has(el.dataset.p) ? openP.delete(el.dataset.p) : openP.add(el.dataset.p); render(); return;
     case 'back': round = null; openHow = null; openTpl = false; if (view === 'send' && bedNow()) { send = null; go('bed'); } else if (view === 'imp' && curBed && imp && imp.from) { imp = null; go('bed'); } else { imp = null; send = null; go('list'); } return;
     case 'round': startRound(); return;
     case 'roundNext': {
@@ -1449,11 +1699,11 @@ document.addEventListener('click', e => {
     case 'pAddTpl': {
       const tp = PROBLEMS.find(x => x.id === el.dataset.tpl); if (!tp || !b) return;
       const p = { id: uid(), name: tp.name, tpl: tp.id, status: 'new', plan: '', since: t, fus: tp.followUps.map(f => ({ id: uid(), what: f.what, when: f.when, due: whenToDue(f.when, t), done: false, pushed: false })) };
-      b.problems.push(p); openTpl = false; save(true); sweep(); render(); toast(`已加入 ${tp.name}（${p.fus.length} 個追蹤點，可以改）`); return;
+      b.problems.push(p); openP.add(p.id); openTpl = false; save(true); sweep(); render(); toast(`已加入 ${tp.name}（${p.fus.length} 個追蹤點，可以改）`); return;
     }
     case 'pAddFree': {
       const n = ($('pFree') || {}).value; if (!n || !n.trim() || !b) return;
-      b.problems.push({ id: uid(), name: n.trim(), tpl: '', status: 'new', plan: '', since: t, fus: [] }); openTpl = false; save(); return;
+      const np = { id: uid(), name: n.trim(), tpl: '', status: 'new', plan: '', since: t, fus: [] }; b.problems.push(np); openP.add(np.id); openTpl = false; save(); return;
     }
     case 'pStatus': { const p = prob(el.dataset.p); if (p) { p.status = el.dataset.v; save(); } return; }
     case 'pDel': {
@@ -1472,7 +1722,9 @@ document.addEventListener('click', e => {
       const p = prob(el.dataset.p); const inp = document.querySelector(`[data-fuin="${el.dataset.p}"]`), dt = document.querySelector(`[data-fudate="${el.dataset.p}"]`);
       if (!p || !inp.value.trim()) { inp && inp.focus(); return; }
       const daily = !!(document.querySelector(`[data-fudaily="${el.dataset.p}"]`) || {}).checked;
-      p.fus.push({ id: uid(), what: inp.value.trim(), when: daily ? '每日' : '', due: daily ? 'daily' : (dt.value || ''), done: false, pushed: false }); save(true); sweep(); render(); return;
+      const nf = { id: uid(), what: inp.value.trim(), when: daily ? '每日' : '', due: daily ? 'daily' : (dt.value || ''), done: false, pushed: false };
+      p.fus.push(nf); save(true); sweep(); render();
+      toast(daily ? '已加入，每天會在待辦表出現一次' : nf.due ? `已加入待辦表，${md(nf.due)} 早上 8 點到時提醒` : '已加入（沒有日期，不會進待辦表）'); return;
     }
     case 'fuDone': {
       const p = prob(el.dataset.p), f = p && p.fus.find(x => x.id === el.dataset.fu); if (!f) return;
@@ -1482,7 +1734,13 @@ document.addEventListener('click', e => {
       if (moved) toast(el.checked ? '已追蹤，待辦表裡這一項也完成了' : '已取消，這一項回到待辦表');
       return;
     }
-    case 'fuDel': { const p = prob(el.dataset.p); if (p) { p.fus = p.fus.filter(x => x.id !== el.dataset.fu); save(); } return; }
+    case 'fuDel': {
+      const p = prob(el.dataset.p), f = p && p.fus.find(x => x.id === el.dataset.fu); if (!f) return;
+      // 待辦表裡還沒完成的那一項一起刪（留刪除紀錄，別台裝置同步時才不會補回來）
+      const st = readTodo(), id = linkTodo(st, b, p, f);
+      if (id && st.items.some(i => i.id === id)) { st.items = st.items.filter(i => i.id !== id); st.del = { ...(st.del || {}), [id]: Date.now() }; set(TODO, JSON.stringify(st)); toast('待辦表裡的這一項也刪掉了'); }
+      p.fus = p.fus.filter(x => x !== f); save(); return;
+    }
     // 每日清單
     case 'how': openHow = openHow === el.dataset.c ? null : el.dataset.c; render(); return;
     case 'ck': {
@@ -1528,6 +1786,10 @@ document.addEventListener('click', e => {
     case 'lineQuick': $('lnName').value = el.dataset.v; $('lnName').focus(); return;
     case 'lineAdd': { const n = $('lnName').value.trim(); if (!n) return; b.lines.push({ id: uid(), t: n, since: $('lnDate').value || t }); save(); return; }
     case 'lineDel': { b.lines = b.lines.filter(x => x.id !== el.dataset.id); save(); return; }
+    case 'labOpen': openLab = openLab === el.dataset.id ? null : el.dataset.id; render(); return;
+    case 'labDel': { const arr = b.labs[el.dataset.id], i = +el.dataset.i; if (!arr || !arr[i]) return; const x = arr[i];
+      ask(`刪除 ${labName(el.dataset.id)} ${md(x.d)} 的 ${x.v}？`, { ok: '刪除', danger: true }).then(y => { if (!y) return; arr.splice(i, 1); if (!arr.length) delete b.labs[el.dataset.id]; save(); }); return; }
+    case 'dnrPick': b.dnr = el.dataset.v; save(); return;
     case 'learnAdd': { const v = $('lrIn').value.trim(); if (!v) return; b.learned.push({ d: t, t: v }); save(); return; }
     case 'discharge': {
       ask(`刪除 ${label(b)} 的所有資料？\n出院或轉走時用。快照裡還有 3 天內的舊版。`, { ok: '刪除這床', danger: true }).then(y => {
@@ -1542,10 +1804,12 @@ document.addEventListener('click', e => {
     case 'impParse': impSync(); if (!imp.text.trim()) { toast('先貼上文字'); return; } impParsed(imp.text); return;
     case 'impPick': impSync(); $('fileImg').value = ''; $('fileImg').click(); return;
     case 'impScan': impSync(); $('fileQR').value = ''; $('fileQR').click(); return;
-    case 'impBack': impSync(); imp.stage = 'in'; imp.scanned = false; render(); return;
+    case 'impBack': impSync(); imp.stage = 'in'; imp.scanned = false; imp.multi = null; imp.dateNote = false; render(); return;
+    case 'impSpec': impSync(); imp.spec = el.dataset.v; if (imp.stage === 'ok' && imp.text) impParsed(imp.text); else render(); return;
+    case 'impSwap': impSync(); impSwap(el.dataset.id, el.dataset.day); render(); return;
     case 'impAdd': { impSync(); const id = $('impAddId').value, v = parseFloat($('impAddV').value); if (!id || isNaN(v)) { toast('選項目、填數值'); return; } imp.vals[id] = v; render(); return; }
     case 'impMode': impSync(); imp.mode = el.dataset.v; render(); return;
-    case 'impFix': impSync(); imp.vals[el.dataset.id] = parseFloat(el.dataset.v); render(); return;
+    case 'impFix': impSync(); (el.dataset.day ? imp.multi.days[el.dataset.day].vals : imp.vals)[el.dataset.id] = parseFloat(el.dataset.v); render(); return;
     case 'impSave': impCommit(); return;
     case 'impQR': impSync(); if (!imp.bed) { toast('請填床號'); return; } if (!Object.keys(imp.vals).length) { toast('沒有數值'); return; } imp.stage = 'qr'; render(); return;
     case 'impNew': { const d = imp.date; impReset(); imp.date = d; render(); return; }
@@ -1607,7 +1871,7 @@ document.addEventListener('input', e => {
 document.addEventListener('change', e => {
   const el = e.target;
   if (el.dataset.hide) { const id = el.dataset.hide; S.hidden = S.hidden.filter(x => x !== id); if (!el.checked) S.hidden.push(id); save(true); return; }
-  if (el.dataset.iv || el.dataset.iok) { impSync(); render(); }
+  if (el.dataset.iv || el.dataset.iok || el.dataset.mv || el.dataset.miok || el.dataset.mon || el.dataset.mdate) { impSync(); render(); }
   if (el.dataset.fudaily) { const d = document.querySelector(`[data-fudate="${el.dataset.fudaily}"]`); if (d) d.disabled = el.checked; }
 });
 document.addEventListener('keydown', e => {

@@ -21,7 +21,8 @@
 2. 用 `publish_files` 發布 `dist/publish.json` 裡的檔案到 slug `dd7bba5d-4f79-4d51-9ce8-bae6b37db5da`。這個 artifact 是 public，要帶 `shared_live: "public"` 和 `artifact_title: "臨床輔助決策工具"`；base_version 用 `RELEASES.md` 最後一列的版本。只改了幾個檔案的話，可以只列那幾個（patch 模式，其他檔案保留）
 3. `python3 scripts/release.py record <publish 回傳的 version>`，然後 `git -c push.negotiate=false push`
    - 推 tag：`git push --tags`。在 claude.ai 的雲端工作環境推 tag 會 403，不要重試，請使用者在 GitHub Releases 頁面用同名 tag 建立 release
-   - **Claude Code 沒有 claude.ai 的 Artifact 工具**：在 Claude Code 裡做到步驟 1 和 push 為止，把「要發布 vX.Y.Z」告訴使用者，由他在 claude.ai 開對話說「發布臨床輔助決策工具 vX.Y.Z」。那邊的 Claude 會 clone repo、照 dist/publish.json 發布，再跑 record 並 push
+   - **Claude Code（桌面 App）也能發布**：用 Artifact 工具 publish，`url` 填 `https://claude.ai/artifact/dd7bba5d-4f79-4d51-9ce8-bae6b37db5da`、`file_path` 是 `site/index.html`、`files` 照 `dist/publish.json` 對到 `site/…`；不要帶 `capabilities`（保留線上的 db、user）。發布前先 `action: "read"` 確認線上版本 = `RELEASES.md` 最後一列。這是公開網頁，發布前要問使用者
+4. 使用手冊在 `docs/guide/index.html`（簡報），發布到 `https://claude.ai/artifact/4246Z8nszEfYM84gL5PeF8`（Notion「臨床輔助決策工具」頁面的「簡易上手引導」連到這裡）。功能有使用者看得到的改變時，一起更新這份
 
 ## 開工
 
@@ -39,7 +40,9 @@
 **已知限制（使用者知道，可以接著做）**
 - 查房板 `rounds.v1` 衝突時用雲端版本，本機那份備份在 `hub.sync.bak:rounds.v1`，但沒有介面可以還原。可以在查房板「⋯」加一個「還原同步前的版本」
 - 雲端同步只用假的雲端（tests/conftest.py 的 MOCK_CLOUD）測過，兩台真實裝置的情境還沒實測
-- 主訴處理進行中的 call 存在 sessionStorage：不上雲端，iOS 把分頁殺掉就沒了
+- 主訴處理進行中的 call 存在 sessionStorage：不上雲端，iOS 把分頁殺掉就沒了（admission note 已改存 `oncall.admit.v1`，會同步）
+- 查房板匯入只分血液／尿液；胸水、腹水、CSF 等其他體液還沒有獨立的檢體，會被當成血液。累積報告解析是依常見格式猜的，還沒拿真實的 HIS 畫面驗證
+- 尿液項目沒有正常範圍（刻意不標）
 - `hubTodo` 有三份一樣的程式（consult／copilot／meds），抽成共用檔案能少一個出錯的地方，但每個工具要能單獨打開，所以要注意載入方式
 
 **下一步建議**（依價值排序，動手前先問使用者要做哪個）
@@ -52,6 +55,8 @@
 - **總站與工具同源**：總站 `index.html` 用 iframe 載入 `tools/*.html`，大家共用同一份 localStorage。工具之間靠 `storage` 事件和 `postMessage({hub: ...})` 溝通。
 - **待辦表 `shiftboard.v1` 有很多寫入者**：主訴處理、會診稿、用藥速查透過內嵌的 `hubTodo`（三份一樣的程式，改一份要三份一起改），查房板則有自己的 `todoAdd`。每個寫入者都是先讀、改、再寫回整包。待辦表存檔前會先讀回別人新加的項目，靠 `gone` 記住自己刪掉的。
 - **待辦表的刪除紀錄 `del`**（id → 刪除時間，14 天後清掉）：從待辦表移除項目（不是移到已完成）的地方都要寫進 `del`，雲端合併（`index.html` 的 `merge`）才知道那是刪的。目前寫入的地方：待辦表 `save()`（由 `gone` 轉入）、總站「撤銷」、查房板每日追蹤點換新和刪 problem。查房板「從這台電腦刪除這床」故意不寫（只在未同步的電腦上能用）。
+- **追蹤點進待辦**：有日期的（非每日）一新增就送進待辦（`due` = 那天 08:00）；沒有日期的（範本的「出院前」）不送。刪追蹤點會刪它還沒完成的待辦並寫 `del`
+- **檢驗 id**：血液用 `LABS` 的 id（Na、K…），尿液用 `U-` 開頭（`U-Na`）或 `UPCR`、`UACR`，在 `ULABS`；`URINE_OF`／`BLOOD_OF` 是同名項目的對照。`parseLabs(text, spec)` 的 spec 是 auto／B／U；`parseHistory` 回傳 `{days:[{d, vals, on}], skipped}`
 - **子項目一律用 id 對應**（`<待辦 id>.<k>`），不要用陣列位置。
 - **雲端同步**（`index.html` 最後一段）：以 key 為單位、整包同步。雲端有新資料時，對每個 iframe 送一個合成的 `StorageEvent`。只有 `OWN` 表裡列的工具，在自己的 key 變了時才重新載入。新增會被其他裝置改到的 key 時，要確認對應的工具有聽 `storage` 事件，不然就加進 `OWN`。
 - **只存本機的 key** 加在 `skip()`（目前是 `hub.sync.*` 和 `acls-run`）。

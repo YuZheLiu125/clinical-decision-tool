@@ -1,0 +1,750 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>臨床輔助決策工具上手指引</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Nunito:wght@400;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* ===========================================
+   THEME — Swiss Modern：白底、純黑、紅 #ff3300；可見格線、不對稱
+   改顏色或字型只要改這裡
+   =========================================== */
+:root{
+  --stage-bg:#111; --slide-bg:#fff;
+  --ink:#0a0a0a; --ink2:#4a4a4a; --ink3:#8a8a8a; --red:#ff3300; --red-soft:#fff0eb; --line:#0a0a0a; --hair:#e6e6e6; --grid:rgba(0,0,0,.06);
+  --display:'Archivo','Noto Sans TC',sans-serif; --body:'Nunito','Noto Sans TC',sans-serif; --mono:'JetBrains Mono','Noto Sans TC',monospace;
+  /* 工具辨識色（和工具本身一致） */
+  --t-code:#C0262F; --t-pilot:#A35500; --t-consult:#2C5C8C; --t-meds:#0D6870; --t-labs:#5B4699; --t-rounds:#3F6B2E; --t-todo:#B4573A;
+  --ease:cubic-bezier(.16,1,.3,1);
+  color-scheme:light;
+}
+/* 單一淺色版面（Swiss 白底），刻意不做深色版；所有顏色都明確指定 */
+body{background:var(--stage-bg);color:var(--ink)}
+.deck-viewport{top:env(safe-area-inset-top,0px)!important;bottom:env(safe-area-inset-bottom,0px)!important}
+* { margin:0; padding:0; box-sizing:border-box; }
+
+/* ===========================================
+   FIXED 16:9 STAGE: MANDATORY BASE STYLES
+   Include this ENTIRE file in every presentation.
+   Slides are authored at 1920×1080 and scaled as a whole.
+   =========================================== */
+
+/* 1. Lock the browser viewport */
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+
+/* 2. Full-window deck viewport */
+.deck-viewport {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+
+/* 3. Fixed 16:9 design canvas.
+   JavaScript sets transform: translate(...) scale(...). */
+.deck-stage {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    transform-origin: 0 0;
+    background: var(--slide-bg, #fff);
+}
+
+/* 4. Slides stack inside the fixed stage.
+   Content must be laid out at 1920×1080, not reflowed per device. */
+.slide {
+    position: absolute;
+    inset: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    display: block;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    background: var(--slide-bg, #fff);
+}
+
+.slide.active,
+.slide.visible {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 1;
+}
+
+/* 5. Keep media inside authored slide bounds */
+img,
+video,
+canvas,
+svg {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* 6. Presentation chrome stays outside the slide design system */
+.deck-controls {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    transform: translateX(-50%);
+    z-index: 1000;
+}
+
+/* 7. Print one fixed-size slide per page */
+@media print {
+    html,
+    body {
+        width: 1920px;
+        height: auto;
+        overflow: visible;
+        background: #fff;
+    }
+
+    .deck-viewport {
+        position: static;
+        overflow: visible;
+        background: #fff;
+    }
+
+    .deck-stage {
+        position: static;
+        width: auto;
+        height: auto;
+        transform: none !important;
+        background: none;
+    }
+
+    .slide {
+        position: relative;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        width: 1920px;
+        height: 1080px;
+        break-after: page;
+        page-break-after: always;
+    }
+
+    .slide:last-child {
+        break-after: auto;
+        page-break-after: auto;
+    }
+
+    .deck-controls {
+        display: none !important;
+    }
+}
+
+/* 8. Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.2s !important;
+    }
+}
+
+
+/* ===========================================
+   SLIDE FRAME — 格線、頂端列、頁碼
+   =========================================== */
+.s{font-family:var(--body);color:var(--ink);font-size:26px;line-height:1.5}
+.s::before{content:"";position:absolute;inset:0;background-image:linear-gradient(to right,var(--grid) 1px,transparent 1px);background-size:160px 100%;pointer-events:none}
+.top{position:absolute;left:96px;right:96px;top:56px;display:flex;justify-content:space-between;align-items:center;font:700 22px/1 var(--display);letter-spacing:.04em;z-index:2}
+.top .sec{color:var(--red)}
+.pn{position:absolute;left:96px;bottom:44px;font:600 22px var(--display);color:var(--ink);z-index:2}
+.foot-url{position:absolute;right:96px;bottom:44px;font:800 22px var(--display);z-index:2}
+.foot-url i{font-style:normal;color:var(--red)}
+
+/* ===========================================
+   CONTENT LAYOUT — 左欄標題、右欄內容
+   =========================================== */
+.hd{position:absolute;left:96px;top:150px;width:600px;z-index:2}
+.hd .no{display:block;width:72px;height:72px;background:var(--red);color:#fff;font:900 34px/72px var(--display);text-align:center;margin-bottom:34px}
+.hd h2{font:900 84px/1.12 var(--display);letter-spacing:0}
+.hd .lead{margin-top:28px;font:600 30px/1.55 var(--body);color:var(--ink2)}
+.hd .rule{width:120px;height:6px;background:var(--ink);margin-top:34px}
+.bd{position:absolute;left:780px;right:96px;top:150px;bottom:120px;z-index:2}
+.wide{position:absolute;left:96px;right:96px;top:150px;bottom:120px;z-index:2}
+
+/* 步驟清單 */
+.steps{list-style:none;counter-reset:st;border-top:6px solid var(--ink)}
+.steps li{counter-increment:st;display:grid;grid-template-columns:76px 1fr;gap:0 10px;padding:20px 0;border-bottom:1.5px solid var(--ink);font:700 30px/1.4 var(--body)}
+.steps li::before{content:counter(st,decimal-leading-zero);font:800 28px/1.5 var(--display);color:var(--red)}
+.steps li small{grid-column:2;display:block;font:400 24px/1.5 var(--body);color:var(--ink2);margin-top:4px}
+.steps.tight li{padding:18px 0;font-size:29px}
+.steps.tight li small{font-size:24px}
+
+/* 卡片格 */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+.card{border:1.5px solid var(--ink);padding:28px 30px;background:#fff}
+.card h3{font:800 32px/1.3 var(--display);margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.card h3 .dot{width:16px;height:16px;flex:none;background:var(--red)}
+.card p,.card li{font:400 25px/1.6 var(--body);color:var(--ink2)}
+.card li+li{margin-top:6px}
+.card ul{list-style:none}
+.card li{padding-left:22px;position:relative}
+.card li::before{content:"";position:absolute;left:0;top:.66em;width:10px;height:3px;background:var(--red)}
+.card b{color:var(--ink)}
+
+/* 提醒框 */
+.tip{border-left:10px solid var(--red);background:var(--red-soft);padding:18px 24px;font:600 24px/1.5 var(--body)}
+.tip b{color:var(--red)}
+.note{font:400 21px/1.5 var(--body);color:var(--ink3)}
+
+/* 標籤 */
+.tag{display:inline-block;font:800 20px/1 var(--mono);padding:7px 10px;color:#fff;background:var(--c,var(--ink));min-width:64px;text-align:center}
+.kbd{display:inline-block;font:700 21px/1 var(--body);border:1.5px solid var(--ink);padding:5px 10px;margin:0 2px;vertical-align:2px}
+.mono{font-family:var(--mono)}
+.red{color:var(--red)}
+
+/* ===========================================
+   SLIDE-SPECIFIC
+   =========================================== */
+/* 01 封面 */
+.cover .redsq{position:absolute;left:96px;top:200px;width:120px;height:120px;background:var(--red)}
+.cover .title{position:absolute;left:96px;top:350px;font:900 230px/1.02 var(--display)}
+.cover .kick{position:absolute;left:100px;top:868px;font:600 36px/1.4 var(--body);max-width:900px}
+.cover .list{position:absolute;right:96px;top:250px;width:560px;border-top:6px solid var(--ink);list-style:none}
+.cover .list li{display:grid;grid-template-columns:90px 1fr;align-items:baseline;padding:22px 0;border-bottom:1.5px solid var(--ink);font:700 34px/1.2 var(--body)}
+.cover .list li b{font:800 30px var(--display);color:var(--red)}
+.cover .list li small{display:block;grid-column:2;font:400 22px/1.4 var(--body);color:#555;margin-top:4px}
+.cover .url{position:absolute;right:96px;bottom:56px;font:800 30px var(--display)}
+.cover .url i{font-style:normal;color:var(--red)}
+.cover .pn{bottom:40px}
+
+/* 02 網址大字 */
+.bigurl{font:900 112px/1 var(--display);letter-spacing:-.01em;display:flex;align-items:center;gap:26px;margin-bottom:46px}
+.bigurl::before{content:"→";color:var(--red)}
+.addhome{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:30px}
+.addhome .card{padding:20px 22px}
+.addhome h3{font-size:26px}
+.addhome p{font-size:21px}
+
+/* 03 畫面導覽 — 電腦與手機示意 */
+.mock{position:absolute;border:4px solid var(--ink);background:#EEF1F2}
+.mock .bar{position:absolute;left:0;right:0;top:0;height:30px;background:var(--ink)}
+.mock .bar::before{content:"";position:absolute;left:14px;top:11px;width:44px;height:8px;background:radial-gradient(circle,#ff5f57 3.5px,transparent 4px) 0 0/15px 8px repeat-x}
+.desk{left:96px;top:300px;width:1020px;height:620px}
+.desk .cards6{position:absolute;left:24px;right:24px;top:56px;height:84px;display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.desk .cards6 i{background:#fff;border-top:7px solid var(--c);border:1px solid #cfd6d9;border-top:7px solid var(--c)}
+.desk .tabs6{position:absolute;left:24px;right:24px;top:56px;height:40px;display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.desk .tabs6 i{background:#fff;border:1px solid #cfd6d9}
+.desk .tabs6 i:last-child{background:var(--ink)}
+.desk .main{position:absolute;left:24px;top:112px;bottom:22px;width:600px;background:#fff;border:1px solid #cfd6d9}
+.desk .main::before{content:"";position:absolute;left:24px;right:24px;top:24px;height:14px;background:repeating-linear-gradient(#e3e7e9 0 14px,transparent 14px 34px);bottom:24px}
+.desk .side{position:absolute;right:24px;top:112px;bottom:22px;width:330px;background:#fff;border:1px solid #cfd6d9}
+.desk .side::before{content:"";position:absolute;left:18px;right:18px;top:20px;bottom:20px;background:repeating-linear-gradient(#fff 0 8px,#f5e3da 8px 70px,#fff 70px 84px);border-left:6px solid var(--t-todo)}
+.phone{left:1280px;top:250px;width:330px;height:680px;border-radius:46px;border-width:10px;overflow:hidden;background:#fff}
+.phone .ptabs{position:absolute;left:0;right:0;top:44px;height:56px;display:grid;grid-template-columns:repeat(6,1fr);border-bottom:1px solid #cfd6d9}
+.phone .ptabs i{border-bottom:5px solid transparent}
+.phone .ptabs i:last-child{border-bottom-color:var(--t-rounds);background:#e3eedc}
+.phone .pbody{position:absolute;left:18px;right:18px;top:120px;bottom:20px;background:repeating-linear-gradient(#eef1f2 0 70px,#fff 70px 86px)}
+.phone .fab{position:absolute;right:20px;bottom:24px;width:64px;height:64px;border-radius:50%;background:var(--t-todo);box-shadow:0 6px 16px rgba(0,0,0,.25)}
+.phone .fab::after{content:"3";position:absolute;right:-6px;top:-6px;width:28px;height:28px;border-radius:50%;background:var(--t-code);color:#fff;font:800 16px/28px var(--display);text-align:center;border:3px solid #fff}
+.callout{position:absolute;display:flex;align-items:center;gap:12px;font:700 23px/1.35 var(--body);z-index:3}
+.callout b{flex:none;width:40px;height:40px;background:var(--red);color:#fff;font:900 22px/40px var(--display);text-align:center}
+.callout span{background:#fff;padding:4px 8px}
+
+/* 04 依狀況選工具 */
+.triage{width:100%;border-collapse:collapse;border-top:6px solid var(--ink)}
+.triage td{padding:15px 14px;border-bottom:1.5px solid var(--ink);vertical-align:middle;font:400 24px/1.4 var(--body);color:var(--ink2)}
+.triage td:first-child{width:110px;padding-left:0}
+.triage td:nth-child(2){width:330px;font-weight:700;color:var(--ink)}
+.triage td:nth-child(3){width:300px;font:800 28px/1.3 var(--display);color:var(--ink)}
+.arrow-lab{position:absolute;right:0;top:-46px;font:700 21px var(--display);color:var(--ink3)}
+
+/* 06 主訴處理六步驟 */
+.six{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:22px}
+.six div{border:1.5px solid var(--ink);padding:20px 22px;min-height:200px}
+.six b{display:block;font:900 40px/1 var(--display);color:var(--red);margin-bottom:6px}
+.six strong{display:block;font:800 29px/1.3 var(--display)}
+.six p{font:400 23px/1.5 var(--body);color:var(--ink2);margin-top:6px}
+
+/* 07 ISBAR */
+.isbar{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border-top:6px solid var(--ink);border-bottom:1.5px solid var(--ink)}
+.isbar div{padding:26px 20px;border-right:1.5px solid var(--hair)}
+.isbar div:last-child{border-right:0}
+.isbar b{display:block;font:900 64px/1 var(--display);color:var(--red)}
+.isbar strong{display:block;font:800 28px/1.35 var(--display);margin-top:12px}
+.isbar p{font:400 23px/1.5 var(--body);color:var(--ink2);margin-top:8px}
+
+/* 09 待辦表四級 */
+.pr4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:8px 0 24px}
+.pr4 span{border:2px solid var(--c);color:var(--c);text-align:center;padding:12px 0;font:800 26px/1.2 var(--body);border-radius:999px}
+.pr4 span small{display:block;font:500 18px var(--body);color:var(--ink2);margin-top:2px}
+
+/* 11 交班範例 */
+.code{background:#0f0f0f;color:#f2f2f2;font:500 20px/1.65 var(--mono);padding:22px 26px;white-space:pre-wrap}
+.code .k{color:#ff7a59;font-weight:700}
+
+/* 12 傳送流程 */
+.flow{display:grid;grid-template-columns:1fr 150px 1fr;align-items:center;margin-bottom:30px}
+.dev{border:4px solid var(--ink);padding:22px 26px;min-height:150px}
+.dev h3{font:900 32px/1.2 var(--display);display:flex;align-items:center;gap:12px}
+.dev p{font:400 22px/1.5 var(--body);color:var(--ink2);margin-top:8px}
+.qrmid{display:flex;flex-direction:column;align-items:center;gap:8px;font:800 22px var(--display)}
+.qrmid i{width:86px;height:86px;background:
+  conic-gradient(from 90deg at 30% 30%,#000 25%,transparent 0) 0 0/28px 28px,
+  linear-gradient(#000,#000) 6px 6px/24px 24px no-repeat,
+  linear-gradient(#000,#000) 56px 6px/24px 24px no-repeat,
+  linear-gradient(#000,#000) 6px 56px/24px 24px no-repeat;border:4px solid #000;outline:4px solid #fff}
+.qrmid i+span{color:var(--red);font-size:40px;line-height:1}
+
+/* 14 小抄 */
+.cheat{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.cheat .card{border-width:2px;padding:26px 28px;min-height:330px}
+.cheat .when{font:900 40px/1.15 var(--display);margin-bottom:16px}
+.cheat ol{list-style:none;counter-reset:c}
+.cheat li{counter-increment:c;font:600 24px/1.5 var(--body);color:var(--ink);padding:8px 0 8px 46px;position:relative;border-top:1.5px solid var(--hair)}
+.cheat li::before{content:counter(c);position:absolute;left:0;top:8px;width:32px;height:32px;background:var(--red);color:#fff;font:900 20px/32px var(--display);text-align:center}
+.end-url{position:absolute;left:96px;bottom:110px;font:900 96px/1 var(--display);display:flex;gap:24px;align-items:center}
+.end-url::before{content:"→";color:var(--red)}
+.end-by{position:absolute;right:96px;bottom:124px;font:600 24px var(--body);color:var(--ink2);text-align:right}
+
+/* ===========================================
+   ANIMATIONS — 進入該頁時依序出現
+   =========================================== */
+.r{opacity:0;transform:translateY(26px);transition:opacity .7s var(--ease),transform .7s var(--ease)}
+.slide.visible .r{opacity:1;transform:none}
+.slide.visible .d1{transition-delay:.08s}.slide.visible .d2{transition-delay:.18s}.slide.visible .d3{transition-delay:.28s}.slide.visible .d4{transition-delay:.38s}.slide.visible .d5{transition-delay:.48s}
+.redsq.r,.hd .no.r{transform:scaleX(0);transform-origin:left}
+.slide.visible .redsq,.slide.visible .hd .no{transform:none}
+@media (prefers-reduced-motion:reduce){.r{transition:none!important;opacity:1!important;transform:none!important}}
+
+/* ===========================================
+   DECK CHROME — 舞台外的控制（不屬於投影片）
+   =========================================== */
+.progress{position:fixed;left:0;top:0;height:4px;background:var(--red);z-index:1001;transition:width .4s var(--ease)}
+.deck-controls{display:flex;gap:10px;align-items:center;background:rgba(20,20,20,.82);padding:8px 10px;border-radius:999px;color:#fff;font:600 14px var(--body);opacity:.25;transition:opacity .25s}
+.deck-controls:hover,.deck-controls:focus-within{opacity:1}
+.deck-controls button{width:38px;height:38px;border-radius:50%;border:0;background:#fff;color:#111;font:800 18px var(--display);cursor:pointer}
+.deck-controls span{min-width:64px;text-align:center}
+.rotate-hint{position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:1002;background:#fff;color:#111;font:700 14px var(--body);padding:8px 14px;border-radius:999px;display:none}
+@media (orientation:portrait) and (max-width:700px){.rotate-hint{display:block}}
+.edit-badge{position:fixed;left:12px;top:12px;z-index:1003;background:var(--red);color:#fff;font:700 13px var(--body);padding:6px 10px;border-radius:6px;display:none}
+body.editing .edit-badge{display:block}
+body.editing [contenteditable=true]{outline:2px dashed rgba(255,51,0,.5);outline-offset:4px}
+.edit-hot{position:fixed;left:0;top:0;width:60px;height:60px;z-index:1002}
+.edit-hot:hover+.edit-tip{opacity:1}
+.edit-tip{position:fixed;left:12px;top:12px;z-index:1003;background:#fff;color:#111;font:600 13px var(--body);padding:6px 10px;border-radius:6px;opacity:0;pointer-events:none;transition:opacity .2s}
+</style>
+<div class="progress" id="progress"></div>
+<div class="rotate-hint">把手機橫放看得更清楚</div>
+
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+<!-- ============ 01 封面 ============ -->
+<section class="slide s cover active">
+  <div class="top r"><span>臨床輔助決策工具</span><span class="sec">快速上手指引</span></div>
+  <div class="redsq r"></div>
+  <h1 class="title r d1">快速<br>上手</h1>
+  <p class="kick r d3">從被 call、開藥、看報告，到查房、交班——<br>七個工具，一次學會怎麼用。</p>
+  <ol class="list r d2">
+    <li><b>01</b>ACLS 輔助工具<small>急救、心律不整</small></li>
+    <li><b>02</b>主訴處理<small>剛被 call、病人不穩</small></li>
+    <li><b>03</b>會診稿・用藥・正常值<small>打電話、開藥、判讀數字</small></li>
+    <li><b>04</b>查房板＋待辦表<small>追病人、交班、不漏事</small></li>
+  </ol>
+  <div class="pn r"></div>
+  <div class="url r d4"><i>→</i> lycdx.notion.site</div>
+</section>
+
+<!-- ============ 02 怎麼打開 ============ -->
+<section class="slide s">
+  <div class="top r"><span>臨床輔助決策工具</span><span class="sec">開始</span></div>
+  <div class="hd">
+    <span class="no r">02</span>
+    <h2 class="r d1">先打開它</h2>
+    <p class="lead r d2">只要記一個網址。手機、電腦都能開，不用安裝。</p>
+    <div class="rule r d3"></div>
+  </div>
+  <div class="bd">
+    <div class="bigurl r d1">lycdx.notion.site</div>
+    <ol class="steps tight r d2">
+      <li>用手機或電腦的瀏覽器打開 lycdx.notion.site</li>
+      <li>點頁面上的「👉 打開臨床輔助決策工具」</li>
+      <li>把它放到手邊<small>下面三種方式擇一，之後一點就開</small></li>
+    </ol>
+    <div class="addhome r d3">
+      <div class="card"><h3><span class="dot"></span>iPhone</h3><p>Safari →「分享」→「加入主畫面」</p></div>
+      <div class="card"><h3><span class="dot"></span>Android</h3><p>Chrome → 右上「⋮」→「加到主畫面」</p></div>
+      <div class="card"><h3><span class="dot"></span>電腦</h3><p>加入書籤；院內電腦用完記得關掉分頁</p></div>
+    </div>
+  </div>
+  <div class="pn r"></div><div class="foot-url r"><i>→</i> lycdx.notion.site</div>
+</section>
+
+<!-- ============ 03 畫面導覽 ============ -->
+<section class="slide s">
+  <div class="top r"><span>臨床輔助決策工具</span><span class="sec">畫面導覽</span></div>
+  <div style="position:absolute;left:96px;top:150px;z-index:2">
+    <h2 class="r" style="font:900 72px/1.1 var(--display)">一個畫面，七個工具</h2>
+    <p class="r d1" style="font:600 28px/1.5 var(--body);color:var(--ink2);margin-top:12px">電腦：左邊放工具、右邊待辦表常駐。手機：上方分頁，左右滑切換。</p>
+  </div>
+  <div class="mock desk r d2">
+    <div class="bar"></div>
+    <div class="tabs6"><i style="border-top:4px solid var(--t-code)"></i><i style="border-top:4px solid var(--t-pilot)"></i><i style="border-top:4px solid var(--t-consult)"></i><i style="border-top:4px solid var(--t-meds)"></i><i style="border-top:4px solid var(--t-labs)"></i><i style="border-top:4px solid var(--t-rounds)"></i></div>
+    <div class="main"></div><div class="side"></div>
+  </div>
+  <div class="callout r d3" style="left:150px;top:312px"><b>1</b><span>上方分頁：工具名＋什麼狀況用，由左到右越不急</span></div>
+  <div class="callout r d3" style="left:150px;top:610px"><b>2</b><span>工作區：目前打開的工具</span></div>
+  <div class="callout r d3" style="left:760px;top:940px"><b>3</b><span>待辦表：永遠在右邊，倒數到了會響</span></div>
+  <div class="mock phone r d4"><div class="ptabs"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="pbody"></div><div class="fab"></div></div>
+  <div class="callout r d5" style="left:1250px;top:196px"><b>4</b><span>上方分頁，左右滑切換</span></div>
+  <div class="callout r d5" style="left:1360px;top:928px"><b>5</b><span>右下圓鈕＝待辦<br>紅色數字＝已到時</span></div>
+  <div class="pn r"></div><div class="foot-url r"><i>→</i> lycdx.notion.site</div>
+</section>
+
+<!-- ============ 04 依狀況選工具 ============ -->
+<section class="slide s">
+  <div class="top r"><span>臨床輔助決策工具</span><span class="sec">選工具</span></div>
+  <div class="hd" style="width:520px">
+    <span class="no r">04</span>
+    <h2 class="r d1">先看狀況，<br>再選工具</h2>
+    <p class="lead r d2">工具照緊急程度排好了。<br>不確定用哪個，就看這張表。</p>
+    <div class="rule r d3"></div>
+  </div>
+  <div class="bd" style="left:700px">
+    <div class="arrow-lab r">由上到下越不急 ↓</div>
+    <table class="triage r d1">
+      <tr><td><span class="tag" style="--c:var(--t-code)">P0</span></td><td>急救、心律不整</td><td>ACLS 輔助工具</td><td>計時、流程、可逆原因</td></tr>
+      <tr><td><span class="tag" style="--c:var(--t-pilot)">P1</span></td><td>剛被 call、病人不穩</td><td>主訴處理</td><td>叫人時機、問診、鑑別、醫囑、note</td></tr>
+      <tr><td><span class="tag" style="--c:var(--t-consult)">P2</span></td><td>要打電話找人會診</td><td>會診電話稿</td><td>ISBAR 填空，照稿唸</td></tr>
+      <tr><td><span class="tag" style="--c:var(--t-meds)">P3</span></td><td>病人穩定、要開藥</td><td>值班用藥速查</td><td>依病人狀態標首選／慎用／禁用</td></tr>
+      <tr><td><span class="tag" style="--c:var(--t-labs)">P3</span></td><td>報告回來、要判讀</td><td>檢驗正常值</td><td>正常值、警覺值、腎功能計算</td></tr>
+      <tr><td><span class="tag" style="--c:var(--t-rounds)">日常</span></td><td>查房、追病人、交班</td><td>查房板</td><td>每床 problem、清單、交班</td></tr>
+      <tr><td><span class="tag" style="--c:var(--t-todo)">常駐</span></td><td>每一件要做的事</td><td>待辦表</td><td>倒數提醒，不漏事</td></tr>
+    </table>
+  </div>
+  <div class="pn r"></div><div class="foot-url r"><i>→</i> lycdx.notion.site</div>
+</section>
+
+<!-- ============ 05 ACLS ============ -->
+<section class="slide s">
+  <div class="top r"><span>臨床輔助決策工具</span><span class="sec">P0・急救</span></div>
+  <div class="hd">
+    <span class="no r" style="background:var(--t-code)">P0</span>
+    <h2 class="r d1">ACLS<br>輔助工具</h2>
+    <p class="lead r d2">急救現場用的計時、鑑別與速查。內容依 2025 AHA 指引整理。</p>
+    <div class="rule r d3"></div>
+  </div>
+  <div class="bd">
+    <div class="grid2 r d1">
+      <div class="card"><h3><span class="dot"></span>Code 計時器</h3><ul><li>壓胸節拍 <b>110/min</b>，可開聲音</li><li>每個處置自動記時間，<b>最新在上</b></li><li>切到別的工具，<b>計時器照樣在跑</b></li></ul></div>
+      <div class="card"><h3><span class="dot"></span>流程</h3><ul><li>心跳停止（可電擊／不可電擊）</li><li>心搏過緩、心搏過速</li><li>ROSC 後照護</li></ul></div>
+      <div class="card"><h3><span class="dot"></span>H's &amp; T's</h3><ul><li>點出看到的線索</li><li>依情境與概似比，算出<b>各可逆原因的機率</b></li></ul></div>
+      <div class="card"><h3><span class="dot"></span>速查與複習</h3><ul><li>藥物速查、自我測驗</li><li>「2025 改了什麼」，新內容標紫色 <b>NEW</b></li></ul></div>
+    </div>
+    <div class="tip r d3" style="margin-top:26px">急救時以團隊和 code leader 為準。工具是幫你<b>記時間、不漏步驟</b>，不是代替判斷。</div>
+  </div>
+  <div class="pn r"></div><div class="foot-url r"><i>→</i> lycdx.notion.site</div>
+</section>
+
+<!-- ============ 06 主訴處理 ============ -->
+<section class="slide s">
+  <div class="top r"><span>臨床輔助決策工具</span><span class="sec">P1・被 call</span></div>
+  <div class="hd" style="width:560px">
+    <span class="no r" style="background:var(--t-pilot)">P1</span>
+    <h2 class="r d1">主訴處理</h2>
+    <p class="lead r d2">在首頁輸入主訴（發燒、掉血壓、解黑便…）按 Enter，跟著六個步驟走，<b>note 同步寫好</b>。</p>
+    <div class="rule r d3"></div>
+    <p class="note r d3" style="margin-top:26px">上方填「護理師說」和生命徵象：<br>橘色＝異常、紅色＝危急；qSOFA ≥ 2 會變紅。</p>
+  </div>
+  <div class="bd" style="left:740px">
+    <div class="six r d1">
+      <div><b>0</b><strong>安全優先</strong><p>紅框＝立即叫學長姊／主治的條件，加上前 5 分鐘清單</p></div>
+      <div><b>1</b><strong>問診</strong><p>點「有 +」「沒有 −」，自動寫成 (+)／(−)</p></div>
+      <div><b>2</b><strong>理學檢查</strong><p>點正常或異常的細項，同時寫進 note 和機率計算</p></div>
+      <div><b>3</b><strong>鑑別診斷</strong><p>貝氏驗後機率，看「為什麼較可能」和還沒問的關鍵題</p></div>
+      <div><b>4</b><strong>醫囑</strong><p>勾選加進 Plan；先看過敏、腎肝功能、懷孕、抗凝提醒</p></div>
+      <div><b>5</b><strong>Note</strong><p>寫 Assessment 第一行，複製 note 貼回 EMR</p></div>
+    </div>
+    <div class="tip r d3" style="margin-top:22px">收尾：沒做完的醫囑<b>送到待辦表</b>，再按「結束這個 call」。同時好幾個 call，就回首頁開新的。</div>
+    <p class="note r d4" style="margin-top:14px"><b style="color:var(--ink)">接新病人</b>：手機問診寫的 admission note 會<b style="color:var(--ink)">同步到電腦</b>（右上角「已同步」時）。電腦打開主訴處理 →「撰寫中」按繼續 → 複製貼回 EMR。</p>
+  </div>
+  <div class="pn r"></div><div class="foot-url r"><i>→</i> lycdx.notion.site</div>
+</section>
+
+<!-- ============ 07 會診電話稿 ============ -->
+<section class="slide s">
+  <div class="top r"><span>臨床輔助決策工具</span><span class="sec">P2・打電話</span></div>
+  <div style="position:absolute;left:96px;right:96px;top:150px;z-index:2;display:flex;align-items:flex-end;gap:40px">
+    <span class="r" style="flex:none;width:72px;height:72px;background:var(--t-consult);color:#fff;font:900 34px/72px var(--display);text-align:center">P2</span>
+    <div><h2 class="r d1" style="font:900 84px/1.05 var(--display)">會診電話稿</h2></div>
+    <p class="r d2" style="font:600 30px/1.5 var(--body);color:var(--ink2);padding-bottom:8px">撥號前 30 秒：填空、看檢核，然後照稿唸。</p>
+  </div>
+  <div class="wide" style="top:330px">
+    <div class="isbar r d2">
+      <div><b>I</b><strong>你是誰、打給誰</strong><p>名字、身份、單位、床號、會診科別</p></div>
+      <div><b>S</b><strong>一句話講問題</strong><p>判斷放前面：你擔心的診斷，穩定或不穩定</p></div>
+      <div><b>B</b><strong>相關病史</strong><p>和這次問題有關的就好</p></div>
+      <div><b>A</b><strong>生命徵象與發現</strong><p>HR、BP、RR、SpO₂、BT、意識，關鍵檢查結果</p></div>
+      <div><b>R</b><strong>你要對方做什麼</strong><p>現在下來看、評估手術、電話建議、轉 ICU、書面會診</p></div>
+    </div>
+    <ol class="steps tight r d3" style="margin-top:34px;border-top:0;display:grid;grid-template-columns:repeat(3,1fr);gap:0 30px">
+      <li style="border-top:1.5px solid var(--ink)">看「撥號前檢核」<small>漏了什麼會提醒你</small></li>
+      <li style="border-top:1.5px solid var(--ink)">開「唸稿模式」照著唸<small>或「複製稿子」</small></li>
+      <li style="border-top:1.5px solid var(--ink)">「加入待辦：等回電」<small>回電前不會忘記</small></li>
+    </ol>
+    <p class="note r d4" style="margin-top:18px">第一次用可以先按「看範例」，看一份填好的稿子長什麼樣。</p>
+  </div>
+  <div class="pn r"></div><div class="foot-url r"><i>→</i> lycdx.notion.site</div>
+</section>
+
+<!-- ============ 08 用藥速查＋正常值 ============ -->
+<section class="slide s">
+  <div class="top r"><span>臨床輔助決策工具</span><span class="sec">P3・開藥與看報告</span></div>
+  <div class="wide" style="top:150px">
+    <div class="grid2" style="gap:40px">
+      <div class="r d1">
+        <div style="display:flex;align-items:center;gap:20px;margin-bottom:24px"><span class="tag" style="--c:var(--t-meds);font-size:24px;padding:10px 14px">P3</span><h2 style="font:900 64px/1.1 var(--display)">值班用藥速查</h2></div>
+        <ol class="steps tight">
+          <li>先選病人狀態<small>腎功能、高齡、懷孕、兒童…可複選</small></li>
+          <li>整份工具即時標示<small><b class="red">首選／慎用／禁用</b>，並重新排序</small></li>
+          <li>看不懂的縮寫開「辭典」<small>要開的藥可以匯入待辦</small></li>
+        </ol>
+        <div class="tip" style="margin-top:22px">劑量皆為成人劑量，<b>開立前再核對</b>院內處方集。</div>
+      </div>
+      <div class="r d2">
+        <div style="display:flex;align-items:center;gap:20px;margin-bottom:24px"><span class="tag" style="--c:var(--t-labs);font-size:24px;padding:10px 14px">P3</span><h2 style="font:900 64px/1.1 var(--display)">檢驗正常值</h2></div>
+        <ol class="steps tight">
+          <li>一眼口訣<small>魚骨圖寫法：Chem-7、CBC、ABG</small></li>
+          <li>正常值＋值班警覺值<small>哪些數字要立刻處理</small></li>
+          <li>腎功能計算<small>CrCl（Cockcroft-Gault）、eGFR（CKD-EPI 2021）、AKI 判斷</small></li>
+        </ol>
+        <div class="tip" style="margin-top:22px">各院參考範圍不同，<b>以檢驗報告為準</b>。</div>
+      </div>
+    </div>
+  </div>
+  <div class="pn r"></div><div class="foot-url r"><i>→</i> lycdx.notion.site</div>
+</section>
+
+<!-- ============ 09 待辦表 ============ -->
+<section class="slide s">
+  <div class="top r"><span>臨床輔助決策工具</span><span class="sec">常駐・待辦表</span></div>
+  <div class="hd">
+    <span class="no r" style="background:var(--t-todo)">✓</span>
+    <h2 class="r d1">待辦表</h2>
+    <p class="lead r d2">所有工具的「之後要做」都匯到這裡，依緊急度和時間自動排序。</p>
+    <div class="rule r d3"></div>
+    <div class="tip r d3" style="margin-top:34px">先按 <b>🔔 提醒音</b> 打開。<br>頁面要開著，倒數到了才會響。</div>
+  </div>
+  <div class="bd">
+    <ol class="steps tight r d1">
+      <li>輸入床號和內容<small>例：18｜f/u K</small></li>
+      <li>選緊急程度</li>
+    </ol>
+    <div class="pr4 r d2">
+      <span style="--c:var(--t-code)">立即<small>馬上做</small></span>
+      <span style="--c:#C27416">緊急<small>5–30 分倒數</small></span>
+      <span style="--c:#4F6B8A">待辦<small>幾小時、明天</small></span>
+      <span style="--c:#8A867B">有空<small>不計時</small></span>
+    </div>
+    <div class="grid2 r d3">
+      <div class="card"><h3><span class="dot"></span>每張卡片</h3><ul><li>完成、+10 分、升級、刪除</li><li>點開有<b>子項目</b>，可以再加</li><li>到時間會閃爍</li></ul></div>
+      <div class="card"><h3><span class="dot"></span>其他功能</h3><ul><li>排列：<b>依緊急程度</b>或<b>依床號</b>（同一床排在一起）</li><li>可設<b>重複</b>（例：每小時 finger sugar）</li><li>螢幕常亮、「產生交班文字」</li></ul></div>
+    </div>
+  </div>
+  <div class="pn r"></div><div class="foot-url r"><i>→</i> lycdx.notion.site</div>
+</section>
+
+<!-- ============ 10 查房板① ============ -->
+<section class="slide s">
+  <div class="top r"><span>臨床輔助決策工具</span><span class="sec">日常・查房板 1/3</span></div>
+  <div class="hd" style="width:540px">
+    <span class="no r" style="background:var(--t-rounds)">10</span>
+    <h2 class="r d1">查房板：<br>每床一張卡</h2>
+    <p class="lead r d2">取代印出來、抄滿字的病人清單。新增病人只寫<b>床號＋代號</b>，不寫全名、病歷號。</p>
+    <div class="rule r d3"></div>
+  </div>
+  <div class="bd" style="left:720px">
+    <div class="grid2 r d1" style="gap:18px">
+      <div class="card"><h3><span class="dot"></span>Problem list</h3><ul><li>選範本會帶入<b>建議的追蹤點</b></li><li>每個 problem 都要有追蹤點，<b>沒有會標紅</b></li><li>有日期的追蹤點<b>一新增就進待辦</b>，那天早上 8 點提醒</li></ul></div>
+      <div class="card"><h3><span class="dot"></span>每日清單 10 項</h3><ul><li>管路、抗生素、DVT 預防、營養…</li><li>每項點 ✓ 或 !</li><li>不會看就點<b>「怎麼看」</b></li></ul></div>
+      <div class="card"><h3><span class="dot"></span>抗生素與管路</h3><ul><li>自動算 <b>D 幾</b></li><li>自動排待辦：<b>D3 看培養</b>、停藥前確認</li></ul></div>
+      <div class="card"><h3><span class="dot"></span>等待中結果</h3><ul><li>培養、影像、會診、病理</li><li>逾期標紅；結果回來，<b>帶回對應的 problem</b></li></ul></div>
+    </div>
+    <p class="note r d3" style="margin-top:18px">點進病人先看<b style="color:var(--ink)">總覽卡片</b>（DNR、problem、異常值、等結果…），點卡片或上方分頁只看那一區；problem 收成一行，點開才編輯。<br>範本和清單內容是建議，請和學長確認。</p>
+  </div>
+  <div class="pn r"></div><div class="foot-url r"><i>→</i> lycdx.notion.site</div>
+</section>
+
+<!-- ============ 11 查房板② 逐床跑與交班 ============ -->
+<section class="slide s">
+  <div class="top r"><span>臨床輔助決策工具</span><span class="sec">日常・查房板 2/3</span></div>
+  <div class="wide">
+    <div class="grid2" style="gap:56px">
+      <div>
+        <h2 class="r" style="font:900 72px/1.1 var(--display);margin-bottom:12px">逐床跑</h2>
+        <p class="r d1" style="font:600 26px/1.5 var(--body);color:var(--ink2);margin-bottom:22px">查房前按「逐床跑」，每床依序過一遍，不漏床。</p>
+        <ol class="steps tight r d2">
+          <li>新異常值<small>紅字異常，「前 x ↑」是比前一次高</small></li>
+          <li>Problem 狀態<small>新／改善／持平／惡化／已解決</small></li>
+          <li>每日清單</li>
+          <li>等待中結果</li>
+          <li>主治交代 → 待辦<small>按「這床完成 → 下一床」；上方顯示今天已過幾床</small></li>
+        </ol>
+      </div>
+      <div>
+        <h2 class="r d1" style="font:900 72px/1.1 var(--display);margin-bottom:12px">產生交班</h2>
+        <p class="r d2" style="font:600 26px/1.5 var(--body);color:var(--ink2);margin-bottom:22px">按「交班」→ 選格式和床 → 先改再複製。</p>
+        <div class="code r d3"><span class="k">【18床 W】</span> DNR 全簽
+<span class="k">I：</span>18床 W，CAP with sepsis
+<span class="k">S：</span>肺炎（改善）
+<span class="k">B：</span>DM；抗生素 Ceftriaxone D3/7；管路 Foley D3
+<span class="k">A：</span>異常 K 2.9↓（前 3.2）、WBC 13.1↑
+<span class="k">R：</span>待辦 明早抽 BCS；等結果 BCx ×2（11/12）</div>
+        <p class="note r d4" style="margin-top:14px">也可以選「口頭報告」：按 problem 逐一講，可以照著唸。<br>R 只列 24 小時內的待辦、等待中結果和交班重點。</p>
+      </div>
+    </div>
+  </div>
+  <div class="pn r"></div><div class="foot-url r"><i>→</i> lycdx.notion.site</div>
+</section>
+
+<!-- ============ 12 匯入與傳送 ============ -->
+<section class="slide s">
+  <div class="top r"><span>臨床輔助決策工具</span><span class="sec">日常・查房板 3/3</span></div>
+  <div style="position:absolute;left:96px;top:150px;z-index:2">
+    <h2 class="r" style="font:900 72px/1.1 var(--display)">從院內電腦，帶到手機</h2>
+    <p class="r d1" style="font:600 28px/1.5 var(--body);color:var(--ink2);margin-top:10px">不經過 LINE、Email 或雲端：電腦產生 QR，手機拍下來。</p>
+  </div>
+  <div class="wide" style="top:350px">
+    <div class="flow r d2">
+      <div class="dev"><h3>💻 院內電腦</h3><p>打開同一個網址 → 查房板 → 「匯入」或單床頁的「📱 整床傳到手機」</p></div>
+      <div class="qrmid"><i></i><span>→</span></div>
+      <div class="dev"><h3>📱 你的手機</h3><p>查房板 → 「匯入」→ 「📷 掃 QR」，每張拍一次</p></div>
+    </div>
+    <div class="grid2 r d3" style="gap:22px">
+      <div class="card"><h3><span class="dot"></span>只傳檢驗值</h3><ul><li>貼上 HIS 複製的文字（<b>最準</b>），或 Ctrl+V 截圖，在本機辨識</li><li>檢體：<b>血液／尿液</b>分開存；認錯了按「改尿／改血」</li><li><b>累積報告</b>（好幾天並排）一次貼上，自動分天存</li><li>核對數值：紅字＝異常，<b>⚠ 會提醒可能少了小數點</b></li><li>點檢驗值看<b>全部紀錄和趨勢圖</b></li></ul></div>
+      <div class="card"><h3><span class="dot"></span>整床傳過去</h3><ul><li>在電腦把一床打好，按「📱 整床傳到手機」</li><li>通常 1–3 張 QR；手機已有這床可選<b>合併或取代</b></li><li>傳完在電腦按<b>「手機收到了，刪除這床」</b></li></ul></div>
+    </div>
+  </div>
+  <div class="pn r"></div><div class="foot-url r"><i>→</i> lycdx.notion.site</div>
+</section>
+
+<!-- ============ 13 資料與隱私 ============ -->
+<section class="slide s">
+  <div class="top r"><span>臨床輔助決策工具</span><span class="sec">資料與隱私</span></div>
+  <div class="hd">
+    <span class="no r">13</span>
+    <h2 class="r d1">資料在哪裡？</h2>
+    <p class="lead r d2"><b>工具擁有者</b>登入 claude.ai 打開：自動同步到<b>自己的私人雲端</b>，只有本人看得到。<br><b>其他人</b>用連結打開：只存在<b>這台裝置的瀏覽器</b>，不上傳。</p>
+    <div class="rule r d3"></div>
+    <div class="tip r d3" style="margin-top:28px">只寫<b>床號和代號</b>，<br>不寫全名、病歷號。</div>
+  </div>
+  <div class="bd">
+    <ol class="steps r d1">
+      <li>看右上角<small>「已同步」＝已存到雲端，滑掉 App、換手機都還在；「僅本機」＝只在這台裝置，滑掉主畫面 App 或清快取就可能不見</small></li>
+      <li>記得存檔<small>查房板「⋯ → 存檔」：內容複製到剪貼簿，貼到手機備忘錄。「僅本機」一定要存；有雲端也建議交班前存一份。超過 24 小時沒存，頂端會變紅提醒</small></li>
+      <li>還原<small>「⋯ → 貼上存檔內容還原」；另有自動快照（每 10 分鐘、保留 3 天）</small></li>
+      <li>病人出院<small>單床頁最下面「出院／移除這床」</small></li>
+      <li>換科輪調<small>「⋯ → 全部清空」，要輸入「清空」才會刪；有雲端同步的話，雲端那份也會一起清掉</small></li>
+    </ol>
+    <p class="note r d3" style="margin-top:22px">本工具僅供學習與臨床輔助參考，不取代臨床判斷、院內規範與主治醫師指示。</p>
+  </div>
+  <div class="pn r"></div><div class="foot-url r"><i>→</i> lycdx.notion.site</div>
+</section>
+
+<!-- ============ 14 小抄 ============ -->
+<section class="slide s">
+  <div class="top r"><span>臨床輔助決策工具</span><span class="sec">一頁小抄</span></div>
+  <div style="position:absolute;left:96px;top:150px;z-index:2"><h2 class="r" style="font:900 72px/1.1 var(--display)">三個時刻，照這樣用</h2></div>
+  <div class="wide" style="top:280px;bottom:260px">
+    <div class="cheat">
+      <div class="card r d1"><div class="when">被 call</div><ol><li>主訴處理，輸入主訴</li><li>紅框出現 → 直接叫人</li><li>沒做完的送到待辦</li></ol></div>
+      <div class="card r d2"><div class="when">查房前</div><ol><li>院內電腦匯入檢驗，掃 QR</li><li>按「逐床跑」</li><li>主治交代 → 待辦</li></ol></div>
+      <div class="card r d3"><div class="when">交班前</div><ol><li>查房板「交班」</li><li>待辦表「產生交班文字」</li><li>查房板「⋯ → 存檔」</li></ol></div>
+    </div>
+  </div>
+  <div class="end-url r d4">lycdx.notion.site</div>
+  <div class="end-by r d5">點「打開臨床輔助決策工具」<br>by 劉宇哲</div>
+  <div class="pn r"></div>
+</section>
+
+</main>
+</div>
+
+<nav class="deck-controls" aria-label="簡報控制"><button id="prevBtn" aria-label="上一頁">‹</button><span id="counter">1 / 14</span><button id="nextBtn" aria-label="下一頁">›</button></nav>
+
+<script>
+/* ===========================================
+   SLIDE PRESENTATION CONTROLLER
+   鍵盤（← → 空白鍵 PageUp/Down Home End）、滑鼠滾輪、手機左右滑、下方按鈕
+   =========================================== */
+class SlidePresentation {
+  constructor() {
+    this.slides = [...document.querySelectorAll('.slide')];
+    this.stage = document.getElementById('deckStage');
+    this.cur = 0; this.lock = 0;
+    const total = this.slides.length;
+    this.slides.forEach((s, i) => s.querySelectorAll('.pn').forEach(p => p.textContent = `${String(i + 1).padStart(2, '0')} / ${total}`));
+    this.setupStageScale(); this.setupKeyboardNav(); this.setupWheel(); this.setupTouchNav();
+    document.getElementById('prevBtn').onclick = () => this.go(this.cur - 1);
+    document.getElementById('nextBtn').onclick = () => this.go(this.cur + 1);
+    const h = parseInt(location.hash.slice(1), 10);
+    this.show(h >= 1 && h <= total ? h - 1 : 0);
+  }
+  setupStageScale() {
+    const scale = () => {
+      const vp = this.stage.parentElement, W = vp.clientWidth || innerWidth, H = vp.clientHeight || innerHeight;
+      const k = Math.min(W / 1920, H / 1080);
+      this.stage.style.transform = `translate(${(W - 1920 * k) / 2}px, ${(H - 1080 * k) / 2}px) scale(${k})`;
+    };
+    scale(); addEventListener('resize', scale);
+  }
+  setupKeyboardNav() {
+    document.addEventListener('keydown', e => {
+      if (document.body.classList.contains('editing')) return;
+      if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); this.go(this.cur + 1); }
+      else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); this.go(this.cur - 1); }
+      else if (e.key === 'Home') this.go(0);
+      else if (e.key === 'End') this.go(this.slides.length - 1);
+    });
+  }
+  setupWheel() {
+    addEventListener('wheel', e => {
+      if (document.body.classList.contains('editing') || Date.now() < this.lock || Math.abs(e.deltaY) < 24) return;
+      this.lock = Date.now() + 650; this.go(this.cur + (e.deltaY > 0 ? 1 : -1));
+    }, { passive: true });
+  }
+  setupTouchNav() {
+    let x0 = null, y0 = null;
+    addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+    addEventListener('touchend', e => {
+      if (x0 == null || document.body.classList.contains('editing')) return;
+      const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) this.go(this.cur + (dx < 0 ? 1 : -1));
+      else if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && !e.target.closest('.deck-controls')) this.go(this.cur + (e.changedTouches[0].clientX > innerWidth / 2 ? 1 : -1));
+      x0 = null;
+    }, { passive: true });
+  }
+  go(i) { if (i >= 0 && i < this.slides.length && i !== this.cur) this.show(i); }
+  show(i) {
+    this.cur = i;
+    this.slides.forEach((s, k) => { s.classList.toggle('active', k === i); s.classList.remove('visible'); });
+    // 下一個畫格加上 visible 觸發淡入；畫格不更新時（背景分頁等）用計時器備援，內容一定會出現
+    const on = () => { if (this.cur === i) this.slides[i].classList.add('visible'); };
+    requestAnimationFrame(() => requestAnimationFrame(on)); setTimeout(on, 80);
+    document.getElementById('counter').textContent = `${i + 1} / ${this.slides.length}`;
+    document.getElementById('progress').style.width = `${((i + 1) / this.slides.length) * 100}%`;
+    history.replaceState(null, '', '#' + (i + 1));
+  }
+}
+const deck = new SlidePresentation();
+
+</script>
+
+</body></html>

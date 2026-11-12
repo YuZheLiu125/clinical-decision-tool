@@ -679,6 +679,12 @@ button,a{font:inherit;color:inherit}
     else if (ready) pull(false).then(flush).catch(() => {}); // pull 會先處理本機沒上傳完的修改（合併或備份），不會直接蓋掉
   });
   window.addEventListener('pagehide', flush);
+  // 電腦切回這個視窗（不一定會觸發 visibilitychange），以及畫面開著時每 30 秒，各拉一次別台裝置的變更：
+  // 手機上剛打的 admission note、待辦，電腦不用重新整理就看得到
+  let lastPull = 0;
+  const pullSoon = () => { if (!ready || document.visibilityState !== 'visible' || Date.now() - lastPull < 5000) return; lastPull = Date.now(); pull(false).then(flush).catch(() => {}); };
+  window.addEventListener('focus', pullSoon);
+  setInterval(pullSoon, 30000);
 })();
 </script>
 
