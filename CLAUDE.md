@@ -20,11 +20,33 @@
 1. `python3 scripts/release.py patch|minor|major`：會跑檢查和測試、改版本號、整理 CHANGELOG、commit、打 tag，並寫出 `dist/publish.json`
 2. 用 `publish_files` 發布 `dist/publish.json` 裡的檔案到 slug `dd7bba5d-4f79-4d51-9ce8-bae6b37db5da`。這個 artifact 是 public，要帶 `shared_live: "public"` 和 `artifact_title: "臨床輔助決策工具"`；base_version 用 `RELEASES.md` 最後一列的版本。只改了幾個檔案的話，可以只列那幾個（patch 模式，其他檔案保留）
 3. `python3 scripts/release.py record <publish 回傳的 version>`，然後 `git -c push.negotiate=false push`
-   - Claude 的工作環境推不上 tag（會 403），不要一直重試：請使用者在 GitHub 的 Releases 頁面用同名 tag（vX.Y.Z）建立 release，目標選 release.py 印出的那個 commit
+   - 推 tag：`git push --tags`。在 claude.ai 的雲端工作環境推 tag 會 403，不要重試，請使用者在 GitHub Releases 頁面用同名 tag 建立 release
+   - **Claude Code 沒有 claude.ai 的 Artifact 工具**：在 Claude Code 裡做到步驟 1 和 push 為止，把「要發布 vX.Y.Z」告訴使用者，由他在 claude.ai 開對話說「發布臨床輔助決策工具 vX.Y.Z」。那邊的 Claude 會 clone repo、照 dist/publish.json 發布，再跑 record 並 push
 
 ## 開工
 
-工作環境不會保留。新對話先把 repo 接上（add_repo：YuZheLiu125/clinical-decision-tool），clone 下來，再 `pip install pytest playwright --break-system-packages && python3 -m playwright install chromium`
+- Claude Code（使用者自己的電腦）：`pip install pytest playwright && python3 -m playwright install chromium`，需要 Node
+- claude.ai 雲端工作環境（不會保留）：先 add_repo `YuZheLiu125/clinical-decision-tool` 並 clone，再 `pip install pytest playwright --break-system-packages && python3 -m playwright install chromium`
+- 開工先跑一次 `python3 scripts/check.py && python3 -m pytest -q tests`，確定起點是綠的
+
+## 交班（2026-11-12，v1.1.0）
+
+**現況**：線上 artifact `1794400593-d511` = repo v1.1.0（commit 434ac7c）。27 項測試全過。
+
+**還沒做完**
+- [ ] tag `v1.0.0`（8b068e5）、`v1.1.0`（434ac7c）在本機 bundle 有，GitHub 上還沒有。在 Claude Code 可以直接補：`git tag -a v1.0.0 8b068e5 -m v1.0.0 && git tag -a v1.1.0 434ac7c -m v1.1.0 && git push --tags`
+
+**已知限制（使用者知道，可以接著做）**
+- 待辦表衝突合併是取聯集：一台刪掉、另一台還沒上傳的版本裡還有，刪掉的那項會再出現一次。要根治就加 tombstone（被刪的 id＋時間）
+- 查房板 `rounds.v1` 衝突時用雲端版本，本機那份備份在 `hub.sync.bak:rounds.v1`，但沒有介面可以還原。可以在查房板「⋯」加一個「還原同步前的版本」
+- 雲端同步只用假的雲端（tests/conftest.py 的 MOCK_CLOUD）測過，兩台真實裝置的情境還沒實測
+- 主訴處理進行中的 call 存在 sessionStorage：不上雲端，iOS 把分頁殺掉就沒了
+- `hubTodo` 有三份一樣的程式（consult／copilot／meds），抽成共用檔案能少一個出錯的地方，但每個工具要能單獨打開，所以要注意載入方式
+
+**下一步建議**（依價值排序，動手前先問使用者要做哪個）
+1. 待辦表 tombstone，讓刪除可以跨裝置同步
+2. 查房板加還原同步前版本的按鈕
+3. 把隱式狀態機明確化：先從待辦項目做（pending → overdue → alerted → snoozed／done），寫成一張狀態轉換表加測試
 
 ## 架構上要注意的地方（改之前先讀）
 
