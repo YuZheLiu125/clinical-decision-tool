@@ -1186,6 +1186,7 @@ function renderImp() {
         <div class="seg" style="margin-top:6px">${Array.from({ length: imp.rx.n }, (_, i) => `<button aria-pressed="${imp.rx.parts[i + 1] != null}" tabindex="-1">${imp.rx.parts[i + 1] != null ? '✓ ' : ''}第 ${i + 1} 張</button>`).join('')}</div>
         <p class="sub" style="margin:6px 0 0">${esc(imp.note || '')}在電腦按「下一張」，再按下面的 📷 掃 QR。</p></div>` : ''}
       <div class="row" style="margin-top:6px"><button class="btn ${imp.rx ? 'pri' : ''}" data-act="impScan" style="flex:1">📷 掃 QR${imp.rx ? '（下一張）' : ''}</button></div>
+      <p class="muted" style="margin:6px 0 0">如果打開的是相簿、不是相機（部分 Android 或 App 內開啟會這樣）：先用手機相機拍下電腦上的 QR，再從相簿選這張照片，一樣能讀。</p>
     </div>
     <p id="impBusy" class="sub" style="color:var(--ac);font-weight:700" ${imp.busy ? '' : 'hidden'}>${esc(imp.busy)}</p>
     ${imp.msg ? `<p class="sub" style="color:var(--hub-bad);font-weight:600">${esc(imp.msg)}</p>` : ''}`;
