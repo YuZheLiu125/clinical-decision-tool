@@ -1885,6 +1885,9 @@ document.addEventListener('keydown', e => {
 });
 $('fileImg').addEventListener('change', e => { const f = e.target.files[0]; if (f) ocr(f); });
 $('fileCam').addEventListener('change', e => { const f = e.target.files[0]; if (f) ocr(f); });
+// Android Chrome：在 artifact 的 iframe 裡（camera 被 permissions-policy 擋），capture 常被忽略、直接開相簿。
+// accept 加上 Chrome 認得的 android/allowCamera，至少會改開有「相機」選項的選擇器（iOS 不加，避免影響原本直接開相機）
+if (/Android/i.test(navigator.userAgent)) ['fileQR', 'fileCam'].forEach(id => { $(id).accept = 'image/*,android/allowCamera'; });
 $('fileQR').addEventListener('change', e => { const f = e.target.files[0]; if (f) scanQR(f); });
 $('fileJSON').addEventListener('change', e => {
   const f = e.target.files[0]; if (!f) return;

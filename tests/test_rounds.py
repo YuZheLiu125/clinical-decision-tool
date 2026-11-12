@@ -170,3 +170,16 @@ def test_import_has_camera_buttons_that_ask_for_camera(phone, base_url):
         phone.click('[data-act="impPick"]')
     assert fc.value.element.get_attribute('capture') is None
     assert phone.errors == []
+
+
+def test_android_file_inputs_allow_camera(browser, base_url):
+    """Android Chrome 在 iframe 裡會忽略 capture：accept 要帶 android/allowCamera，選擇器才有相機。"""
+    ctx = browser.new_context(viewport={'width': 390, 'height': 844}, has_touch=True, is_mobile=True,
+                              user_agent='Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36')
+    pg = ctx.new_page()
+    seed(pg, base_url, bed())
+    for id_ in ('fileQR', 'fileCam'):
+        assert pg.get_attribute('#' + id_, 'accept') == 'image/*,android/allowCamera'
+        assert pg.get_attribute('#' + id_, 'capture') == 'environment'
+    assert pg.get_attribute('#fileImg', 'accept') == 'image/*'
+    ctx.close()
