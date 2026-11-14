@@ -30,9 +30,9 @@
 - claude.ai 雲端工作環境（不會保留）：先 add_repo `YuZheLiu125/clinical-decision-tool` 並 clone，再 `pip install pytest playwright --break-system-packages && python3 -m playwright install chromium`
 - 開工先跑一次 `python3 scripts/check.py && python3 -m pytest -q tests`，確定起點是綠的（約 4 分鐘）
 
-## 交班（2026-11-14，v2 重塑，分支 `v2-redesign`，還沒發布）
+## 交班（2026-11-14，v1.4.0）
 
-**現況**：線上 artifact 仍是 `1794496654-a425` = v1.3.2（`main`）。`v2-redesign` 分支是整體設計重塑＋總站導覽重做＋接新病人新流程，75 項測試全過，另由獨立 subagent 檢核過一輪並修完。**還沒合併、還沒發布**：要先問使用者。發布時用 `release.py minor`（→ v1.4.0；資料格式相容，不是 major），使用手冊 `docs/guide/index.html` 也改了，要一起發布。給更新 Agent 的總覽文件在 Notion：https://app.notion.com/p/418b4a3589698152938cf5e3723bed9c
+**現況**：線上 artifact `1794636639-7dc3` = repo v1.4.0（設計重塑、總站導覽重做、接新病人新流程、欄位來源可自訂）。使用手冊 artifact `1794636760-c9d0` = `docs/guide/index.html`（15 頁；Notion 公開入口頁的「簡易上手引導」連到 `#15` 小抄頁，之後增減頁數要記得改那個連結）。77 項測試全過。GitHub 有 tag 與 release `v1.4.0`。給更新 Agent 的總覽文件在 Notion：https://app.notion.com/p/418b4a3589698152938cf5e3723bed9c
 
 **等使用者回饋**
 - 接新病人的欄位來源：`FSRC` 只是預設值。使用者明講這個工具是給很多不同醫院的人用的，**來源不要寫死**，所以做成每個人自己在畫面上改（存在 `oncall.fsrc.v1`，只存跟預設不同的）。不要為了某一家醫院去改預設值
