@@ -3700,7 +3700,10 @@ const cur = () => UI.calls.find(c => c.id === UI.cid) || null;
 let draftT;
 // 進行中的 call 只存在這個分頁（sessionStorage）。
 // Admission note 存在 localStorage（oncall.admit.v1），總站的雲端同步會帶到你其他的裝置：手機問診打的，電腦打開就能接著寫、複製貼到 EMR。
-function writeAdmit(){ try { const v = UI.admit ? JSON.stringify(UI.admit) : null; if (v == null) localStorage.removeItem(ADMIT_KEY); else if (localStorage.getItem(ADMIT_KEY) !== v) localStorage.setItem(ADMIT_KEY, v); } catch {} }
+function writeAdmit(){ try { const v = UI.admit ? JSON.stringify(UI.admit) : null; if (v == null) localStorage.removeItem(ADMIT_KEY); else if (localStorage.getItem(ADMIT_KEY) !== v) localStorage.setItem(ADMIT_KEY, v);
+  admitRemote = undefined;   // 本機這份已經寫出去了：打字時扣住、還沒套用的遠端版本作廢，不然停下來時會把剛打的字換掉
+} catch {} }
+let admitRemote;
 let draftDirty = false;
 function flushDraft(){ if (!draftDirty) return; draftDirty = false; clearTimeout(draftT); try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({calls:UI.calls})); } catch {} writeAdmit(); }
 function saveDraft(){
@@ -3718,7 +3721,6 @@ function loadDraft(){
   restoreDraftValidity();
 }
 // 別台裝置改了 admission note：正在這裡打字時先不換（免得游標跳走、打的字被蓋掉），停下來（離開輸入框）再換
-let admitRemote;
 function applyRemoteAdmit(){
   if (admitRemote === undefined) return;
   const raw = admitRemote; admitRemote = undefined;
@@ -4320,18 +4322,29 @@ function preListText(f){
   PRE_SECS.forEach(s => { L.push(`【${s.t}】（${s.where}）`); preVis(s, f).forEach(k => { const x = FIELD[k].x; L.push(`${isEmpty(f[k]) ? '☐' : '☑'} ${x.l}${CONFIRM.has(k) ? '（床邊核對）' : ''}`); }); L.push(''); });
   return L.join('\n').trim();
 }
+function preRefresh(){   // 打字時只換計數的文字，不重繪（游標不會跳）
+  if (!UI.admit) return; const f = UI.admit.f, st = preStat(f);
+  document.querySelectorAll('[data-pc]').forEach(el => {
+    const k = el.dataset.pc;
+    if (k === 'all'){ el.textContent = `已填 ${st.d}/${st.n}`; el.classList.toggle('ok', st.d === st.n); }
+    else if (k === 'foot') el.textContent = `已填 ${st.d}/${st.n}，沒查到的留著，床邊會再提醒`;
+    else { const s = PRE_SECS[+k], n = preVis(s, f).filter(x => isEmpty(f[x])).length; el.textContent = n ? n + ' 未填' : '完成'; el.classList.toggle('ok', !n); }
+  });
+}
 function wkPre(a){
   const f = a.f, st = preStat(f), allG = AN.flatMap(s => s.groups);
   return `<section class="wk-sec"><h3>到床邊之前，先在電腦查好</h3>
     <p class="small">這一頁是護理紀錄和病歷裡查得到的欄位，依「去哪裡找」分區。先填好會同步到手機，床邊只剩要問、要檢查的。標「床邊核對」的，查到了也要再跟病人確認一次。</p>
-    <div class="row" style="margin-top:10px"><span class="cnt ${st.d === st.n ? 'ok' : ''}">已填 ${st.d}/${st.n}</span><button class="chip ${UI.preTodo ? 'on' : ''}" data-act="ax-pre-todo" aria-pressed="${!!UI.preTodo}">只看還沒填的</button><button class="btn sm" data-act="ax-pre-copy">${ICON.copy}複製待查清單</button></div></section>` +
+    <div class="row" style="margin-top:10px"><span class="cnt ${st.d === st.n ? 'ok' : ''}" data-pc="all">已填 ${st.d}/${st.n}</span><button class="chip ${UI.preTodo ? 'on' : ''}" data-act="ax-pre-todo" aria-pressed="${!!UI.preTodo}">只看還沒填的</button><button class="btn sm" data-act="ax-pre-copy">${ICON.copy}複製待查清單</button></div></section>` +
   PRE_SECS.map(s => {
-    const ks = preVis(s, f), left = ks.filter(k => isEmpty(f[k])), show = UI.preTodo ? left : ks;
+    const ks = preVis(s, f), left = ks.filter(k => isEmpty(f[k]));
+    // 只看還沒填的：清單在按下篩選那一刻定下來，填了不會馬上消失（點錯還能改）；依賴欄位（例如選了 Yes 才出現的說明）照樣出現
+    const show = UI.preTodo ? ks.filter(k => isEmpty(f[k]) || (UI.preTodoKeys && UI.preTodoKeys.has(k))) : ks;
     const gi = s.gk ? allG.indexOf(FIELD[s.gk].g) : -1;
-    return `<section class="wk-sec"><div class="fgroup-h"><h3>${esc(s.t)}</h3><span class="muted small">${esc(s.where)}</span><span class="sp"></span>${left.length ? `<span class="cnt">${left.length} 未填</span>` : '<span class="cnt ok">完成</span>'}${gi >= 0 && left.length ? `<button class="btn sm" data-act="gnormal" data-gi="${gi}">未填的設為沒有</button>` : ''}</div>
+    return `<section class="wk-sec"><div class="fgroup-h"><h3>${esc(s.t)}</h3><span class="muted small">${esc(s.where)}</span><span class="sp"></span><span class="cnt ${left.length ? '' : 'ok'}" data-pc="${PRE_SECS.indexOf(s)}">${left.length ? left.length + ' 未填' : '完成'}</span>${gi >= 0 && left.length ? `<button class="btn sm" data-act="gnormal" data-gi="${gi}">未填的設為沒有</button>` : ''}</div>
       ${show.length ? show.map(k => fieldHTML(FIELD[k].x)).join('') : '<p class="muted small" style="margin:8px 0 0">這一區都填好了。</p>'}</section>`;
   }).join('') +
-  `<div class="bedfoot"><span class="small">已填 ${st.d}/${st.n}，沒查到的留著，床邊會再提醒</span><button class="btn primary" data-act="wk-ph" data-ph="prep">下一步：整理思緒 →</button></div>`;
+  `<div class="bedfoot"><span class="small" data-pc="foot">已填 ${st.d}/${st.n}，沒查到的留著，床邊會再提醒</span><button class="btn primary" data-act="wk-ph" data-ph="prep">下一步：整理思緒 →</button></div>`;
 }
 
 /* 清單沒有的主訴：沒有內建鑑別，但 LQQOPERA、時間軸、關鍵資訊檢核照樣能用 */
@@ -4340,23 +4353,23 @@ const wkP = id => id === '_free' ? FREE_PROTO : getProto(id);
 
 /* 床邊的關鍵資訊檢核：不屬於 PI 但每次都要問到的；第三欄是對應的病歷欄位（有的話可以直接在這裡填） */
 const KEYQ = [
-  ['open','開場：自我介紹、確認病人身分、說明來意'],
-  ['tl','時間軸：最後一次完全沒事是什麼時候 → 第一個症狀 → 怎麼變化 → 做過什麼處理 → 今天為什麼住院'],
-  ['prev','以前有沒有類似的情況？當時的診斷和處理'],
-  ['pmh','過去病史、手術、住院','pmh'],
-  ['meds','目前用藥：藥名、有沒有照吃、最近有沒有改藥；中藥、保健食品、自己買的止痛藥','meds'],
-  ['alg','藥物、食物過敏：對什麼、什麼反應','allergy'],
-  ['hab','抽菸、喝酒、檳榔：量和年數','smoke'],
-  ['tocc','TOCC：旅遊、職業、接觸、群聚','tocc'],
-  ['fhx','家族史（跟主訴有關的）','fhx'],
-  ['func','平常的活動功能、誰照顧、住哪裡','care'],
-  ['ice','病人自己覺得是什麼問題、最擔心什麼、希望這次住院解決什麼'],
-  ['sum','結尾：覆述一次重點，問「還有沒有我沒問到的」'],
+  ['open','開場：自我介紹、確認病人身分、說明來意','','開場'],
+  ['tl','時間軸：最後一次完全沒事是什麼時候 → 第一個症狀 → 怎麼變化 → 做過什麼處理 → 今天為什麼住院','','時間軸'],
+  ['prev','以前有沒有類似的情況？當時的診斷和處理','','類似病史'],
+  ['pmh','過去病史、手術、住院','pmh','過去病史'],
+  ['meds','目前用藥：藥名、有沒有照吃、最近有沒有改藥；中藥、保健食品、自己買的止痛藥','meds','目前用藥'],
+  ['alg','藥物、食物過敏：對什麼、什麼反應','allergy','過敏'],
+  ['hab','抽菸、喝酒、檳榔：量和年數','smoke','菸酒檳榔'],
+  ['tocc','TOCC：旅遊、職業、接觸、群聚','tocc','TOCC'],
+  ['fhx','家族史（跟主訴有關的）','fhx','家族史'],
+  ['func','平常的活動功能、誰照顧、住哪裡','care','功能與照顧者'],
+  ['ice','病人自己覺得是什麼問題、最擔心什麼、希望這次住院解決什麼','','病人的想法與擔心'],
+  ['sum','結尾：覆述一次重點，問「還有沒有我沒問到的」','','結尾覆述'],
 ];
 const valTxt = v => Array.isArray(v) ? v.join('、') : String(v ?? '').trim().replace(/\s*\n\s*/g, '；');
 function keyqHTML(a, w){
   const kq = w.kq || {};
-  return KEYQ.map(([id, t, k]) => {
+  return KEYQ.map(([id, t, k]) => {   // 第四欄是短名，給漏問提示用
     const v = k ? valTxt(a.f[k]) : '', open = UI.kqOpen === id;
     return `<div class="kq ${kq[id] ? 'done' : ''}"><button class="check-row" data-act="ax-kq" data-id="${id}" aria-pressed="${!!kq[id]}"><span class="box"></span><span class="lbl">${esc(t)}${k && v ? `<span class="sub">病歷已有：${esc(v.length > 60 ? v.slice(0, 60) + '…' : v)}　← 跟病人核對</span>` : ''}</span></button>${k ? `<button class="btn sm ghost" data-act="ax-kq-open" data-id="${id}" aria-expanded="${open}">${open ? '收起' : v ? '改' : '填'}</button>` : ''}${open && k ? `<div class="kq-f">${fieldHTML(FIELD[k].x)}</div>` : ''}</div>`;
   }).join('');
@@ -4393,7 +4406,7 @@ function missBoxHTML(a, w, p){
   const s = bedStat(a, w, p), parts = [];
   if (s.mustMiss.length) parts.push(`<div class="ms"><b class="crit-t">必須排除的鑑別，還沒問：</b>${s.mustMiss.map(f => esc(f.zh)).join('、')}</div>`);
   if (s.lqMiss.length) parts.push(`<div class="ms"><b>LQQOPERA 還沒記：</b>${s.lqMiss.map(k => LQ_NAME[k]).join('、')}</div>`);
-  if (s.kqMiss.length) parts.push(`<div class="ms"><b>關鍵資訊還沒勾：</b>${s.kqMiss.map(([, t]) => esc(t.split(/[：:]/)[0])).join('、')}</div>`);
+  if (s.kqMiss.length) parts.push(`<div class="ms"><b>關鍵資訊還沒勾：</b>${s.kqMiss.map(q => esc(q[3])).join('、')}</div>`);
   if (s.myMiss.length) parts.push(`<div class="ms"><b>我自己要問的，還沒問：</b>${s.myMiss.map(r => esc(r.t)).join('、')}</div>`);
   return parts.length ? `<div class="miss-box"><b>離開病房前再看一眼</b>${parts.join('')}<div class="row" style="margin-top:8px"><button class="btn sm" data-act="wk-ph" data-ph="bed">← 回床邊問診補問</button></div></div>` : '<div class="miss-box ok"><b>問診檢核全部完成。</b></div>';
 }
@@ -4423,7 +4436,7 @@ function aiPrompt(full){
   if (w.mode === 'elec' && w.el) add('預約入院', [w.el.proc, w.el.ind, w.el.hist, w.el.plan].filter(Boolean).join('\n'));
   add('時間軸', (w.tl || []).filter(r => (r.x || '').trim()).map(r => `${r.w || '[時間]'}：${r.x.trim()}`));
   add('我自己要問的問題', (w.myq || []).map(r => `${r.d ? '（問了）' : '（還沒問）'}${r.t}`));
-  add('還沒問到的關鍵資訊', KEYQ.filter(([id]) => !(w.kq || {})[id]).map(([, t]) => t.split(/[：:]/)[0]));
+  add('還沒問到的關鍵資訊', KEYQ.filter(([id]) => !(w.kq || {})[id]).map(q => q[3]));
   add('問診筆記', f.hpin); add('到院後經過', w.ed); add('我的 impression', w.imp || f.imp);
   add('我的初步假設（問診前）', w.hyp);
   add('PI 草稿', (w.pi || '').trim() || f.pi);
@@ -4439,7 +4452,7 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-act^="ax-"]'); if (!b || !UI.admit) return;
   const a = UI.admit, w = wkEnsure(), d = b.dataset;
   switch (d.act){
-  case 'ax-pre-todo': UI.preTodo = !UI.preTodo; break;
+  case 'ax-pre-todo': UI.preTodo = !UI.preTodo; UI.preTodoKeys = UI.preTodo ? new Set(PRE_SECS.flatMap(s => preVis(s, a.f)).filter(k => isEmpty(a.f[k]))) : null; break;
   case 'ax-pre-copy': copyText(preListText(a.f), b); return;
   case 'ax-kq': w.kq = w.kq || {}; if (w.kq[d.id]) delete w.kq[d.id]; else w.kq[d.id] = 1; break;
   case 'ax-kq-open': UI.kqOpen = UI.kqOpen === d.id ? null : d.id; break;
@@ -4725,6 +4738,7 @@ function refreshAdmitMeta(k){
   if (row && x) row.classList.toggle('missing', !!(x.req && isEmpty(f[k])));
   clearTimeout(metaT);
   metaT = setTimeout(() => {
+    preRefresh();
     $('#secnav') && ($('#secnav').innerHTML = secnavHTML());
     document.querySelectorAll('[data-comp]').forEach(el => { const g = FIELD[{aacci:'mi', must:'ht', katz:'k_bath', gcs:'gcs_e'}[el.dataset.comp]].g; el.outerHTML = compHTML(g); });
   }, 250);

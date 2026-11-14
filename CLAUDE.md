@@ -10,7 +10,7 @@
 ## 每次改動
 
 1. 先寫測試重現問題（`tests/`），確定它在改之前會失敗
-2. 改 `site/`
+2. 改 `site/`（共用樣式改 `shared/hub-common.css` 再跑 `python3 scripts/sync_shared.py`）
 3. `python3 scripts/check.py && python3 -m pytest -q tests` 全部通過
 4. `CHANGELOG.md` 的「## [未發布]」底下寫一行，分「修正」「新增」「變更」
 5. commit（訊息用繁體中文，第一行寫做了什麼）
@@ -28,28 +28,41 @@
 
 - Claude Code（使用者自己的電腦）：`pip install pytest playwright && python3 -m playwright install chromium`，需要 Node
 - claude.ai 雲端工作環境（不會保留）：先 add_repo `YuZheLiu125/clinical-decision-tool` 並 clone，再 `pip install pytest playwright --break-system-packages && python3 -m playwright install chromium`
-- 開工先跑一次 `python3 scripts/check.py && python3 -m pytest -q tests`，確定起點是綠的
+- 開工先跑一次 `python3 scripts/check.py && python3 -m pytest -q tests`，確定起點是綠的（約 4 分鐘）
 
-## 交班（2026-11-12，v1.3.2）
+## 交班（2026-11-14，v2 重塑，分支 `v2-redesign`，還沒發布）
 
-**現況**：線上 artifact `1794496654-a425` = repo v1.3.2（v1.3.1 修同步打斷工具載入、Android 相機選項；v1.3.2 加工具載入自我修復，等使用者回報 iPhone 主畫面 App 是否還載不出來；等使用者在 Android Chrome／Claude App 實測「📷 掃 QR」）；使用手冊 artifact `1794463981-845e` = `docs/guide/index.html`。53 項測試全過（test_delete_on_this_device_survives_conflict 在電腦忙時偶爾失敗，重跑會過）。v1.2.0 沒有單獨發布過，內容包含在 v1.3.0 裡。
+**現況**：線上 artifact 仍是 `1794496654-a425` = v1.3.2（`main`）。`v2-redesign` 分支是整體設計重塑＋總站導覽重做＋接新病人新流程，82 項測試全過，另由獨立 subagent 檢核過一輪並修完。**還沒合併、還沒發布**：要先問使用者。發布時用 `release.py minor`（→ v1.4.0；資料格式相容，不是 major），使用手冊 `docs/guide/index.html` 也改了，要一起發布。給更新 Agent 的總覽文件在 Notion：https://app.notion.com/p/418b4a3589698152938cf5e3723bed9c
 
 **等使用者回饋**
-- 累積報告解析用的是猜的 HIS 格式：使用者第一次實際貼的時候，請他把去識別化的畫面貼來對
-- admission note 跨裝置同步只用假的雲端測過
+- 接新病人的欄位來源分類（`copilot.html` 的 `FSRC`／`CONFIRM`／`PRE_SECS`）是 Claude 預設的，要請使用者對照萬芳護理紀錄確認哪些其實查不到／查得到
+- 關鍵資訊檢核 12 項（`KEYQ`）、「先想好三件事」的文字，請使用者看過
+- 新版面在 iPhone 主畫面 App、Android 實機（Chrome 與 Claude App）都還沒實測；Android 只用模擬的 Pixel 7 測過。artifact 沙盒裡的返回鍵行為、下拉重新整理有沒有被擋住，要實機才知道
+- 手機底部預設釘選是主訴處理、接新病人、查房板，使用者可能想換
+- v1.3.2 留下來的：累積報告解析要真實 HIS 畫面來對；iPhone 主畫面 App 工具載不出來的問題有沒有再發生
 
-**已知限制（使用者知道，可以接著做）**
-- 查房板 `rounds.v1` 衝突時用雲端版本，本機那份備份在 `hub.sync.bak:rounds.v1`，但沒有介面可以還原。可以在查房板「⋯」加一個「還原同步前的版本」
-- 雲端同步只用假的雲端（tests/conftest.py 的 MOCK_CLOUD）測過，兩台真實裝置的情境還沒實測
-- 主訴處理進行中的 call 存在 sessionStorage：不上雲端，iOS 把分頁殺掉就沒了（admission note 已改存 `oncall.admit.v1`，會同步）
-- 查房板匯入只分血液／尿液；胸水、腹水、CSF 等其他體液還沒有獨立的檢體，會被當成血液。累積報告解析是依常見格式猜的，還沒拿真實的 HIS 畫面驗證
-- 尿液項目沒有正常範圍（刻意不標）
-- `hubTodo` 有三份一樣的程式（consult／copilot／meds），抽成共用檔案能少一個出錯的地方，但每個工具要能單獨打開，所以要注意載入方式
+**已知限制**
+- 接新病人兩台同時改：整份後寫者贏（沒有欄位層級合併）。要做的話在 `applyRemoteAdmit` 合併：`f` 逐 key、`w.kq` 聯集、`w.tl`／`w.myq` 給 id
+- 手機橫放（寬度 >900px）會變成電腦版面，可用但擠
+- `#railList` 的 ARIA 角色不嚴謹（tablist 裡混了分組標題和待辦開關）；焦點在工具 iframe 裡時 Esc 關不了浮層
+- ACLS 深色模式 `.step.s .n` 白字配淺紅底，對比不足（舊問題）
+- 以下沿用 v1.3.2：查房板 `rounds.v1` 衝突備份沒有還原介面；雲端同步只用假的雲端測過；主訴處理進行中的 call 存在 sessionStorage；查房板匯入只分血液／尿液；`hubTodo` 有三份一樣的程式
 
-**下一步建議**（依價值排序，動手前先問使用者要做哪個）
-1. ~~待辦表 tombstone~~（已做，未發布版）
-2. 查房板加還原同步前版本的按鈕
-3. 把隱式狀態機明確化：先從待辦項目做（pending → overdue → alerted → snoozed／done），寫成一張狀態轉換表加測試
+**下一步建議**（動手前先問使用者）
+1. 依使用者對欄位來源的回饋調整 `FSRC`
+2. 接新病人欄位層級合併
+3. 各工具內部還留著舊的膠囊形按鈕（999px 圓角），可以逐個工具收斂成 `--hub-r`
+4. 查房板加還原同步前版本的按鈕
+
+## v2 之後的做法（改之前先讀）
+
+- **共用樣式**：正本是 `shared/hub-common.css`，改完跑 `python3 scripts/sync_shared.py`。不要改 HTML 裡 `/*hub-common:start*/…/*hub-common:end*/` 之間的內容（`check.py` 會擋）。標記後面是各工具自己的對應層，可以改
+- **設計原則**：顏色只表達臨床意義（紅／琥珀／綠）；介面只有一個品牌色 `--hub-brand`。`--hub-pilot`／`--hub-meds`… 這些舊名字現在全部指到品牌色，不要再給工具各自的顏色。圖示用線條 SVG，不用 emoji
+- **加工具**：`site/index.html` 的 `TOOLS` 加一行（說明在那段註解）。導覽、iframe、手機「全部工具」都由它產生。工具裡的畫面要有自己的導覽入口，用 `pane`＋`view`（例子：`admit`），工具端聽 `{hub:'go', view}`、回報 `{hub:'view', view}`
+- **只屬於這台裝置的設定**用 `hub.ui.` 開頭（不上雲端）：`hub.ui.pins`、`hub.ui.rail`、`hub.ui.side`、`hub.ui.recent`
+- **總站浮層**（待辦抽屜、全部工具）開啟時會 `history.pushState`，讓 Android 返回鍵先關浮層。新增浮層要走 `histPush`／`histPop`
+- **重載工具 iframe 前要拿掉 pane 的 `loaded` class**，這樣 `whenLoaded` 排的訊息才會等新文件載完
+- **本機預覽**：`cdt-site` 用 `scripts/serve.py`（不快取）。只改網址的 `#` 不會重新載入頁面
 
 ## 架構上要注意的地方（改之前先讀）
 

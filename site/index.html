@@ -273,6 +273,7 @@ svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-wid
   const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
   const lsJSON = (k, d) => { try { const v = JSON.parse(lsGet(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
+  const lsArr = (k, d) => { const v = lsJSON(k, d); return Array.isArray(v) ? v : d; };
 
   const PANES = TOOLS.filter(t => t.src);            // 真的有自己一個 iframe 的工具
   const MAIN = PANES.map(t => t.id), ALL = [...MAIN, 'todo'];
@@ -290,7 +291,7 @@ svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-wid
   const selected = () => { const v = views[cur]; const e = TOOLS.find(t => t.pane === cur && t.view === v); return e ? e.id : cur; };
 
   /* ── 導覽：側欄（電腦）、底部列與全部工具（手機） ── */
-  let pins = lsJSON('hub.ui.pins', DEFAULT_PINS).filter(id => ENTRY[id]).slice(0, MAX_PINS);
+  let pins = lsArr('hub.ui.pins', DEFAULT_PINS).filter(id => ENTRY[id] && !ENTRY[id].urgent).slice(0, MAX_PINS);
   const groups = () => { const g = []; TOOLS.forEach(t => { let x = g.find(y => y.n === t.group); if (!x) g.push(x = { n: t.group, items: [] }); x.items.push(t); }); return g; };
   const navBtn = (t, prefix) => `<button class="nav${t.urgent ? ' urgent' : ''}" type="button" role="tab" id="${prefix}${t.id}" data-go="${t.id}" aria-selected="false" title="${esc(t.full + '：' + t.hint)}">${ic(t.icon)}<span class="tx"><span class="nm">${esc(t.full)}</span><span class="hint">${esc(t.hint)}</span></span></button>`;
   function buildRail() {
@@ -352,7 +353,7 @@ svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-wid
   function reloadTool(k) {
     const f = $('f-' + k);
     tries[k] = (tries[k] || 0) + 1;
-    $('pane-' + k).classList.remove('failed');
+    $('pane-' + k).classList.remove('failed', 'loaded');   // 拿掉 loaded：重載期間要送給工具的訊息會排隊等它載完
     f.src = f.dataset.src;
     watch(k);
   }
@@ -380,7 +381,7 @@ svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-wid
   });
   const idle = cb => (window.requestIdleCallback ? requestIdleCallback(cb, { timeout: 1200 }) : setTimeout(cb, 200));
   function warmRest() {
-    const recent = lsJSON('hub.ui.recent', []);
+    const recent = lsArr('hub.ui.recent', []);
     const rank = k => (k === 'todo' ? -3 : k === 'acls' ? -2 : recent.includes(k) ? recent.indexOf(k) : 50 + Math.abs(MAIN.indexOf(k) - MAIN.indexOf(cur)));
     const order = [...ALL].sort((a, b) => rank(a) - rank(b));
     const lite = !!(navigator.connection && navigator.connection.saveData);   // 省流量模式：只預載待辦和 ACLS
@@ -405,7 +406,7 @@ svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-wid
     paintNav();
     lsSet('hub.pane', JSON.stringify({ cur, lastMain: cur }));
   }
-  function remember(k) { const r = [k, ...lsJSON('hub.ui.recent', []).filter(x => x !== k && MAIN.includes(x))].slice(0, 4); lsSet('hub.ui.recent', JSON.stringify(r)); }
+  function remember(k) { const r = [k, ...lsArr('hub.ui.recent', []).filter(x => x !== k && MAIN.includes(x))].slice(0, 4); lsSet('hub.ui.recent', JSON.stringify(r)); }
   // 進到工具裡的某個畫面（例如主訴處理裡的接新病人）；點「主訴處理」本身而它正停在接新病人時，請它回到主畫面
   function tellView(pane, view) {
     whenLoaded(pane, () => { try { $('f-' + pane).contentWindow.postMessage({ hub: 'go', view }, '*'); } catch (e) {} });
@@ -450,8 +451,16 @@ svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-wid
   const sheetOpen = () => $('sheet').classList.contains('open');
   let histOn = false;
   function histPush() { if (histOn) return; try { history.pushState({ hubOverlay: 1 }, ''); histOn = true; } catch (e) {} }
-  function histPop() { if (!histOn) return; histOn = false; try { if (history.state && history.state.hubOverlay) history.back(); } catch (e) {} }
-  window.addEventListener('popstate', () => { if (!histOn) return; histOn = false; setDrawer(false, true); setSheet(false, true); });
+  let popSkip = 0;   // 自己呼叫 history.back() 引起的 popstate 要略過（它是非同步的，可能晚於下一次開浮層）
+  function histPop() { if (!histOn) return; histOn = false; try { if (history.state && history.state.hubOverlay) { popSkip++; history.back(); } } catch (e) {} }
+  window.addEventListener('popstate', () => {
+    if (popSkip) {
+      popSkip--;
+      // 關了馬上又開：瀏覽器可能把新開浮層的那一筆紀錄跟著退掉了，這裡補回去，返回鍵才會是「關浮層」而不是離開
+      if ((drawerOpen() || sheetOpen()) && !(history.state && history.state.hubOverlay)) { histOn = false; histPush(); }
+      return;
+    }
+    if (!histOn) return; histOn = false; setDrawer(false, true); setSheet(false, true); });
   function setDrawer(open, fromHist) {
     const on = !!open && narrow.matches;
     $('pane-todo').classList.toggle('open', on);
@@ -475,7 +484,11 @@ svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-wid
 
   // 電腦：右側待辦可收起；左側工具欄可收成圖示（只記在這台裝置）
   function setSide(on) { app.classList.toggle('side-off', !on); const b = $('sideToggle'); if (b) { b.setAttribute('aria-pressed', on); $('railTodoHint').textContent = on ? '常駐在右側' : '已收起，點一下打開'; } lsSet('hub.ui.side', on ? '1' : '0'); }
-  function setRail(min) { app.classList.toggle('rail-min', min); lsSet('hub.ui.rail', min ? '1' : '0'); }
+  // 工具欄：使用者按過就照他的；沒按過的話，視窗不夠寬（901–1180px）時自動收成圖示，把寬度讓給工具
+  const mid = matchMedia('(min-width:901px) and (max-width:1180px)');
+  function paintRail() { const s = lsGet('hub.ui.rail'); app.classList.toggle('rail-min', s === '1' || (s == null && mid.matches)); }
+  function setRail(min) { lsSet('hub.ui.rail', min ? '1' : '0'); paintRail(); }
+  mid.addEventListener('change', paintRail);
 
   function toast(text, actions) {
     document.querySelector('.hub-toast')?.remove(); clearTimeout(toast.t);
@@ -491,6 +504,7 @@ svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-wid
     else pins = TOOLS.map(t => t.id).filter(x => x === id || pins.includes(x));
     lsSet('hub.ui.pins', JSON.stringify(pins));
     buildMnav(); buildSheet($('sheetQ').value); status(true); paintNav(); mirror();
+    $('mAll').setAttribute('aria-expanded', sheetOpen());
   }
 
   // 事件一律委派：導覽是依清單產生的
@@ -622,7 +636,7 @@ svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-wid
 
   /* ── 開機 ── */
   buildRail(); buildMnav(); buildSheet('');
-  setRail(lsGet('hub.ui.rail') === '1');
+  paintRail();
   setSide(lsGet('hub.ui.side') !== '0');
   mirror(); status(true); setInterval(status, 2000);
   const saved = lsJSON('hub.pane', null); if (saved && MAIN.includes(saved.lastMain)) cur = saved.lastMain;
@@ -724,6 +738,7 @@ svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-wid
         // 還在第一次載入中（pane 還沒 loaded）就不用重載：它載完會自己讀到新資料。
         // 這時候 reload 會重載的是佔位的 about:blank，把正在載的工具打斷，畫面就停在空白（11/12 用藥速查、會診稿載不出來）
         if (!f.closest('.pane').classList.contains('loaded')) return;
+        f.closest('.pane').classList.remove('loaded');   // 載完（load 事件）會再加回來；期間總站要送給它的訊息會排隊
         try { f.contentWindow.location.reload(); } catch (e) { f.src = f.dataset.src; }
         return;
       }

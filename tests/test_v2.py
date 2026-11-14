@@ -303,3 +303,83 @@ def test_elective_admission_flow(page, base_url):
     assert page.locator('#row_allergy').count() == 1
     assert page.evaluate("aiPrompt(false).length") > 100
     assert page.errors == []
+
+
+# ── 檢核後補的 ──
+
+def test_typing_while_remote_arrives_keeps_what_i_typed(page, base_url):
+    """正在打字時別台的版本進來：停下來後，畫面和儲存的都還是我打的（不會被扣住的舊版本換掉）。"""
+    admit(page, base_url)
+    page.click('[data-ph="prep"]'); page.click('[data-act="wk-pid"][data-id="fever"]'); page.click('[data-ph="bed"]')
+    page.click('[data-act="ax-tl-add"][data-w="3 天前"]')
+    page.keyboard.type('fever')
+    page.wait_for_timeout(600)
+    other = json.loads(page.evaluate("localStorage.getItem('oncall.admit.v1')"))
+    other['w']['kq'] = {'open': 1}
+    page.evaluate("v => window.dispatchEvent(new StorageEvent('storage', {key: 'oncall.admit.v1', newValue: v}))", json.dumps(other))
+    page.keyboard.type(' and chills')
+    page.wait_for_timeout(600)
+    page.evaluate("document.activeElement.blur()")
+    page.wait_for_timeout(200)
+    assert page.input_value('#tlx_0') == 'fever and chills'
+    assert json.loads(page.evaluate("localStorage.getItem('oncall.admit.v1')"))['w']['tl'][0]['x'] == 'fever and chills'
+
+
+def test_admit_click_right_after_pilot_reload(page, base_url):
+    page.goto(base_url + 'index.html#meds')
+    page.wait_for_timeout(2500)
+    page.evaluate("document.getElementById('pane-pilot').classList.contains('loaded') || 0")
+    page.evaluate("(() => { const k = 'pilot'; document.querySelector('#pane-pilot .reload')?.remove(); })()")
+    # 模擬自我修復的重載，緊接著點接新病人
+    page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+    page.evaluate("(() => { const f = document.getElementById('f-pilot'); f.contentDocument.body.replaceChildren(); document.dispatchEvent(new Event('visibilitychange')); document.getElementById('tab-admit').click(); })()")
+    page.wait_for_timeout(2500)
+    assert page.evaluate(f"{PILOT}.eval('UI.view')") == 'admit'
+    assert 'tab-admit' in selected(page)
+
+
+def test_broken_ui_prefs_do_not_break_the_hub(phone, base_url):
+    phone.goto(base_url + 'index.html')
+    phone.evaluate("localStorage.setItem('hub.ui.pins', '{}'); localStorage.setItem('hub.ui.recent', '5')")
+    phone.reload(); phone.wait_for_timeout(600)
+    assert phone.evaluate("[...document.querySelectorAll('#mnav button')].map(b => b.id)") == ['m-acls', 'm-pilot', 'm-admit', 'm-rounds', 'fab', 'mAll']
+    phone.click('#m-rounds')
+    assert phone.errors == []
+
+
+def test_close_then_reopen_overlay_immediately(phone, base_url):
+    phone.goto(base_url + 'index.html')
+    phone.wait_for_timeout(600)
+    phone.click('#fab')
+    phone.evaluate("document.getElementById('scrim').click(); document.getElementById('fab').click()")
+    phone.wait_for_timeout(300)
+    assert 'open' in phone.get_attribute('#pane-todo', 'class')
+    phone.go_back(); phone.wait_for_timeout(300)
+    assert 'open' not in phone.get_attribute('#pane-todo', 'class')
+    assert phone.url.endswith('index.html')
+
+
+def test_prechart_filter_keeps_row_and_counts_update_while_typing(page, base_url):
+    admit(page, base_url)
+    page.click('[data-act="ax-pre-todo"]')
+    page.click('#row_gender [data-v="男"]')
+    assert page.locator('#row_gender').count() == 1      # 剛填的不會馬上消失，點錯還能改
+    page.fill('#af_age', '70')
+    page.wait_for_timeout(400)
+    assert page.text_content('[data-pc="all"]').startswith('已填 6/')   # 預設帶 src、info、tool、tadm＋剛填的兩項
+    assert page.evaluate("document.activeElement.id") == 'af_age'
+
+
+def test_hashchange_switches_tool(page, base_url):
+    page.goto(base_url + 'index.html#meds')
+    page.wait_for_timeout(500)
+    page.evaluate("location.hash = '#rounds'")
+    page.wait_for_timeout(300)
+    assert 'tab-rounds' in selected(page)
+
+
+def test_last_edit_is_saved_when_page_hides(page, base_url):
+    admit(page, base_url)
+    page.fill('#af_age', '81')
+    page.evaluate("window.dispatchEvent(new Event('pagehide'))")   # 不等 0.4 秒
+    assert json.loads(page.evaluate("localStorage.getItem('oncall.admit.v1')"))['f']['age'] == '81'
