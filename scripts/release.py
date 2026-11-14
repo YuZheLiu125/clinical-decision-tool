@@ -28,9 +28,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SITE = ROOT / 'site'
 SLUG = 'dd7bba5d-4f79-4d51-9ce8-bae6b37db5da'
-TRAILER = '
-
-Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>'
+TRAILER = '\n\nCo-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>'
 
 
 def sh(*a, check=True):
