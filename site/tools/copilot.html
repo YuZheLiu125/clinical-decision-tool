@@ -436,9 +436,18 @@ details.ref summary{cursor:pointer;font-weight:500}
 .manual summary{cursor:pointer}
 
 /* 接新病人 v2 */
-.srct{display:inline-block;margin-left:6px;padding:0 5px;border-radius:4px;font-size:10.5px;line-height:1.6;font-weight:500;white-space:nowrap;vertical-align:1px;border:1px solid var(--line);color:var(--ink-3)}
+.srct{display:inline-block;margin-left:6px;padding:0 5px;font-family:inherit;cursor:pointer;background:none;border-radius:4px;font-size:10.5px;line-height:1.6;font-weight:500;white-space:nowrap;vertical-align:1px;border:1px solid var(--line);color:var(--ink-3)}
 .srct.s-c,.srct.s-n{border-color:transparent;background:var(--accent-soft);color:var(--accent)}
 .srct.s-w{border-style:dashed}
+.src-legend .srct{cursor:default}
+.srcpick{display:inline-flex;flex-wrap:wrap;gap:4px;margin:4px 0 0 6px;vertical-align:middle}
+.srcb{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:6px;padding:5px 9px;font-size:12.5px;min-height:32px;cursor:pointer}
+.srcb[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg);font-weight:600}
+.srcrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px;padding:7px 0;border-bottom:1px dashed var(--line)}
+.srcrow:last-child{border-bottom:0}
+.srcrow .t{flex:1 1 180px;min-width:0;font-size:13.5px;color:var(--ink-2)}
+.srcrow.my .t{color:var(--ink);font-weight:600}
+.srcrow .srcpick{margin:0}
 .src-legend{font-size:12.5px;color:var(--ink-2);margin:0 0 12px}
 .src-legend .srct{margin:0 3px}
 .think{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px}
@@ -3516,7 +3525,7 @@ document.addEventListener('click', e => {
   const a = UI.admit, w = wkEnsure(), d = b.dataset, p = wkP(w.pid);
   switch (d.act){
   case 'wk-ph':
-    a.ph = d.ph;
+    a.ph = d.ph; UI.srcEdit = false; UI.srcPick = null;
     if (d.ph === 'syn' && !w.pi.trim() && p && w.revealed) w.pi = wkCompose();
     render(); window.scrollTo(0, 0); saveDraft(); return;
   case 'wk-pid': if (w.pid === d.id) return; wkSetPid(d.id); return;
@@ -4297,16 +4306,32 @@ const FIELD = {}; AN.forEach(s => s.groups.forEach(g => g.fields.forEach(x => { 
 
 /* ===== 接新病人 v2：欄位來源、先查病歷、整理思緒、床邊檢核、複製給 AI =====
    FSRC：每個欄位平常從哪裡拿得到。n 護理紀錄、c 病歷（舊病歷、急診／門診紀錄、檢驗影像）、b 床邊問或檢查、w 回來寫。
-   沒列到的一律算 b（ROS、理學檢查）。這是預設分類，各科、各院的護理紀錄內容不同，要改就改下面三行。 */
+   沒列到的一律算 b（ROS、理學檢查）。這只是「預設值」：每家醫院的系統看得到的東西不一樣，
+   使用者可以在畫面上自己改（點欄位旁的標籤，或「1 先查病歷 → 設定我的醫院查得到的欄位」），
+   改過的存在 oncall.fsrc.v1（只存跟預設不同的；會同步到他自己的其他裝置）。 */
 const FSRC_LAB = {n:'護理紀錄', c:'病歷', b:'床邊', w:'回來寫'};
 const FSRC = {};
 const fsrcSet = (s, keys) => keys.split(' ').forEach(k => { FSRC[k] = s; });
 fsrcSet('c', 'gender age dept src tadm cc pmh other meds allergy mi chf pvd cva dem copd ctd pud liver dm dmm hemi ckd tumor leuk lymph aids labs micro img ecg exam path');
 fsrcSet('n', 'info occ tocc tocc_d smoke passive alcohol betel drug habit_d lives fam care fin psy ht wt wl acute k_bath k_dress k_toil k_trans k_cont k_feed bt sbp dbp pr rr tool pain');
 fsrcSet('w', 'tcomp pi hpin labint imp p_dx p_tx p_ed p_dc mdc vsc');
-const fsrcOf = k => FSRC[k] || 'b';
+const FSRC_KEY = 'oncall.fsrc.v1';
+let FSRC_MY = {};
+function loadFsrc(){ try { const d = JSON.parse(localStorage.getItem(FSRC_KEY) || 'null'); FSRC_MY = d && typeof d === 'object' && !Array.isArray(d) ? d : {}; } catch { FSRC_MY = {}; } }
+loadFsrc();
+const fsrcDef = k => FSRC[k] || 'b';
+const fsrcOf = k => (FSRC_LAB[FSRC_MY[k]] ? FSRC_MY[k] : fsrcDef(k));
+function setFsrc(k, s){
+  loadFsrc();                                   // 先讀回最新的（別的分頁、別台裝置可能剛改過）
+  if (s === fsrcDef(k)) delete FSRC_MY[k]; else FSRC_MY[k] = s;
+  try { if (Object.keys(FSRC_MY).length) localStorage.setItem(FSRC_KEY, JSON.stringify(FSRC_MY)); else localStorage.removeItem(FSRC_KEY); } catch {}
+}
+addEventListener('storage', e => { if (e.key !== FSRC_KEY) return; loadFsrc(); const ae = document.activeElement; if (UI.view === 'admit' && UI.admit && !(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))){ const y = window.scrollY; render(); window.scrollTo(0, y); } });
+const canPre = k => { const s = fsrcOf(k); return s === 'n' || s === 'c'; };
 const CONFIRM = new Set('cc pmh meds allergy smoke alcohol betel tocc'.split(' '));   // 先查到了，床邊還是要跟病人核對
-const srcTag = k => { const s = fsrcOf(k); return `<span class="srct s-${s}">${FSRC_LAB[s]}${s !== 'b' && s !== 'w' && CONFIRM.has(k) ? '・床邊核對' : ''}</span>`; };
+const srcPickHTML = k => `<span class="srcpick" role="group" aria-label="這個欄位從哪裡拿">${Object.keys(FSRC_LAB).map(s => `<button type="button" class="srcb" data-act="ax-src-set" data-k="${k}" data-s="${s}" aria-pressed="${fsrcOf(k) === s}">${FSRC_LAB[s]}</button>`).join('')}</span>`;
+// 標籤本身是按鈕：點一下就地改這個欄位在「你的醫院」從哪裡拿
+const srcTag = k => { const s = fsrcOf(k), open = UI.srcPick === k; return `<button type="button" class="srct s-${s}" data-act="ax-src" data-k="${k}" aria-expanded="${open}" title="點一下可以改：這個欄位在你的醫院從哪裡拿">${FSRC_LAB[s]}${canPre(k) && CONFIRM.has(k) ? '・床邊核對' : ''}</button>${open ? srcPickHTML(k) : ''}`; };
 /* 「1 先查病歷」的分區：依「去哪裡找」排，不是依病歷欄位順序 */
 const PRE_SECS = [
   {t:'病歷首頁、急診／門診紀錄', where:'EMR 首頁、急診病歷、門診紀錄、藥歷', keys:'gender age dept src tadm cc pmh other meds allergy'},
@@ -4315,12 +4340,23 @@ const PRE_SECS = [
   {t:'共病（Charlson）', where:'舊病歷的診斷、出院病摘', keys:'mi chf pvd cva dem copd ctd pud liver dm dmm hemi ckd tumor leuk lymph aids', gk:'mi'},
   {t:'檢驗、影像報告', where:'檢驗報告、影像報告、心電圖', keys:'labs micro img ecg exam path'},
 ].map(s => ({...s, keys:s.keys.split(' ')}));
-const preVis = (s, f) => s.keys.filter(k => FIELD[k] && (!FIELD[k].x.when || FIELD[k].x.when(f)));
-function preStat(f){ const ks = PRE_SECS.flatMap(s => preVis(s, f)); return {n:ks.length, d:ks.filter(k => !isEmpty(f[k])).length}; }
+const PRE_DEF = new Set(PRE_SECS.flatMap(s => s.keys));
+const preSecs = () => { const extra = Object.keys(FIELD).filter(k => canPre(k) && !PRE_DEF.has(k)); return extra.length ? [...PRE_SECS, {t:'其他（你標記查得到的）', where:'你自己標成「病歷」或「護理紀錄」的欄位', keys:extra}] : PRE_SECS; };
+const preVis = (s, f) => s.keys.filter(k => FIELD[k] && canPre(k) && (!FIELD[k].x.when || FIELD[k].x.when(f)));
+function preStat(f){ const ks = preSecs().flatMap(s => preVis(s, f)); return {n:ks.length, d:ks.filter(k => !isEmpty(f[k])).length}; }
 function preListText(f){
   const L = ['接新病人：到床邊之前可以先查好的欄位', ''];
-  PRE_SECS.forEach(s => { L.push(`【${s.t}】（${s.where}）`); preVis(s, f).forEach(k => { const x = FIELD[k].x; L.push(`${isEmpty(f[k]) ? '☐' : '☑'} ${x.l}${CONFIRM.has(k) ? '（床邊核對）' : ''}`); }); L.push(''); });
+  preSecs().forEach(s => { if (!preVis(s, f).length) return; L.push(`【${s.t}】（${s.where}）`); preVis(s, f).forEach(k => { const x = FIELD[k].x; L.push(`${isEmpty(f[k]) ? '☐' : '☑'} ${x.l}${CONFIRM.has(k) ? '（床邊核對）' : ''}`); }); L.push(''); });
   return L.join('\n').trim();
+}
+/* 設定頁：全部欄位依病歷段落列出，每個選它在你的醫院從哪裡拿 */
+function srcEditHTML(){
+  const nMy = Object.keys(FSRC_MY).length;
+  return `<section class="wk-sec"><h3>設定我的醫院查得到的欄位</h3>
+    <p class="small">每個欄位選一個來源。選「病歷」或「護理紀錄」的會出現在「1 先查病歷」，提醒你到床邊之前先在電腦填好；選「床邊」的留到床邊問或檢查；「回來寫」是判讀與計畫。只要設定一次，會同步到你自己的其他裝置，不影響別人。</p>
+    <div class="row" style="margin-top:10px"><span class="cnt ${nMy ? '' : 'ok'}">${nMy ? `已調整 ${nMy} 項` : '目前是預設值'}</span>${UI.confirm === 'fsrc' ? `<span class="confirm">全部恢復預設？<button class="btn sm" data-act="ax-src-reset-yes">恢復</button><button class="btn sm ghost" data-act="ax-src-reset-no">取消</button></span>` : nMy ? `<button class="btn sm ghost" data-act="ax-src-reset">恢復預設</button>` : ''}<button class="btn sm primary" data-act="ax-src-edit">完成</button></div></section>` +
+  AN.filter(s => s.groups.length).map(s => `<section class="wk-sec"><div class="fgroup-h"><h3>${esc(s.zh)}</h3></div>${s.groups.flatMap(g => g.fields).map(x => `<div class="srcrow ${FSRC_MY[x.k] && FSRC_MY[x.k] !== fsrcDef(x.k) ? 'my' : ''}"><span class="t">${esc(x.l)}</span>${srcPickHTML(x.k)}</div>`).join('')}</section>`).join('') +
+  `<div class="bedfoot"><span class="small">${nMy ? `已調整 ${nMy} 項` : '目前是預設值'}</span><button class="btn primary" data-act="ax-src-edit">完成，回到先查病歷</button></div>`;
 }
 function preRefresh(){   // 打字時只換計數的文字，不重繪（游標不會跳）
   if (!UI.admit) return; const f = UI.admit.f, st = preStat(f);
@@ -4328,20 +4364,23 @@ function preRefresh(){   // 打字時只換計數的文字，不重繪（游標�
     const k = el.dataset.pc;
     if (k === 'all'){ el.textContent = `已填 ${st.d}/${st.n}`; el.classList.toggle('ok', st.d === st.n); }
     else if (k === 'foot') el.textContent = `已填 ${st.d}/${st.n}，沒查到的留著，床邊會再提醒`;
-    else { const s = PRE_SECS[+k], n = preVis(s, f).filter(x => isEmpty(f[x])).length; el.textContent = n ? n + ' 未填' : '完成'; el.classList.toggle('ok', !n); }
+    else { const s = preSecs()[+k]; if (!s) return; const n = preVis(s, f).filter(x => isEmpty(f[x])).length; el.textContent = n ? n + ' 未填' : '完成'; el.classList.toggle('ok', !n); }
   });
 }
 function wkPre(a){
-  const f = a.f, st = preStat(f), allG = AN.flatMap(s => s.groups);
+  const f = a.f, st = preStat(f), allG = AN.flatMap(s => s.groups), nMy = Object.keys(FSRC_MY).length;
+  if (UI.srcEdit) return srcEditHTML();
   return `<section class="wk-sec"><h3>到床邊之前，先在電腦查好</h3>
     <p class="small">這一頁是護理紀錄和病歷裡查得到的欄位，依「去哪裡找」分區。先填好會同步到手機，床邊只剩要問、要檢查的。標「床邊核對」的，查到了也要再跟病人確認一次。</p>
-    <div class="row" style="margin-top:10px"><span class="cnt ${st.d === st.n ? 'ok' : ''}" data-pc="all">已填 ${st.d}/${st.n}</span><button class="chip ${UI.preTodo ? 'on' : ''}" data-act="ax-pre-todo" aria-pressed="${!!UI.preTodo}">只看還沒填的</button><button class="btn sm" data-act="ax-pre-copy">${ICON.copy}複製待查清單</button></div></section>` +
-  PRE_SECS.map(s => {
+    <p class="small muted" style="margin-top:6px">每家醫院看得到的不一樣：這裡列的是${nMy ? `你調整過的清單（改了 ${nMy} 項）` : '預設清單'}。某一項你的系統查不到，點它旁邊的標籤改成「床邊」；查得到卻沒列出來的，按「設定我的醫院查得到的欄位」。設定一次，之後每個病人都照你的。</p>
+    <div class="row" style="margin-top:10px"><span class="cnt ${st.d === st.n ? 'ok' : ''}" data-pc="all">已填 ${st.d}/${st.n}</span><button class="chip ${UI.preTodo ? 'on' : ''}" data-act="ax-pre-todo" aria-pressed="${!!UI.preTodo}">只看還沒填的</button><button class="btn sm" data-act="ax-pre-copy">${ICON.copy}複製待查清單</button><button class="btn sm" data-act="ax-src-edit">設定我的醫院查得到的欄位</button></div></section>` +
+  preSecs().map((s, si) => {
+    if (!s.keys.some(canPre)) return '';
     const ks = preVis(s, f), left = ks.filter(k => isEmpty(f[k]));
     // 只看還沒填的：清單在按下篩選那一刻定下來，填了不會馬上消失（點錯還能改）；依賴欄位（例如選了 Yes 才出現的說明）照樣出現
     const show = UI.preTodo ? ks.filter(k => isEmpty(f[k]) || (UI.preTodoKeys && UI.preTodoKeys.has(k))) : ks;
     const gi = s.gk ? allG.indexOf(FIELD[s.gk].g) : -1;
-    return `<section class="wk-sec"><div class="fgroup-h"><h3>${esc(s.t)}</h3><span class="muted small">${esc(s.where)}</span><span class="sp"></span><span class="cnt ${left.length ? '' : 'ok'}" data-pc="${PRE_SECS.indexOf(s)}">${left.length ? left.length + ' 未填' : '完成'}</span>${gi >= 0 && left.length ? `<button class="btn sm" data-act="gnormal" data-gi="${gi}">未填的設為沒有</button>` : ''}</div>
+    return `<section class="wk-sec"><div class="fgroup-h"><h3>${esc(s.t)}</h3><span class="muted small">${esc(s.where)}</span><span class="sp"></span><span class="cnt ${left.length ? '' : 'ok'}" data-pc="${si}">${left.length ? left.length + ' 未填' : '完成'}</span>${gi >= 0 && left.length ? `<button class="btn sm" data-act="gnormal" data-gi="${gi}">未填的設為沒有</button>` : ''}</div>
       ${show.length ? show.map(k => fieldHTML(FIELD[k].x)).join('') : '<p class="muted small" style="margin:8px 0 0">這一區都填好了。</p>'}</section>`;
   }).join('') +
   `<div class="bedfoot"><span class="small" data-pc="foot">已填 ${st.d}/${st.n}，沒查到的留著，床邊會再提醒</span><button class="btn primary" data-act="wk-ph" data-ph="prep">下一步：整理思緒 →</button></div>`;
@@ -4452,8 +4491,14 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-act^="ax-"]'); if (!b || !UI.admit) return;
   const a = UI.admit, w = wkEnsure(), d = b.dataset;
   switch (d.act){
-  case 'ax-pre-todo': UI.preTodo = !UI.preTodo; UI.preTodoKeys = UI.preTodo ? new Set(PRE_SECS.flatMap(s => preVis(s, a.f)).filter(k => isEmpty(a.f[k]))) : null; break;
+  case 'ax-pre-todo': UI.preTodo = !UI.preTodo; UI.preTodoKeys = UI.preTodo ? new Set(preSecs().flatMap(s => preVis(s, a.f)).filter(k => isEmpty(a.f[k]))) : null; break;
   case 'ax-pre-copy': copyText(preListText(a.f), b); return;
+  case 'ax-src': UI.srcPick = UI.srcPick === d.k ? null : d.k; break;
+  case 'ax-src-set': setFsrc(d.k, d.s); UI.srcPick = null; UI.preTodoKeys = null; if (UI.preTodo) UI.preTodoKeys = new Set(preSecs().flatMap(s => preVis(s, a.f)).filter(k => isEmpty(a.f[k]))); break;
+  case 'ax-src-edit': UI.srcEdit = !UI.srcEdit; UI.srcPick = null; UI.confirm = null; if (UI.srcEdit) a.ph = 'pre'; wkRender(); window.scrollTo(0, 0); return;
+  case 'ax-src-reset': UI.confirm = 'fsrc'; break;
+  case 'ax-src-reset-no': UI.confirm = null; break;
+  case 'ax-src-reset-yes': UI.confirm = null; FSRC_MY = {}; try { localStorage.removeItem(FSRC_KEY); } catch {} break;
   case 'ax-kq': w.kq = w.kq || {}; if (w.kq[d.id]) delete w.kq[d.id]; else w.kq[d.id] = 1; break;
   case 'ax-kq-open': UI.kqOpen = UI.kqOpen === d.id ? null : d.id; break;
   case 'ax-tl-add': {
@@ -4581,7 +4626,7 @@ function vAdmit(){
     <div class="phi">會同步到你登入同一個帳號的裝置（電腦先查、手機床邊問）。請勿輸入姓名、病歷號、身分證字號。</div></div>
     <div class="row">${UI.confirm === 'admit' ? `<span class="confirm">確定清除這份 note？<button class="btn sm" data-act="admit-clear-yes">清除</button><button class="btn sm ghost" data-act="admit-clear-no">取消</button></span>` : `<button class="btn sm ghost" data-act="admit-clear">清除這份 note</button>`}</div></div>
   ${wkPhaseBar()}
-  ${a.ph === 'form' ? `<p class="src-legend">欄位旁的標籤是它平常的來源：<span class="srct s-c">病歷</span><span class="srct s-n">護理紀錄</span> 可以先在電腦查好；<span class="srct s-b">床邊</span> 要問或檢查；<span class="srct s-w">回來寫</span> 是判讀與計畫。</p><div class="adm-grid"><nav class="secnav" id="secnav" aria-label="段落">${secnavHTML()}</nav><div id="admBody">${admBodyHTML()}</div></div>` : `<div id="wkBody">${wkBodyHTML()}</div>`}`;
+  ${a.ph === 'form' ? `<p class="src-legend">欄位旁的標籤是它的來源：<span class="srct s-c">病歷</span><span class="srct s-n">護理紀錄</span> 可以先在電腦查好；<span class="srct s-b">床邊</span> 要問或檢查；<span class="srct s-w">回來寫</span> 是判讀與計畫。每家醫院不一樣，點標籤可以改成你的醫院的情況。</p><div class="adm-grid"><nav class="secnav" id="secnav" aria-label="段落">${secnavHTML()}</nav><div id="admBody">${admBodyHTML()}</div></div>` : `<div id="wkBody">${wkBodyHTML()}</div>`}`;
 }
 function admBodyHTML(){
   const a = UI.admit, idx = AN.findIndex(s => s.id === a.sec), sec = AN[idx];

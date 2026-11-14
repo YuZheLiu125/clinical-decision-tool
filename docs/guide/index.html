@@ -425,6 +425,7 @@ body.editing [contenteditable=true]{outline:2px dashed rgba(255,51,0,.5);outline
       <tr><td><span class="tag" style="--c:var(--t-consult)">P2</span></td><td>要打電話找人會診</td><td>會診電話稿</td><td>ISBAR 填空，照稿唸</td></tr>
       <tr><td><span class="tag" style="--c:var(--t-meds)">P3</span></td><td>病人穩定、要開藥</td><td>值班用藥速查</td><td>依病人狀態標首選／慎用／禁用</td></tr>
       <tr><td><span class="tag" style="--c:var(--t-labs)">P3</span></td><td>報告回來、要判讀</td><td>檢驗正常值</td><td>正常值、警覺值、腎功能計算</td></tr>
+      <tr><td><span class="tag" style="--c:var(--t-rounds)">日常</span></td><td>接新住院病人</td><td>接新病人</td><td>先查病歷、床邊檢核、PI、admission note</td></tr>
       <tr><td><span class="tag" style="--c:var(--t-rounds)">日常</span></td><td>查房、追病人、交班</td><td>查房板</td><td>每床 problem、清單、交班</td></tr>
       <tr><td><span class="tag" style="--c:var(--t-todo)">常駐</span></td><td>每一件要做的事</td><td>待辦表</td><td>倒數提醒，不漏事</td></tr>
     </table>
@@ -473,7 +474,31 @@ body.editing [contenteditable=true]{outline:2px dashed rgba(255,51,0,.5);outline
       <div><b>5</b><strong>Note</strong><p>寫 Assessment 第一行，複製 note 貼回 EMR</p></div>
     </div>
     <div class="tip r d3" style="margin-top:22px">收尾：沒做完的醫囑<b>送到待辦表</b>，再按「結束這個 call」。同時好幾個 call，就回首頁開新的。</div>
-    <p class="note r d4" style="margin-top:14px"><b style="color:var(--ink)">接新病人</b>（導覽有自己的入口）：<b style="color:var(--ink)">電腦先查病歷</b>把護理紀錄、舊病歷查得到的欄位填好 → 整理思緒 → 手機到床邊照檢核表問（沒問到的離開前會提醒）→ 整理 PI → 電腦補完欄位、複製貼回 EMR。兩邊自動同步（顯示「已同步」時）。</p>
+    <p class="note r d4" style="margin-top:14px">接新住院病人不是從這裡開始：導覽有自己的入口「接新病人」，下一頁。</p>
+  </div>
+  <div class="pn r"></div><div class="foot-url r"><i>→</i> lycdx.notion.site</div>
+</section>
+
+<!-- ============ 07 接新病人 ============ -->
+<section class="slide s">
+  <div class="top r"><span>臨床輔助決策工具</span><span class="sec">日常・接新病人</span></div>
+  <div class="hd" style="width:560px">
+    <span class="no r" style="background:var(--t-rounds)">新</span>
+    <h2 class="r d1">接新病人</h2>
+    <p class="lead r d2">電腦先查、手機床邊問，兩邊自動同步。走到床邊前<b>腦袋不會一片空白</b>，離開前<b>不會漏問</b>。</p>
+    <div class="rule r d3"></div>
+    <p class="note r d3" style="margin-top:26px">每個欄位旁有來源標籤：病歷、護理紀錄、床邊、回來寫。<br><b style="color:var(--ink)">每家醫院不一樣</b>：點標籤就能改成你的醫院的情況，設定一次，之後每個病人都照你的。</p>
+  </div>
+  <div class="bd" style="left:740px">
+    <div class="six r d1">
+      <div><b>1</b><strong>先查病歷</strong><p>電腦上把護理紀錄、病歷查得到的欄位先填好；可以只看還沒填的</p></div>
+      <div><b>2</b><strong>整理思緒</strong><p>選主訴 → 這次不能漏的鑑別；寫下假設，加「我一定要問到的事」</p></div>
+      <div><b>3</b><strong>床邊問診</strong><p>LQQOPERA、時間軸、相關症狀（紅字「必問」）、關鍵資訊 12 項，邊問邊點</p></div>
+      <div><b>4</b><strong>整理 PI</strong><p>先列出還沒問到的；PI 草稿自動成稿，可以「複製給 AI 修改」</p></div>
+      <div><b>5</b><strong>病歷欄位</strong><p>補完 ROS、PE、計畫；必填沒填會提醒，複製整份貼回 EMR</p></div>
+      <div><b>＊</b><strong>我的醫院</strong><p>「設定我的醫院查得到的欄位」：標成查得到的，下次就列在第 1 步</p></div>
+    </div>
+    <div class="tip r d3" style="margin-top:22px">不要輸入姓名、病歷號、身分證字號：內容會同步到你自己的雲端空間。清單沒有的主訴選「其他」，檢核表照樣能用。</div>
   </div>
   <div class="pn r"></div><div class="foot-url r"><i>→</i> lycdx.notion.site</div>
 </section>
@@ -677,7 +702,7 @@ body.editing [contenteditable=true]{outline:2px dashed rgba(255,51,0,.5);outline
 </main>
 </div>
 
-<nav class="deck-controls" aria-label="簡報控制"><button id="prevBtn" aria-label="上一頁">‹</button><span id="counter">1 / 14</span><button id="nextBtn" aria-label="下一頁">›</button></nav>
+<nav class="deck-controls" aria-label="簡報控制"><button id="prevBtn" aria-label="上一頁">‹</button><span id="counter">1 / 15</span><button id="nextBtn" aria-label="下一頁">›</button></nav>
 
 <script>
 /* ===========================================

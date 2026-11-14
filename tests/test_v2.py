@@ -183,7 +183,7 @@ def test_every_admission_field_has_a_known_source(page, base_url):
     assert bad == []          # 來源表裡沒有打錯的欄位名
     pre = page.evaluate("PRE_SECS.flatMap(s => s.keys)")
     assert len(pre) == len(set(pre))
-    assert page.evaluate("PRE_SECS.flatMap(s => s.keys).every(k => ['n', 'c'].includes(fsrcOf(k)))")
+    assert page.evaluate("PRE_SECS.flatMap(s => s.keys).every(k => ['n', 'c'].includes(fsrcDef(k)))")
     # 所有標成護理紀錄／病歷的欄位，都排進了「先查病歷」
     assert page.evaluate("Object.keys(FSRC).filter(k => ['n', 'c'].includes(FSRC[k]) && !PRE_SECS.some(s => s.keys.includes(k)))") == []
 
@@ -383,3 +383,48 @@ def test_last_edit_is_saved_when_page_hides(page, base_url):
     page.fill('#af_age', '81')
     page.evaluate("window.dispatchEvent(new Event('pagehide'))")   # 不等 0.4 秒
     assert json.loads(page.evaluate("localStorage.getItem('oncall.admit.v1')"))['f']['age'] == '81'
+
+
+def test_field_sources_are_mine_to_change(page, base_url):
+    """欄位來源每家醫院不同：使用者自己改，改過的記住、套用到之後每個病人。"""
+    admit(page, base_url)
+    # 我的系統查不到職業 → 點標籤改成床邊：從「先查病歷」消失
+    page.click('#row_occ .srct')
+    page.click('#row_occ [data-act="ax-src-set"][data-s="b"]')
+    assert page.locator('#row_occ').count() == 0
+    assert json.loads(page.evaluate("localStorage.getItem('oncall.fsrc.v1')")) == {'occ': 'b'}
+    # 我的護理紀錄有家族史 → 設定頁改成護理紀錄：出現在「先查病歷」的自訂區
+    page.click('[data-act="ax-src-edit"]')
+    page.click('.srcrow:has-text("Family History") [data-s="n"]')
+    assert page.locator('.srcrow.my').count() == 2
+    page.click('.bedfoot [data-act="ax-src-edit"]')
+    assert page.evaluate("[...document.querySelectorAll('.wk-sec .fgroup-h h3')].map(h => h.textContent)")[-1] == '其他（你標記查得到的）'
+    assert page.text_content('#row_fhx .srct') == '護理紀錄'
+    # 清掉這份 note、開下一個病人：設定還在
+    page.evaluate("document.querySelector('[data-act=\"admit-clear\"]').click()")
+    page.click('[data-act="admit-clear-yes"]')
+    page.reload()
+    page.click('[data-act="admit-new"]')
+    assert page.locator('#row_occ').count() == 0 and page.locator('#row_fhx').count() == 1
+    page.click('[data-ph="form"]')
+    assert page.text_content('#row_occ .srct') == '床邊'
+    # 改回預設值就不再存
+    page.click('#row_occ .srct'); page.click('#row_occ [data-act="ax-src-set"][data-s="n"]')
+    assert json.loads(page.evaluate("localStorage.getItem('oncall.fsrc.v1')")) == {'fhx': 'n'}
+    # 別台裝置改了設定：這裡跟著變
+    page.evaluate("localStorage.setItem('oncall.fsrc.v1', '{}'); window.dispatchEvent(new StorageEvent('storage', {key: 'oncall.fsrc.v1'}))")
+    page.click('[data-act="sec"][data-s="hist"]')
+    assert page.text_content('#row_fhx .srct') == '床邊'
+    # 壞掉的設定值不會讓工具壞掉
+    page.evaluate("localStorage.setItem('oncall.fsrc.v1', '[1]')"); page.reload(); page.click('[data-act="admit-new"]')
+    assert page.errors == []
+
+
+def test_reset_field_sources(page, base_url):
+    admit(page, base_url)
+    page.click('#row_occ .srct'); page.click('#row_occ [data-act="ax-src-set"][data-s="b"]')
+    page.click('[data-act="ax-src-edit"]')
+    page.click('[data-act="ax-src-reset"]'); page.click('[data-act="ax-src-reset-yes"]')
+    assert page.evaluate("localStorage.getItem('oncall.fsrc.v1')") is None
+    page.click('.bedfoot [data-act="ax-src-edit"]')
+    assert page.locator('#row_occ').count() == 1
