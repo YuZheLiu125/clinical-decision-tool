@@ -4,6 +4,7 @@
 1. 每個 HTML 裡的 inline <script> 都能被 node 解析（抓語法錯誤）
 2. 總站 index.html 裡 data-src 指到的工具檔案都存在
 3. 版本號一致：VERSION 檔 = index.html 的 <meta name="app-version">
+4. 每個 HTML 內嵌的共用樣式跟 shared/hub-common.css 一致
 
 用法：python3 scripts/check.py
 """
@@ -35,7 +36,7 @@ def syntax_errors():
 
 def missing_files():
     html = (SITE / 'index.html').read_text(encoding='utf8')
-    return [f'index.html 指到不存在的檔案：{p}' for p in re.findall(r'data-src="([^"]+)"', html)
+    return [f'index.html 指到不存在的檔案：{p}' for p in re.findall(r"\bsrc: '(tools/[^']+)'", html) + re.findall(r'data-src="(tools/[^"]+)"', html)
             if not (SITE / p).exists()]
 
 
@@ -47,8 +48,13 @@ def version_mismatch():
     return [] if m.group(1) == v else [f'版本號不一致：VERSION={v}，index.html={m.group(1)}']
 
 
+def shared_out_of_sync():
+    r = subprocess.run([sys.executable, str(ROOT / 'scripts' / 'sync_shared.py'), '--check'], capture_output=True, text=True)
+    return [] if r.returncode == 0 else [r.stdout.strip().lstrip('✗ ')]
+
+
 def main():
-    errs = syntax_errors() + missing_files() + version_mismatch()
+    errs = syntax_errors() + missing_files() + version_mismatch() + shared_out_of_sync()
     for e in errs:
         print('✗', e)
     if errs:

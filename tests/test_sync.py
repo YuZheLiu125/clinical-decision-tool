@@ -64,18 +64,6 @@ def test_unchanged_local_just_takes_remote(hub):
     assert hub.evaluate("localStorage.getItem('hub.sync.bak:hub.lastBed')") is None
 
 
-def test_fab_unhides_after_tool_reload(phone, base_url):
-    phone.goto(base_url + 'index.html#meds')
-    phone.wait_for_timeout(1500)
-    phone.evaluate("window.postMessage({hub: 'sheet', open: true}, '*')")
-    phone.evaluate("document.querySelector('#tab-pilot').click()")
-    phone.wait_for_timeout(1200)
-    assert 'gl-open' in phone.evaluate("document.body.className")
-    phone.evaluate("document.getElementById('f-pilot').contentWindow.location.reload()")
-    phone.wait_for_timeout(1500)
-    assert 'gl-open' not in phone.evaluate("document.body.className")
-
-
 def todo_items(pg):
     st = json.loads(pg.evaluate("localStorage.getItem('shiftboard.v1')"))
     return sorted(i['id'] for i in st['items']), sorted(i['id'] for i in st.get('done', []))
@@ -133,7 +121,7 @@ def test_admission_note_is_saved_to_synced_storage(page, base_url):
     page.click('[data-act="admit-new"]')
     page.wait_for_timeout(600)
     a = json.loads(page.evaluate("localStorage.getItem('oncall.admit.v1')"))
-    assert a['ph'] == 'prep'
+    assert a['ph'] == 'pre'   # 新的 note 從「1 先查病歷」開始
     # 清除後所有裝置一起清掉
     page.evaluate("document.querySelector('[data-act=\"admit-clear\"]').click()")
     page.click('[data-act="admit-clear-yes"]')

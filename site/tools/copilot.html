@@ -435,6 +435,32 @@ details.ref summary{cursor:pointer;font-weight:500}
 .manual{margin-top:10px}
 .manual summary{cursor:pointer}
 
+/* 接新病人 v2 */
+.srct{display:inline-block;margin-left:6px;padding:0 5px;border-radius:4px;font-size:10.5px;line-height:1.6;font-weight:500;white-space:nowrap;vertical-align:1px;border:1px solid var(--line);color:var(--ink-3)}
+.srct.s-c,.srct.s-n{border-color:transparent;background:var(--accent-soft);color:var(--accent)}
+.srct.s-w{border-style:dashed}
+.src-legend{font-size:12.5px;color:var(--ink-2);margin:0 0 12px}
+.src-legend .srct{margin:0 3px}
+.think{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px}
+.think li b{display:block}
+.think li span{font-size:13.5px;color:var(--ink-2)}
+.kq{display:flex;flex-wrap:wrap;align-items:center;border-top:1px solid var(--line)}
+.kq:first-child{border-top:0}
+.kq .check-row{flex:1;min-width:0;width:auto;border-top:0;min-height:44px}
+.kq>.btn,.kq>.icon-btn{flex:none;margin-right:8px}
+.kq .lbl .sub{font-family:var(--f-body);font-size:12px}
+.kq-f{flex:0 0 100%;padding:2px 14px 10px;background:var(--bg)}
+.tlr{display:grid;grid-template-columns:104px minmax(0,1fr) auto;gap:6px;align-items:center;padding:4px 0}
+.tlr .inp.s{max-width:none}
+.bed.todo-only .lqr.done,.bed.todo-only .bedr.done,.bed.todo-only .clu.done,.bed.todo-only .kq.done{display:none}
+.bedfoot .chip{min-height:36px}
+.miss-box .ms{font-size:13px;margin-top:6px}
+.miss-box .ms b{margin-right:4px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;max-width:760px}
+.wkbar .ws{display:none}
+.wk-sec .fgroup-h h3{font-size:16px;font-family:var(--f-body);font-weight:700}
+@media (max-width:620px){.tlr{grid-template-columns:84px minmax(0,1fr) auto}.wkbar{margin-bottom:12px}.wkbar button{flex:1 1 0;padding:9px 4px;font-size:13.5px}.wkbar .wl{display:none}.wkbar .ws{display:inline}
+  .adm-head{margin-bottom:8px;align-items:center}.adm-head h1{font-size:20px;margin:0}.adm-head .eyebrow{display:none}.adm-head .phi{font-size:11.5px;padding:4px 8px;margin-top:4px}}
 /* admission workup */
 .wkbar{display:flex;gap:4px;overflow-x:auto;margin:4px 0 18px;padding:4px;border-radius:12px;background:var(--surface-2);scrollbar-width:none}
 .wkbar::-webkit-scrollbar{display:none}
@@ -537,33 +563,42 @@ details.ref summary{cursor:pointer;font-weight:500}
 .toast.big{background:var(--accent);color:var(--accent-ink);font-weight:700}
 @keyframes pop{from{transform:translate(-50%,-6px);opacity:0}}
 </style>
-<style id="hub-base">
-/* 臨床輔助決策工具 · 共用基底（每個工具都內嵌這一份）
-   字體：系統字（iPhone = 蘋方，Android = Noto CJK），不下載網路字型，開啟更快
-   色票：病房冷灰底 + 各工具辨識色；動畫：同一組曲線與時長 */
+<style id="hub-base">/*hub-common:start*/
+/* 臨床輔助決策工具 · 共用設計基底 v2（正本：shared/hub-common.css，由 scripts/sync_shared.py 寫進每個 HTML，不要直接改 HTML 裡這一段）
+   原則：顏色只用來表達臨床意義（紅＝危急、琥珀＝注意、綠＝正常／完成）；介面本身只有一個品牌色（墨藍）和一組帶藍調的中性灰。
+   字體：系統字（iPhone = 蘋方，Android = Noto Sans CJK），不下載網路字型。形狀：小圓角、細線、不用陰影堆層次。 */
 :root{
-  --hub-bg:#EEF1F2; --hub-surface:#FFFFFF; --hub-surface2:#E6EAEC; --hub-ink:#152025; --hub-ink2:#4A575E; --hub-ink3:#6E7A81; --hub-line:#D3DADD;
-  --hub-bad:#B3261E; --hub-bad-soft:#FBE6E4; --hub-warn:#9A5B00; --hub-warn-soft:#FBEFD9; --hub-ok:#1D7A3E; --hub-ok-soft:#E1F2E6;
-  --hub-code:#C0262F; --hub-code-soft:#FBE4E5; --hub-pilot:#A35500; --hub-pilot-soft:#F6E7D2;
-  --hub-consult:#2C5C8C; --hub-consult-soft:#DFE8F2; --hub-meds:#0D6870; --hub-meds-soft:#DDEFF0;
-  --hub-labs:#5B4699; --hub-labs-soft:#EBE6F6; --hub-todo:#B4573A; --hub-todo-soft:#F5E3DA;
-  --hub-p1:#B3322B; --hub-p2:#C27416; --hub-p3:#4F6B8A; --hub-p4:#8A867B;
-  --hub-sans:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",system-ui,sans-serif;
-  --hub-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Roboto Mono",monospace;
-  --hub-ease:cubic-bezier(.2,.8,.2,1); --hub-dur:.18s;
+  --hub-bg:#F2F4F6; --hub-surface:#FFFFFF; --hub-surface2:#E8ECF0; --hub-ink:#111B24; --hub-ink2:#44515E; --hub-ink3:#687685; --hub-line:#D5DBE1;
+  --hub-brand:#1F4E79; --hub-brand-soft:#E1EAF3; --hub-on-brand:#FFFFFF;
+  --hub-bad:#B3261E; --hub-bad-soft:#FBE6E4; --hub-warn:#8F5600; --hub-warn-soft:#FBEFD9; --hub-ok:#1D7A3E; --hub-ok-soft:#E1F2E6;
+  --hub-code:#B3261E; --hub-code-soft:#FBE6E4;
+  --hub-p1:#B3322B; --hub-p2:#B26A12; --hub-p3:#4F6B8A; --hub-p4:#7F8791;
+  --hub-sans:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",Roboto,system-ui,sans-serif;
+  --hub-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Roboto Mono","Droid Sans Mono",monospace;
+  --hub-ease:cubic-bezier(.2,.8,.2,1); --hub-dur:.16s; --hub-r:8px; --hub-r-lg:12px;
+  /* 舊的各工具辨識色：全部指到同一個品牌色（工具各自的對應層還在用這些名字） */
+  --hub-pilot:var(--hub-brand); --hub-pilot-soft:var(--hub-brand-soft); --hub-consult:var(--hub-brand); --hub-consult-soft:var(--hub-brand-soft);
+  --hub-meds:var(--hub-brand); --hub-meds-soft:var(--hub-brand-soft); --hub-labs:var(--hub-brand); --hub-labs-soft:var(--hub-brand-soft);
+  --hub-todo:var(--hub-brand); --hub-todo-soft:var(--hub-brand-soft);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --hub-bg:#0E1316; --hub-surface:#161D21; --hub-surface2:#1E272C; --hub-ink:#E4E9EB; --hub-ink2:#A2AEB4; --hub-ink3:#7E8B93; --hub-line:#2A353B;
+  --hub-bg:#0D1218; --hub-surface:#141B23; --hub-surface2:#1C2530; --hub-ink:#E2E8EE; --hub-ink2:#A1ADBA; --hub-ink3:#7B8896; --hub-line:#28323E;
+  --hub-brand:#8FB8E3; --hub-brand-soft:#17293D; --hub-on-brand:#0B1622;
   --hub-bad:#FF7A70; --hub-bad-soft:#3A1B19; --hub-warn:#F0B04A; --hub-warn-soft:#352812; --hub-ok:#6CCF8E; --hub-ok-soft:#15301F;
-  --hub-code:#FF6B70; --hub-code-soft:#3A1A1D; --hub-pilot:#F0A23A; --hub-pilot-soft:#3A2911;
-  --hub-consult:#80B1E0; --hub-consult-soft:#162636; --hub-meds:#5CC2C8; --hub-meds-soft:#16302F;
-  --hub-labs:#B4A2EC; --hub-labs-soft:#2A2440; --hub-todo:#E08A68; --hub-todo-soft:#3A241B; --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#A6A297; color-scheme:dark}}
+  --hub-code:#FF7A70; --hub-code-soft:#3A1B19;
+  --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#98A2AD; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --hub-bg:#0E1316; --hub-surface:#161D21; --hub-surface2:#1E272C; --hub-ink:#E4E9EB; --hub-ink2:#A2AEB4; --hub-ink3:#7E8B93; --hub-line:#2A353B;
+  --hub-bg:#0D1218; --hub-surface:#141B23; --hub-surface2:#1C2530; --hub-ink:#E2E8EE; --hub-ink2:#A1ADBA; --hub-ink3:#7B8896; --hub-line:#28323E;
+  --hub-brand:#8FB8E3; --hub-brand-soft:#17293D; --hub-on-brand:#0B1622;
   --hub-bad:#FF7A70; --hub-bad-soft:#3A1B19; --hub-warn:#F0B04A; --hub-warn-soft:#352812; --hub-ok:#6CCF8E; --hub-ok-soft:#15301F;
-  --hub-code:#FF6B70; --hub-code-soft:#3A1A1D; --hub-pilot:#F0A23A; --hub-pilot-soft:#3A2911;
-  --hub-consult:#80B1E0; --hub-consult-soft:#162636; --hub-meds:#5CC2C8; --hub-meds-soft:#16302F;
-  --hub-labs:#B4A2EC; --hub-labs-soft:#2A2440; --hub-todo:#E08A68; --hub-todo-soft:#3A241B; --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#A6A297; color-scheme:dark}
+  --hub-code:#FF7A70; --hub-code-soft:#3A1B19;
+  --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#98A2AD; color-scheme:dark}
+/* 各工具自己的強調色、強調色上的字，一律跟品牌色走（查房板的 --ac 也是） */
+html:root:root{--ac:var(--hub-brand);--ac-soft:var(--hub-brand-soft);--accent-ink:var(--hub-on-brand)}
+/* Android：內嵌在別的網頁裡時，往下拉不要帶動外層頁面（下拉重新整理）；左右方向不設，手機上工具之間才能左右滑 */
+html{overscroll-behavior-y:contain}
+:focus-visible{outline:2px solid var(--hub-brand);outline-offset:2px}
+@media (pointer:fine){*{scrollbar-width:thin;scrollbar-color:var(--hub-line) transparent}}
 
 /* 觸控：點擊不延遲、不閃灰框、iPhone 不自動放大字 */
 html{-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
@@ -576,20 +611,20 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeSpeed}
 :where(button,.btn,.chip,[role="tab"]):active:not(:disabled){transform:scale(.97)}
 @keyframes hub-in{from{opacity:0;transform:translateY(6px)}}
 @keyframes hub-pop{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
-.hub-toast{position:fixed;left:16px;right:16px;margin:0 auto;width:fit-content;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;max-width:min(520px,calc(100% - 32px));box-sizing:border-box;display:flex;gap:10px;align-items:center;background:var(--hub-ink);color:var(--hub-bg);font:500 14px/1.4 var(--hub-sans);padding:9px 14px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:hub-in .22s var(--hub-ease)}
+.hub-toast{position:fixed;left:16px;right:16px;margin:0 auto;width:fit-content;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;max-width:min(520px,calc(100% - 32px));box-sizing:border-box;display:flex;gap:10px;align-items:center;background:var(--hub-ink);color:var(--hub-bg);font:500 14px/1.4 var(--hub-sans);padding:10px 14px;border-radius:var(--hub-r);box-shadow:0 6px 20px rgba(0,0,0,.22);animation:hub-in .22s var(--hub-ease)}
 /* 待辦設定按鈕：跟待辦表的快速新增同一套（立即／緊急／待辦／有空，點緊急或待辦展開倒數） */
 .hp{display:flex;flex-direction:column;gap:8px;min-width:0}
 .hp-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.hp-pr{--pc:var(--hub-p3);display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:46px;padding:4px;border:1px solid color-mix(in srgb,var(--pc) 45%,var(--hub-line));border-radius:999px;background:transparent;color:var(--pc);font:500 15px/1.2 var(--hub-sans);cursor:pointer}
+.hp-pr{--pc:var(--hub-p3);display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:46px;padding:4px;border:1px solid color-mix(in srgb,var(--pc) 45%,var(--hub-line));border-radius:var(--hub-r);background:transparent;color:var(--pc);font:500 15px/1.2 var(--hub-sans);cursor:pointer}
 .hp-pr[data-p="1"]{--pc:var(--hub-p1)}.hp-pr[data-p="2"]{--pc:var(--hub-p2)}.hp-pr[data-p="4"]{--pc:var(--hub-p4)}
 .hp-pr small{font-size:12px;font-variant-numeric:tabular-nums}
 .hp-pr small:empty{display:none}
 .hp-pr[aria-pressed="true"]{background:var(--pc);border-color:var(--pc);color:var(--hub-surface)}
 .hp-tm{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px}
 .hp-tm::-webkit-scrollbar{display:none}
-.hp-c{flex:none;min-height:40px;border:1px solid var(--hub-line);background:transparent;border-radius:999px;padding:6px 14px;font:15px/1 var(--hub-sans);color:var(--hub-ink);white-space:nowrap;cursor:pointer;font-variant-numeric:tabular-nums}
+.hp-c{flex:none;min-height:40px;border:1px solid var(--hub-line);background:transparent;border-radius:var(--hub-r);padding:6px 14px;font:15px/1 var(--hub-sans);color:var(--hub-ink);white-space:nowrap;cursor:pointer;font-variant-numeric:tabular-nums}
 .hp-c[aria-pressed="true"]{background:var(--hub-ink);border-color:var(--hub-ink);color:var(--hub-bg)}
-.hp input{flex:none;font:16px var(--hub-sans);min-height:40px;padding:5px 10px;border-radius:999px;border:1px solid var(--hub-line);background:var(--hub-bg);color:var(--hub-ink);width:80px;text-align:center}
+.hp input{flex:none;font:16px var(--hub-sans);min-height:40px;padding:5px 10px;border-radius:var(--hub-r);border:1px solid var(--hub-line);background:var(--hub-bg);color:var(--hub-ink);width:80px;text-align:center}
 .hp-dt{display:flex;gap:6px}
 .hp-dt input[type="date"]{flex:1 1 9.5em;width:auto;max-width:12em}
 .hp-dt input[type="time"]{width:7em}
@@ -603,6 +638,7 @@ body.sw-on{-webkit-user-select:none;user-select:none}
 @keyframes hub-flash{from{background-color:var(--hub-todo-soft);box-shadow:inset 4px 0 0 var(--hub-todo)}}
 .sw-done{animation:hub-flash .9s var(--hub-ease)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+/*hub-common:end*/
 
 html:root:root{--bg:var(--hub-bg);--surface:var(--hub-surface);--line:var(--hub-line);--surface-2:var(--hub-surface2);--ink:var(--hub-ink);--ink-2:var(--hub-ink2);--ink-3:var(--hub-ink3);--accent:var(--hub-pilot);--accent-soft:var(--hub-pilot-soft);--crit:var(--hub-bad);--crit-soft:var(--hub-bad-soft);--ok:var(--hub-ok);--ok-soft:var(--hub-ok-soft);--info:var(--hub-consult);--info-soft:var(--hub-consult-soft);--hub-accent:var(--hub-pilot);--f-display:var(--hub-sans);--f-body:var(--hub-sans);--f-mono:var(--hub-mono)}
 </style>
@@ -3251,7 +3287,7 @@ Object.assign(VSD, {
 });
 
 /* ===== 住院問診流程：準備 → 床邊 → 整理 PI ===== */
-const wkNew = () => ({pid:null, mine:[], hits:null, extra:[], revealed:true, inc:{}, lq:{}, ev:[], evTxt:{}, fx:{}, pf:{}, pre:{}, cust:[], ddx:{}, ed:'', order:null, imp:'', pi:'', qmine:'', qhits:null, blindRes:null});
+const wkNew = () => ({pid:null, mine:[], hits:null, extra:[], revealed:true, inc:{}, lq:{}, ev:[], evTxt:{}, fx:{}, pf:{}, pre:{}, cust:[], ddx:{}, ed:'', order:null, imp:'', pi:'', qmine:'', qhits:null, blindRes:null, tl:[], myq:[], kq:{}, hyp:''});
 function wkEnsure(){ const a = UI.admit; if (!a) return null; if (!a.w) a.w = wkNew(); if (!a.ph) a.ph = 'form'; return a.w; }
 function wkRender(){ if (UI.view !== 'admit' || !UI.admit) return; const y = window.scrollY; render(); window.scrollTo(0, y); saveDraft(); }
 function wkSync(){
@@ -3284,54 +3320,66 @@ function wkPhaseBar(){
   const a = UI.admit; wkEnsure();
   const miss = allMissing().length;
   const el = a.w && a.w.mode === 'elec';
-  const ph = el ? [['prep','1 預約處置與 PI'],['form','2 病歷欄位']] : [['prep','1 準備'],['bed','2 床邊問診'],['syn','3 整理 PI'],['form','4 病歷欄位']];
-  return `<nav class="wkbar" aria-label="流程">${ph.map(([k, t]) => `<button data-act="wk-ph" data-ph="${k}" aria-current="${a.ph === k ? 'step' : 'false'}">${t}${k === 'form' ? ` <span class="cnt ${miss ? '' : 'ok'}">${miss ? miss + ' 未填' : '✓'}</span>` : ''}</button>`).join('')}</nav>`;
+  const ph = el ? [['pre','1 先查病歷','1 先查'],['prep','2 預約處置與 PI','2 處置・PI'],['form','3 病歷欄位','3 欄位']] : [['pre','1 先查病歷','1 先查'],['prep','2 整理思緒','2 思緒'],['bed','3 床邊問診','3 床邊'],['syn','4 整理 PI','4 PI'],['form','5 病歷欄位','5 欄位']];
+  return `<nav class="wkbar" aria-label="流程">${ph.map(([k, t, s]) => `<button data-act="wk-ph" data-ph="${k}" aria-current="${a.ph === k ? 'step' : 'false'}" title="${t}"><span class="wl">${t}</span><span class="ws">${s}</span>${k === 'form' ? ` <span class="cnt ${miss ? '' : 'ok'}">${miss ? miss + ' 未填' : '✓'}</span>` : ''}</button>`).join('')}</nav>`;
 }
 function wkBodyHTML(){
   const a = UI.admit, w = wkEnsure(); wkSync();
+  if (a.ph === 'pre') return wkPre(a);
   if (w.mode === 'elec' && a.ph !== 'form') return wkPrep(a, w);
   if (a.ph === 'bed') return wkBed(a, w);
   if (a.ph === 'syn') return wkSyn(a, w);
   return wkPrep(a, w);
 }
 
-/* ---------- 1 準備 ---------- */
+/* ---------- 2 整理思緒（原「準備」） ---------- */
 function wkPrep(a, w){
   if (w.mode === 'elec') return modeBar(w) + elPrep(a, w);
-  const p = getProto(w.pid);
+  const p = wkP(w.pid);
   let h = modeBar(w) + `<section class="wk-sec"><h3>病人與主訴</h3>
     ${fieldHTML(FIELD.gender.x)}${fieldHTML(FIELD.age.x)}${fieldHTML(FIELD.cc.x)}${fieldHTML(FIELD.pmh.x)}
-    <div class="frow wide"><div class="lab">主訴類型（決定鑑別與問診清單）</div><div class="chips">${allProtos().map(q => `<button class="chip ${w.pid === q.id ? 'on' : ''}" data-act="wk-pid" data-id="${q.id}">${esc(q.zh)}</button>`).join('')}</div></div></section>`;
-  if (!p) return h + `<p class="muted">選好主訴類型後，會出現鑑別診斷與問診計畫。</p>`;
-  h += `<section class="wk-sec"><h3>鑑別診斷</h3>
+    <div class="frow wide"><div class="lab">主訴類型（決定鑑別與問診清單）</div><div class="chips">${allProtos().map(q => `<button class="chip ${w.pid === q.id ? 'on' : ''}" data-act="wk-pid" data-id="${q.id}">${esc(q.zh)}</button>`).join('')}<button class="chip ${w.pid === '_free' ? 'on' : ''}" data-act="wk-pid" data-id="_free">其他（清單沒有）</button></div></div></section>`;
+  if (!p) return h + `<p class="muted">選好主訴類型後，會出現鑑別診斷與問診計畫。清單沒有的主訴選「其他」，一樣有 LQQOPERA、時間軸和關鍵資訊檢核。</p>`;
+  const must = p.ddx.filter((d, i) => d.tier === 'm' && wkInc(w, i));
+  if (p.ddx.length) h += `<section class="wk-sec"><h3>鑑別診斷</h3>
     <p class="bx-legend">取消勾選＝這次不納入問診計畫</p>
     <div class="items">${p.ddx.map((d, i) => `<button class="check-row" data-act="wk-inc" data-i="${i}" aria-pressed="${wkInc(w, i)}"><span class="box"></span><span class="lbl"><span class="${d.tier === 'm' ? 'crit-t' : ''}">${esc(d.n)}</span><span class="sub">${esc(d.clue)}</span></span></button>`).join('')}</div></section>`;
   const cl = wkClusters(w, p), nq = cl.reduce((s, c) => s + c.hx.length, 0), np = cl.reduce((s, c) => s + c.pe.length, 0);
-  h += `<section class="wk-sec"><h3>問診計畫</h3>
-    <p>LQQOPERA 8 項＋<b>${nq}</b> 個相關症狀與危險因子（依鑑別分組）＋<b>${np}</b> 個理學檢查重點。床邊全部用按鈕記錄。</p>
-    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="wk-ph" data-ph="bed">開始床邊問診 →</button></div></section>`;
+  h += `<section class="wk-sec"><h3>走進病房前，先想好三件事</h3>
+    <ol class="think">
+      <li><b>這次為什麼來、為什麼是現在？</b><span>用時間軸問：最後一次完全沒事是什麼時候 → 第一個症狀 → 怎麼變化 → 做過什麼處理 → 今天為什麼住院。</span></li>
+      <li><b>最危險的可能是什麼？</b><span>${must.length ? `這次不能漏：<span class="crit-t">${must.map(d => esc(d.n)).join('、')}</span>。它們的關鍵問題在床邊會標「必問」。` : '先自己列出不能漏的診斷，把關鍵問題加到下面「我一定要問到的事」。'}</span></li>
+      <li><b>住院要解決什麼？</b><span>問完要能講出一句 impression，和今天要做的第一件事。</span></li>
+    </ol>
+    <label class="small" for="axHyp" style="display:block;margin:10px 0 4px">看完病歷後，我現在的假設（給自己看，不進病歷）</label>
+    <textarea class="inp" id="axHyp" rows="2" data-in="ax-hyp" placeholder="例：最像肺炎，但要排除心衰竭急性惡化；先確認喘是不是躺平更嚴重">${esc(w.hyp || '')}</textarea></section>
+  <section class="wk-sec"><h3>我一定要問到的事</h3>${myqHTML(w, false)}</section>
+  <section class="wk-sec"><h3>問診計畫</h3>
+    <p>床邊會照這個順序走：LQQOPERA → 時間軸 → <b>${nq}</b> 個相關症狀與危險因子（依鑑別分組）→ 關鍵資訊 ${KEYQ.length} 項${(w.myq || []).length ? ` → 我自己要問的 ${(w.myq || []).length} 項` : ''}；另有 <b>${np}</b> 個理學檢查重點。全部用按鈕記錄，沒問到的離開前會提醒。</p>
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="wk-ph" data-ph="bed">開始床邊問診 →</button><button class="btn" data-act="wk-ph" data-ph="pre">← 先查病歷</button></div></section>`;
   return h;
 }
 
-/* ---------- 2 床邊 ---------- */
+/* ---------- 3 床邊 ---------- */
 function lqRow(key, title, opts, multi, w){
   if (!opts || !opts.length) return '';
   const sel = w.lq[key] || [];
-  return `<div class="lqr"><span class="lql">${esc(title)}</span><div class="opts">${opts.map((o, i) => `<button class="opt" data-act="wk-lq" data-k="${key}" data-i="${i}" data-m="${multi ? 1 : 0}" aria-pressed="${sel.includes(i)}">${esc(o.zh)}</button>`).join('')}</div></div>`;
+  return `<div class="lqr ${sel.length ? 'done' : ''}"><span class="lql">${esc(title)}</span><div class="opts">${opts.map((o, i) => `<button class="opt" data-act="wk-lq" data-k="${key}" data-i="${i}" data-m="${multi ? 1 : 0}" aria-pressed="${sel.includes(i)}">${esc(o.zh)}</button>`).join('')}</div></div>`;
 }
 function wkTri(w, f, mine){
   const s = w.fx[f.id];
-  return `<div class="bedr"><span class="t">${mine ? `<span class="pv ${mine.has(f.id) ? 'me' : 'tool'}"></span>` : ''}${esc(f.zh)}</span><span class="seg"><button class="bad" data-act="wk-f" data-f="${f.id}" data-v="+" aria-pressed="${s === '+'}">有</button><button class="good" data-act="wk-f" data-f="${f.id}" data-v="-" aria-pressed="${s === '-'}">沒有</button></span></div>`;
+  return `<div class="bedr ${s ? 'done' : ''}"><span class="t">${mine ? `<span class="pv ${mine.has(f.id) ? 'me' : 'tool'}"></span>` : ''}${esc(f.zh)}</span><span class="seg"><button class="bad" data-act="wk-f" data-f="${f.id}" data-v="+" aria-pressed="${s === '+'}">有</button><button class="good" data-act="wk-f" data-f="${f.id}" data-v="-" aria-pressed="${s === '-'}">沒有</button></span></div>`;
 }
 function wkBed(a, w){
-  const p = getProto(w.pid);
-  if (!p || !w.revealed) return `<p class="muted">請先在「1 準備」選主訴類型並揭曉鑑別診斷。</p><button class="btn" data-act="wk-ph" data-ph="prep">← 回到準備</button>`;
+  const p = wkP(w.pid);
+  if (!p || !w.revealed) return `<p class="muted">請先在「2 整理思緒」選主訴類型。</p><button class="btn" data-act="wk-ph" data-ph="prep">← 回到整理思緒</button>`;
+  const st = bedStat(a, w, p), fr = ([d, n]) => `${d}/${n}`;
   const L = lqOf(p), B = bdata(p), cl = wkClusters(w, p), mine = w.qhits ? new Set(w.qhits) : null, dmine = w.hits ? new Set(w.hits) : null;
   const ev = parseOpts(LQ_BASE.ev);
   const all = cl.flatMap(c => [...c.hx, ...c.pe]), done = all.filter(f => w.fx[f.id]).length;
   const nOpts = L.N === 'nrs' ? Array.from({length:11}, (_, i) => ({zh:String(i), en:`with an intensity of ${i}/10 on the numeric rating scale`})) : L.N;
-  return `<div class="bed">
-    <section class="wk-sec"><h3>LQQOPERA · <span class="muted">${esc(L.sym)}</span></h3>
+  return `<div class="bed ${UI.bedTodo ? 'todo-only' : ''}">
+    <section class="wk-sec"><h3>LQQOPERA${p.id === '_free' ? '' : ` · <span class="muted">${esc(L.sym)}</span>`} <span class="cnt ${st.lq[0] === st.lq[1] ? 'ok' : ''}">${fr(st.lq)}</span></h3>
       ${lqRow('L', L.Lt || LQ_TITLES.L, L.L, true, w)}
       ${lqRow('Q', L.Qt ? 'Q ' + L.Qt : LQ_TITLES.Q, L.Q, true, w)}
       ${lqRow('N', L.Nt ? 'Q ' + L.Nt : LQ_TITLES.N + (L.N === 'nrs' ? '（NRS）' : ''), nOpts, false, w)}
@@ -3343,17 +3391,20 @@ function wkBed(a, w){
       ${lqRow('R', LQ_TITLES.R, L.R, true, w)}
       ${lqRow('ev', '病程事件（細節回來再寫）', ev, true, w)}
     </section>
-    <section class="wk-sec"><h3>A 相關症狀與危險因子 <span class="muted small">依鑑別分組</span></h3>
-      ${cl.filter(c => c.hx.length).map(c => `<div class="clu"><div class="clu-h">${dmine && c.d.i >= 0 ? `<span class="pv ${dmine.has(c.d.i) ? 'me' : 'tool'}"></span>` : ''}<span class="${c.d.tier === 'm' ? 'crit-t' : ''}">${esc(c.d.n)}</span></div>${c.hx.map(f => wkTri(w, f, mine)).join('')}</div>`).join('')}
-    </section>
-    <details class="wk-sec pe-sec" ${w.peOpen ? 'open' : ''}><summary><h3>理學檢查重點 <span class="muted small">寫進 PE，不進 PI</span></h3></summary>
+    <section class="wk-sec"><h3>時間軸 <span class="muted small">PI 的骨架：從最後一次完全沒事開始</span></h3>${tlHTML(w)}</section>
+    ${cl.some(c => c.hx.length) ? `<section class="wk-sec"><h3>A 相關症狀與危險因子 <span class="muted small">依鑑別分組</span> <span class="cnt ${st.hx[0] === st.hx[1] ? 'ok' : ''}">${fr(st.hx)}</span></h3>
+      ${cl.filter(c => c.hx.length).map(c => `<div class="clu ${c.hx.every(f => w.fx[f.id]) ? 'done' : ''}"><div class="clu-h">${dmine && c.d.i >= 0 ? `<span class="pv ${dmine.has(c.d.i) ? 'me' : 'tool'}"></span>` : ''}<span class="${c.d.tier === 'm' ? 'crit-t' : ''}">${esc(c.d.n)}</span>${c.d.tier === 'm' ? ' <span class="tag must">必問</span>' : ''}</div>${c.hx.map(f => wkTri(w, f, mine)).join('')}</div>`).join('')}
+    </section>` : ''}
+    <section class="wk-sec"><h3>關鍵資訊 <span class="muted small">不在 PI 裡，但每次都要問到</span> <span class="cnt ${st.kq[0] === st.kq[1] ? 'ok' : ''}">${fr(st.kq)}</span></h3><div class="items">${keyqHTML(a, w)}</div></section>
+    <section class="wk-sec"><h3>我自己要問的 ${st.my[1] ? `<span class="cnt ${st.my[0] === st.my[1] ? 'ok' : ''}">${fr(st.my)}</span>` : ''}</h3>${myqHTML(w, true)}</section>
+    ${cl.some(c => c.pe.length) ? `<details class="wk-sec pe-sec" ${w.peOpen ? 'open' : ''}><summary><h3>理學檢查重點 <span class="muted small">寫進 PE，不進 PI</span></h3></summary>
       ${cl.filter(c => c.pe.length).map(c => `<div class="clu"><div class="clu-h"><span class="${c.d.tier === 'm' ? 'crit-t' : ''}">${esc(c.d.n)}</span></div>${c.pe.map(f => wkTri(w, f, null)).join('')}</div>`).join('')}
-    </details>
-    <div class="bedfoot"><span class="small">已記錄 ${done}/${all.length}</span><button class="btn" data-act="wk-ph" data-ph="prep">← 準備</button><button class="btn primary" data-act="wk-ph" data-ph="syn">整理 PI →</button></div>
+    </details>` : ''}
+    <div class="bedfoot"><span class="small">LQQOPERA ${fr(st.lq)}・症狀 ${fr(st.hx)}・關鍵 ${fr(st.kq)}${st.my[1] ? `・我的 ${fr(st.my)}` : ''}</span><button class="chip ${UI.bedTodo ? 'on' : ''}" data-act="ax-bed-todo" aria-pressed="${!!UI.bedTodo}">只看還沒問的</button><button class="btn" data-act="wk-ph" data-ph="prep">← 思緒</button><button class="btn primary" data-act="wk-ph" data-ph="syn">整理 PI →</button></div>
   </div>`;
 }
 
-/* ---------- 3 整理 PI ---------- */
+/* ---------- 4 整理 PI ---------- */
 function wkPron(f){ const F = f.gender === '女', M = f.gender === '男'; return {S:F ? 'She' : M ? 'He' : 'The patient', s:F ? 'she' : M ? 'he' : 'the patient', o:F ? 'her' : M ? 'him' : 'the patient', sex:F ? 'woman' : M ? 'man' : 'patient'}; }
 function lqSrc(L){
   const N = L.N === 'nrs' ? Array.from({length:11}, (_, i) => ({zh:String(i), en:`with an intensity of ${i}/10 on the numeric rating scale`})) : L.N;
@@ -3368,7 +3419,7 @@ function wkOrder(w, p){
   return cl;
 }
 function wkCompose(){
-  const a = UI.admit, f = a.f, w = a.w, p = getProto(w.pid), L = lqOf(p), P = wkPron(f), src = lqSrc(L);
+  const a = UI.admit, f = a.f, w = a.w, p = wkP(w.pid), L = lqOf(p), P = wkPron(f), src = lqSrc(L);
   const sel = k => (w.lq[k] || []).map(i => src[k] && src[k][i]).filter(Boolean);
   const en = arr => arr.map(x => x.en.replace(/\{S\}/g, P.S).replace(/\{o\}/g, P.o));
   const tq = t => t.replace(/\{S\}/g, P.S).replace(/\{o\}/g, P.o);
@@ -3393,6 +3444,8 @@ function wkCompose(){
   if (Pp.length) s2.push(`It was aggravated by ${joinL(en(Pp), 'and')}${Ee.length ? ` and relieved by ${joinL(en(Ee), 'or')}` : ''}.`);
   else if (Ee.length) s2.push(`It was relieved by ${joinL(en(Ee), 'or')}.`);
   sel('ev').forEach(e => s2.push(tq(w.evTxt[e.en] != null ? w.evTxt[e.en] : EV_TPL[e.en] || '')));
+  // 床邊記的時間軸：原文放進 [ ]，回來改寫成英文句子（PI 檢查會提醒還有 [ ] 待補）
+  (w.tl || []).filter(r => (r.x || '').trim()).forEach(r => s2.push(`[${(r.w || '時間').trim()}：${r.x.trim()}]`));
   const s3 = wkOrder(w, p).map((c, j) => {
     const pos = c.pos.map(x => x.en), neg = c.neg.map(x => x.en), also = j ? 'also ' : '';
     if (pos.length && neg.length) return `${P.S} ${also}reported ${joinL(pos, 'and')}, but denied ${joinL(neg, 'or')}.`;
@@ -3414,11 +3467,11 @@ function lintHTML(t){
     + (/\[[^\]]+\]/.test(t) ? '<p class="lint soft">還有 [ ] 待補。</p>' : '');
 }
 function wkSyn(a, w){
-  const p = getProto(w.pid);
-  if (!p || !w.revealed) return `<p class="muted">請先完成「1 準備」。</p><button class="btn" data-act="wk-ph" data-ph="prep">← 回到準備</button>`;
+  const p = wkP(w.pid);
+  if (!p || !w.revealed) return `<p class="muted">請先完成「2 整理思緒」。</p><button class="btn" data-act="wk-ph" data-ph="prep">← 回到整理思緒</button>`;
   const P = wkPron(a.f), rank = bxRank(w, p) || [], cl = wkOrder(w, p);
   const evSel = (w.lq.ev || []).map(i => parseOpts(LQ_BASE.ev)[i]).filter(Boolean);
-  return `<div class="syn-grid">
+  return `${missBoxHTML(a, w, p)}<div class="syn-grid">
     <div class="syn-l">${bayesBoard(w, p, 'admit', w.hits ? new Set(w.hits) : null)}</div>
     <div class="syn-r">
       ${evSel.length ? `<h3 class="sh">病程事件細節</h3>${evSel.map(e => `<label class="small" for="ev_${e.en}">${esc(e.zh)}</label><textarea class="inp mono" id="ev_${e.en}" rows="2" data-in="wkev" data-k="${e.en}">${esc(w.evTxt[e.en] != null ? w.evTxt[e.en] : (EV_TPL[e.en] || '').replace(/\{S\}/g, P.S))}</textarea>`).join('')}` : ''}
@@ -3432,11 +3485,12 @@ function wkSyn(a, w){
       <div class="row" style="margin-top:12px"><button class="btn primary" data-act="wk-compose">重新產生 PI 草稿</button></div>
       <textarea class="inp mono" id="wkPI" data-in="wkpi" rows="16" style="margin-top:10px">${esc(w.pi)}</textarea>
       <div id="wkLint">${lintHTML(w.pi)}</div>
-      <div class="row" style="margin-top:10px"><button class="btn dark" data-act="wk-apply">放進 Present Illness</button><button class="btn" data-act="wk-pe">帶入 PE 欄位</button><button class="btn" data-act="wk-copy">${ICON.copy}複製</button></div>
+      <div class="row" style="margin-top:10px"><button class="btn dark" data-act="wk-apply">放進 Present Illness</button><button class="btn" data-act="wk-pe">帶入 PE 欄位</button><button class="btn" data-act="wk-copy">${ICON.copy}複製</button><button class="btn" data-act="ax-ai" data-full="0" title="複製問診紀錄＋PI 草稿＋修改指示，貼給其他 AI">${ICON.copy}複製給 AI 修改</button></div>
+      <p class="muted small" style="margin-top:6px">「複製給 AI 修改」會把問診紀錄、時間軸、PI 草稿和修改要求整理成一段文字。貼出去前確認裡面沒有姓名、病歷號。</p>
     </div></div>`;
 }
 function wkPE(){
-  const a = UI.admit, w = a.w, B = bdata(getProto(w.pid)); if (!B) return;
+  const a = UI.admit, w = a.w, B = bdata(wkP(w.pid)); if (!B){ toast('這個主訴沒有內建的理學檢查重點'); return; }
   let n = 0; const manual = [];
   B.f.filter(f => f.k === 'p').forEach(f => {
     const s = w.fx[f.id]; if (!s) return;
@@ -3451,14 +3505,15 @@ function wkPE(){
 }
 function wkSetPid(id){
   const w = wkEnsure(); if (!w) return;
-  if (w.pid !== id) Object.assign(w, wkNew(), {pid:id});
+  // 換主訴類型：鑑別和問診紀錄重來，但時間軸、自己要問的事、關鍵資訊檢核、假設跟主訴類型無關，留著
+  if (w.pid !== id) Object.assign(w, wkNew(), {tl:w.tl || [], myq:w.myq || [], kq:w.kq || {}, hyp:w.hyp || '', mode:w.mode, el:w.el}, {pid:id});
   UI.admit.ph = 'prep'; wkRender();
 }
 
 /* ---------- 事件 ---------- */
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-act^="wk-"]'); if (!b || !UI.admit) return;
-  const a = UI.admit, w = wkEnsure(), d = b.dataset, p = getProto(w.pid);
+  const a = UI.admit, w = wkEnsure(), d = b.dataset, p = wkP(w.pid);
   switch (d.act){
   case 'wk-ph':
     a.ph = d.ph;
@@ -3479,7 +3534,7 @@ document.addEventListener('click', e => {
     [ids[j], ids[k]] = [ids[k], ids[j]]; w.order = ids; break;
   }
   case 'wk-compose': w.pi = wkCompose(); break;
-  case 'wk-apply': a.f.pi = w.pi; toast('已放進 Present Illness，可到「4 病歷欄位」再修改'); saveDraft(); return;
+  case 'wk-apply': a.f.pi = w.pi; toast('已放進 Present Illness，可到「5 病歷欄位」再修改'); saveDraft(); return;
   case 'wk-pe': wkPE(); break;
   case 'wk-copy': copyText(w.pi, b); return;
   default: return;
@@ -3646,10 +3701,15 @@ let draftT;
 // 進行中的 call 只存在這個分頁（sessionStorage）。
 // Admission note 存在 localStorage（oncall.admit.v1），總站的雲端同步會帶到你其他的裝置：手機問診打的，電腦打開就能接著寫、複製貼到 EMR。
 function writeAdmit(){ try { const v = UI.admit ? JSON.stringify(UI.admit) : null; if (v == null) localStorage.removeItem(ADMIT_KEY); else if (localStorage.getItem(ADMIT_KEY) !== v) localStorage.setItem(ADMIT_KEY, v); } catch {} }
+let draftDirty = false;
+function flushDraft(){ if (!draftDirty) return; draftDirty = false; clearTimeout(draftT); try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({calls:UI.calls})); } catch {} writeAdmit(); }
 function saveDraft(){
-  clearTimeout(draftT);
-  draftT = setTimeout(() => { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({calls:UI.calls})); } catch {} writeAdmit(); }, 400);
+  clearTimeout(draftT); draftDirty = true;
+  draftT = setTimeout(flushDraft, 400);
 }
+// 剛點完就切到別的 App、鎖螢幕或重新整理：還沒存的那一筆馬上存，不等 0.4 秒
+addEventListener('pagehide', flushDraft);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushDraft(); });
 function loadDraft(){
   let old = null;
   try { const d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null'); if (d){ UI.calls = Array.isArray(d.calls) ? d.calls : []; old = d.admit || null; } } catch {}
@@ -3664,7 +3724,7 @@ function applyRemoteAdmit(){
   const raw = admitRemote; admitRemote = undefined;
   let a = null; try { a = JSON.parse(raw || 'null'); } catch { return; }
   if (JSON.stringify(UI.admit) === JSON.stringify(a)) return;
-  clearTimeout(draftT);
+  clearTimeout(draftT); draftDirty = false;
   UI.admit = a;
   if (UI.view === 'admit' && !a) { go('home'); toast('Admission note 在另一台裝置清除了'); return; }
   const y = window.scrollY; render(); window.scrollTo(0, y);
@@ -3689,10 +3749,11 @@ function render(){
     if (UI.bedAsk) setTimeout(() => { const i = $('#askBed'); if (i){ i.focus(); i.select(); } }, 60);
   }
   else if (UI.view === 'admit' && UI.admit) m.innerHTML = vAdmit();
+  else if (UI.view === 'admit') m.innerHTML = vAdmitStart();
   else if (UI.view === 'help') m.innerHTML = vHelp();
   else { UI.view = 'home'; m.innerHTML = vHome(); }
 }
-function go(view){ UI.view = view; UI.confirm = null; UI.impOpen = false; if (view !== 'call') UI.bedAsk = false; document.body.classList.remove('sheet-on'); try { parent.postMessage({hub:'sheet', open:false}, '*'); } catch (e) {} render(); window.scrollTo(0, 0); }
+function go(view){ UI.view = view; UI.confirm = null; UI.impOpen = false; if (view !== 'call') UI.bedAsk = false; document.body.classList.remove('sheet-on'); try { parent.postMessage({hub:'sheet', open:false}, '*'); } catch (e) {} render(); window.scrollTo(0, 0); hubView(); }
 function renderTop(){
   $('#top').innerHTML = `
     <button class="brand" data-act="go" data-view="home" aria-label="回首頁"><span class="led"></span><b>主訴處理</b></button>
@@ -3723,7 +3784,7 @@ function vHome(){
     <div class="cc-grid">${allProtos().map(ccChip).join('')}</div>
   </section>
   <section class="home-row">
-    <button class="tile" data-act="admit-new">${ICON.bed}<div><b>接新病人</b><span>處置完直接產生萬芳 admission note，必填項目一個都不漏</span></div></button>
+    <button class="tile" data-act="admit-new">${ICON.bed}<div><b>接新病人</b><span>電腦先查病歷、床邊照檢核表問、PI 自動成稿，必填項目一個都不漏</span></div></button>
     <button class="tile" data-act="admit-elec">${ICON.bed}<div><b>預約入院處置</b><span>化療、手術、檢查等排程入院：不跑鑑別，直接寫 PI 與必填欄位</span></div></button>
   </section>
   <section class="how">
@@ -4232,9 +4293,209 @@ const AN = [
 ];
 const FIELD = {}; AN.forEach(s => s.groups.forEach(g => g.fields.forEach(x => { FIELD[x.k] = {x, s:s.id, g}; })));
 
+/* ===== 接新病人 v2：欄位來源、先查病歷、整理思緒、床邊檢核、複製給 AI =====
+   FSRC：每個欄位平常從哪裡拿得到。n 護理紀錄、c 病歷（舊病歷、急診／門診紀錄、檢驗影像）、b 床邊問或檢查、w 回來寫。
+   沒列到的一律算 b（ROS、理學檢查）。這是預設分類，各科、各院的護理紀錄內容不同，要改就改下面三行。 */
+const FSRC_LAB = {n:'護理紀錄', c:'病歷', b:'床邊', w:'回來寫'};
+const FSRC = {};
+const fsrcSet = (s, keys) => keys.split(' ').forEach(k => { FSRC[k] = s; });
+fsrcSet('c', 'gender age dept src tadm cc pmh other meds allergy mi chf pvd cva dem copd ctd pud liver dm dmm hemi ckd tumor leuk lymph aids labs micro img ecg exam path');
+fsrcSet('n', 'info occ tocc tocc_d smoke passive alcohol betel drug habit_d lives fam care fin psy ht wt wl acute k_bath k_dress k_toil k_trans k_cont k_feed bt sbp dbp pr rr tool pain');
+fsrcSet('w', 'tcomp pi hpin labint imp p_dx p_tx p_ed p_dc mdc vsc');
+const fsrcOf = k => FSRC[k] || 'b';
+const CONFIRM = new Set('cc pmh meds allergy smoke alcohol betel tocc'.split(' '));   // 先查到了，床邊還是要跟病人核對
+const srcTag = k => { const s = fsrcOf(k); return `<span class="srct s-${s}">${FSRC_LAB[s]}${s !== 'b' && s !== 'w' && CONFIRM.has(k) ? '・床邊核對' : ''}</span>`; };
+/* 「1 先查病歷」的分區：依「去哪裡找」排，不是依病歷欄位順序 */
+const PRE_SECS = [
+  {t:'病歷首頁、急診／門診紀錄', where:'EMR 首頁、急診病歷、門診紀錄、藥歷', keys:'gender age dept src tadm cc pmh other meds allergy'},
+  {t:'護理入院評估', where:'護理紀錄的入院評估單', keys:'info occ tocc tocc_d smoke passive alcohol betel drug habit_d lives fam care fin psy ht wt wl acute k_bath k_dress k_toil k_trans k_cont k_feed'},
+  {t:'生命徵象', where:'護理紀錄的 TPR、疼痛評估', keys:'bt sbp dbp pr rr tool pain'},
+  {t:'共病（Charlson）', where:'舊病歷的診斷、出院病摘', keys:'mi chf pvd cva dem copd ctd pud liver dm dmm hemi ckd tumor leuk lymph aids', gk:'mi'},
+  {t:'檢驗、影像報告', where:'檢驗報告、影像報告、心電圖', keys:'labs micro img ecg exam path'},
+].map(s => ({...s, keys:s.keys.split(' ')}));
+const preVis = (s, f) => s.keys.filter(k => FIELD[k] && (!FIELD[k].x.when || FIELD[k].x.when(f)));
+function preStat(f){ const ks = PRE_SECS.flatMap(s => preVis(s, f)); return {n:ks.length, d:ks.filter(k => !isEmpty(f[k])).length}; }
+function preListText(f){
+  const L = ['接新病人：到床邊之前可以先查好的欄位', ''];
+  PRE_SECS.forEach(s => { L.push(`【${s.t}】（${s.where}）`); preVis(s, f).forEach(k => { const x = FIELD[k].x; L.push(`${isEmpty(f[k]) ? '☐' : '☑'} ${x.l}${CONFIRM.has(k) ? '（床邊核對）' : ''}`); }); L.push(''); });
+  return L.join('\n').trim();
+}
+function wkPre(a){
+  const f = a.f, st = preStat(f), allG = AN.flatMap(s => s.groups);
+  return `<section class="wk-sec"><h3>到床邊之前，先在電腦查好</h3>
+    <p class="small">這一頁是護理紀錄和病歷裡查得到的欄位，依「去哪裡找」分區。先填好會同步到手機，床邊只剩要問、要檢查的。標「床邊核對」的，查到了也要再跟病人確認一次。</p>
+    <div class="row" style="margin-top:10px"><span class="cnt ${st.d === st.n ? 'ok' : ''}">已填 ${st.d}/${st.n}</span><button class="chip ${UI.preTodo ? 'on' : ''}" data-act="ax-pre-todo" aria-pressed="${!!UI.preTodo}">只看還沒填的</button><button class="btn sm" data-act="ax-pre-copy">${ICON.copy}複製待查清單</button></div></section>` +
+  PRE_SECS.map(s => {
+    const ks = preVis(s, f), left = ks.filter(k => isEmpty(f[k])), show = UI.preTodo ? left : ks;
+    const gi = s.gk ? allG.indexOf(FIELD[s.gk].g) : -1;
+    return `<section class="wk-sec"><div class="fgroup-h"><h3>${esc(s.t)}</h3><span class="muted small">${esc(s.where)}</span><span class="sp"></span>${left.length ? `<span class="cnt">${left.length} 未填</span>` : '<span class="cnt ok">完成</span>'}${gi >= 0 && left.length ? `<button class="btn sm" data-act="gnormal" data-gi="${gi}">未填的設為沒有</button>` : ''}</div>
+      ${show.length ? show.map(k => fieldHTML(FIELD[k].x)).join('') : '<p class="muted small" style="margin:8px 0 0">這一區都填好了。</p>'}</section>`;
+  }).join('') +
+  `<div class="bedfoot"><span class="small">已填 ${st.d}/${st.n}，沒查到的留著，床邊會再提醒</span><button class="btn primary" data-act="wk-ph" data-ph="prep">下一步：整理思緒 →</button></div>`;
+}
+
+/* 清單沒有的主訴：沒有內建鑑別，但 LQQOPERA、時間軸、關鍵資訊檢核照樣能用 */
+const FREE_PROTO = {id:'_free', zh:'其他（清單沒有）', en:'[symptom]', ddx:[], hx:[], pe:[], ord:[], call:[], now:[], pearl:[]};
+const wkP = id => id === '_free' ? FREE_PROTO : getProto(id);
+
+/* 床邊的關鍵資訊檢核：不屬於 PI 但每次都要問到的；第三欄是對應的病歷欄位（有的話可以直接在這裡填） */
+const KEYQ = [
+  ['open','開場：自我介紹、確認病人身分、說明來意'],
+  ['tl','時間軸：最後一次完全沒事是什麼時候 → 第一個症狀 → 怎麼變化 → 做過什麼處理 → 今天為什麼住院'],
+  ['prev','以前有沒有類似的情況？當時的診斷和處理'],
+  ['pmh','過去病史、手術、住院','pmh'],
+  ['meds','目前用藥：藥名、有沒有照吃、最近有沒有改藥；中藥、保健食品、自己買的止痛藥','meds'],
+  ['alg','藥物、食物過敏：對什麼、什麼反應','allergy'],
+  ['hab','抽菸、喝酒、檳榔：量和年數','smoke'],
+  ['tocc','TOCC：旅遊、職業、接觸、群聚','tocc'],
+  ['fhx','家族史（跟主訴有關的）','fhx'],
+  ['func','平常的活動功能、誰照顧、住哪裡','care'],
+  ['ice','病人自己覺得是什麼問題、最擔心什麼、希望這次住院解決什麼'],
+  ['sum','結尾：覆述一次重點，問「還有沒有我沒問到的」'],
+];
+const valTxt = v => Array.isArray(v) ? v.join('、') : String(v ?? '').trim().replace(/\s*\n\s*/g, '；');
+function keyqHTML(a, w){
+  const kq = w.kq || {};
+  return KEYQ.map(([id, t, k]) => {
+    const v = k ? valTxt(a.f[k]) : '', open = UI.kqOpen === id;
+    return `<div class="kq ${kq[id] ? 'done' : ''}"><button class="check-row" data-act="ax-kq" data-id="${id}" aria-pressed="${!!kq[id]}"><span class="box"></span><span class="lbl">${esc(t)}${k && v ? `<span class="sub">病歷已有：${esc(v.length > 60 ? v.slice(0, 60) + '…' : v)}　← 跟病人核對</span>` : ''}</span></button>${k ? `<button class="btn sm ghost" data-act="ax-kq-open" data-id="${id}" aria-expanded="${open}">${open ? '收起' : v ? '改' : '填'}</button>` : ''}${open && k ? `<div class="kq-f">${fieldHTML(FIELD[k].x)}</div>` : ''}</div>`;
+  }).join('');
+}
+const TL_QUICK = ['今天','昨天','2 天前','3 天前','1 週前','2 週前','1 個月前','3 個月前'];
+function tlHTML(w){
+  const tl = w.tl || [];
+  return `${tl.map((r, i) => `<div class="tlr"><input class="inp s" data-in="ax-tlw" data-i="${i}" value="${esc(r.w)}" placeholder="什麼時候" aria-label="時間"><input class="inp" id="tlx_${i}" data-in="ax-tlx" data-i="${i}" value="${esc(r.x)}" placeholder="發生什麼事（中英文都可以）" aria-label="事件"><button class="icon-btn" data-act="ax-tl-del" data-i="${i}" aria-label="刪除這一列">${ICON.x || '×'}</button></div>`).join('')}
+    <div class="chips" style="margin-top:8px">${TL_QUICK.map(t => `<button class="chip" data-act="ax-tl-add" data-w="${t}">＋${t}</button>`).join('')}<button class="chip" data-act="ax-tl-add" data-w="">＋自訂時間</button></div>`;
+}
+function myqHTML(w, bedside){
+  const q = w.myq || [];
+  return `${q.length ? `<div class="items">${q.map((r, i) => `<div class="kq ${r.d ? 'done' : ''}"><button class="check-row" data-act="ax-myq" data-i="${i}" aria-pressed="${!!r.d}"><span class="box"></span><span class="lbl">${esc(r.t)}</span></button><button class="icon-btn" data-act="ax-myq-del" data-i="${i}" aria-label="刪除這個問題">${ICON.x || '×'}</button></div>`).join('')}</div>` : bedside ? '' : '<p class="muted small" style="margin:0 0 8px">還沒有。看病歷時想到「這個一定要問」就加在這裡，床邊會變成檢核項目。</p>'}
+    <form class="row" data-axform="myq" style="margin-top:8px"><input class="inp" id="myqIn" style="flex:1;min-width:0;width:auto" placeholder="例：上次住院後有沒有回診" aria-label="新增要問的問題"><button class="btn" type="submit">加入</button></form>`;
+}
+/* 床邊進度：四類各問了幾項 */
+function bedStat(a, w, p){
+  const L = lqOf(p), cl = wkClusters(w, p);
+  const lqKeys = [['L', L.L], ['Q', L.Q], ['N', L.N === 'nrs' ? [1] : L.N], ['on', [1]], ['dur', [1]], ['crs', [1]], ['P', L.P], ['E', L.E], ['R', L.R]].filter(([, o]) => o && o.length).map(([k]) => k);
+  const hx = cl.flatMap(c => c.hx), must = cl.filter(c => c.d.tier === 'm').flatMap(c => c.hx);
+  const kq = w.kq || {}, myq = w.myq || [];
+  return {
+    lq:[lqKeys.filter(k => (w.lq[k] || []).length).length, lqKeys.length],
+    hx:[hx.filter(f => w.fx[f.id]).length, hx.length],
+    kq:[KEYQ.filter(([id]) => kq[id]).length, KEYQ.length],
+    my:[myq.filter(r => r.d).length, myq.length],
+    lqMiss:lqKeys.filter(k => !(w.lq[k] || []).length),
+    mustMiss:must.filter(f => !w.fx[f.id]),
+    kqMiss:KEYQ.filter(([id]) => !kq[id]), myMiss:myq.filter(r => !r.d),
+  };
+}
+const LQ_NAME = {L:'部位', Q:'性質', N:'嚴重度', on:'發作方式', dur:'多久了', crs:'病程', P:'誘發／加重', E:'緩解', R:'轉移'};
+function missBoxHTML(a, w, p){
+  const s = bedStat(a, w, p), parts = [];
+  if (s.mustMiss.length) parts.push(`<div class="ms"><b class="crit-t">必須排除的鑑別，還沒問：</b>${s.mustMiss.map(f => esc(f.zh)).join('、')}</div>`);
+  if (s.lqMiss.length) parts.push(`<div class="ms"><b>LQQOPERA 還沒記：</b>${s.lqMiss.map(k => LQ_NAME[k]).join('、')}</div>`);
+  if (s.kqMiss.length) parts.push(`<div class="ms"><b>關鍵資訊還沒勾：</b>${s.kqMiss.map(([, t]) => esc(t.split(/[：:]/)[0])).join('、')}</div>`);
+  if (s.myMiss.length) parts.push(`<div class="ms"><b>我自己要問的，還沒問：</b>${s.myMiss.map(r => esc(r.t)).join('、')}</div>`);
+  return parts.length ? `<div class="miss-box"><b>離開病房前再看一眼</b>${parts.join('')}<div class="row" style="margin-top:8px"><button class="btn sm" data-act="wk-ph" data-ph="bed">← 回床邊問診補問</button></div></div>` : '<div class="miss-box ok"><b>問診檢核全部完成。</b></div>';
+}
+
+/* 複製給其他 AI：把問診紀錄整理成一段可以直接貼的文字（含請它做什麼）。只包含你在這裡輸入的內容。 */
+function aiPrompt(full){
+  const a = UI.admit, f = a.f, w = wkEnsure(), p = wkP(w.pid), L = [];
+  const add = (t, v) => { v = Array.isArray(v) ? v.filter(Boolean).join('\n') : String(v ?? '').trim(); if (v) L.push(`【${t}】\n${v}`); };
+  L.push(`我是實習醫學生，剛接一位新住院病人。以下是我的問診紀錄和 admission note 草稿（已去識別化）。請幫我：
+1. 把 Present Illness 改寫成通順、時間序清楚的英文病歷段落。只能用我提供的事實，不要自己加病史、檢查結果或診斷；[ ] 裡是還沒補的資訊，請保留原樣並列出來提醒我。
+2. PI 只寫病史：不要放理學檢查和本院量到的生命徵象。先寫相關的過去病史，再寫這次的病程（時間軸），再寫 pertinent positives／negatives（依鑑別診斷分組），最後一句是 impression 與入院目的。
+3. 依主訴和鑑別診斷，列出我漏問的重要問題（最多 8 個，依重要性排）。
+4. ${full ? '檢查整份 note 前後有沒有不一致（例如 PI 和 ROS、PE、Impression 對不起來），逐點列出。' : '指出草稿裡不清楚或前後矛盾的地方。'}
+先給改好的 PI，再條列其他項目。用繁體中文說明，病歷內容維持英文。`);
+  add('基本資料', `${f.age || '[age]'} 歲 ${f.gender || '[性別]'}${f.src ? '，來源：' + f.src : ''}${f.info ? '，資訊來源：' + f.info : ''}`);
+  add('主訴', f.cc); add('重要病史', f.pmh); add('目前用藥', f.meds); add('過敏', f.allergy);
+  if (w.mode !== 'elec' && p){
+    add('主訴類型', p.id === '_free' ? '' : `${p.zh}${p.en ? ' / ' + p.en : ''}`);
+    const src = lqSrc(lqOf(p));
+    add('LQQOPERA（床邊按鈕記錄）', Object.keys(LQ_NAME).concat('ev').map(k => { const s = (w.lq[k] || []).map(i => src[k] && src[k][i]).filter(Boolean).map(o => o.zh); return s.length ? `${LQ_NAME[k] || '病程事件'}：${s.join('、')}` : ''; }));
+    const cl = wkClusters(w, p);
+    add('相關症狀與危險因子', cl.map(c => { const pos = c.hx.filter(x => w.fx[x.id] === '+').map(x => x.zh), neg = c.hx.filter(x => w.fx[x.id] === '-').map(x => x.zh), un = c.hx.filter(x => !w.fx[x.id]).map(x => x.zh); return (pos.length || neg.length || un.length) ? `${c.d.n}${c.d.tier === 'm' ? '（必須排除）' : ''}｜有：${pos.join('、') || '—'}｜沒有：${neg.join('、') || '—'}｜沒問到：${un.join('、') || '—'}` : ''; }));
+    add('理學檢查重點（床邊記錄）', cl.flatMap(c => c.pe.filter(x => w.fx[x.id]).map(x => `${x.zh}：${w.fx[x.id] === '+' ? '有' : '沒有'}`)));
+    const rank = bxRank(w, p) || [];
+    add('鑑別診斷（工具估計的機率，僅供參考）', rank.slice(0, 6).map(r => `${r.d.n}：${pct(r.post)}`));
+  }
+  if (w.mode === 'elec' && w.el) add('預約入院', [w.el.proc, w.el.ind, w.el.hist, w.el.plan].filter(Boolean).join('\n'));
+  add('時間軸', (w.tl || []).filter(r => (r.x || '').trim()).map(r => `${r.w || '[時間]'}：${r.x.trim()}`));
+  add('我自己要問的問題', (w.myq || []).map(r => `${r.d ? '（問了）' : '（還沒問）'}${r.t}`));
+  add('還沒問到的關鍵資訊', KEYQ.filter(([id]) => !(w.kq || {})[id]).map(([, t]) => t.split(/[：:]/)[0]));
+  add('問診筆記', f.hpin); add('到院後經過', w.ed); add('我的 impression', w.imp || f.imp);
+  add('我的初步假設（問診前）', w.hyp);
+  add('PI 草稿', (w.pi || '').trim() || f.pi);
+  if (full){
+    const miss = allMissing();
+    add('還沒填的必填欄位', miss.map(({s, x}) => `${s.zh}：${x.l}`));
+    add('整份 Admission note（目前的內容）', buildAN(f));
+  }
+  return L.join('\n\n');
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act^="ax-"]'); if (!b || !UI.admit) return;
+  const a = UI.admit, w = wkEnsure(), d = b.dataset;
+  switch (d.act){
+  case 'ax-pre-todo': UI.preTodo = !UI.preTodo; break;
+  case 'ax-pre-copy': copyText(preListText(a.f), b); return;
+  case 'ax-kq': w.kq = w.kq || {}; if (w.kq[d.id]) delete w.kq[d.id]; else w.kq[d.id] = 1; break;
+  case 'ax-kq-open': UI.kqOpen = UI.kqOpen === d.id ? null : d.id; break;
+  case 'ax-tl-add': {
+    w.tl = w.tl || []; w.tl.push({w:d.w, x:''}); wkRender();
+    const i = w.tl.length - 1, el = d.w ? document.getElementById('tlx_' + i) : document.querySelector(`[data-in="ax-tlw"][data-i="${i}"]`);
+    if (el) el.focus();
+    return;
+  }
+  case 'ax-tl-del': (w.tl || []).splice(+d.i, 1); break;
+  case 'ax-myq': { const r = (w.myq || [])[+d.i]; if (r) r.d = r.d ? 0 : 1; break; }
+  case 'ax-myq-del': (w.myq || []).splice(+d.i, 1); break;
+  case 'ax-bed-todo': UI.bedTodo = !UI.bedTodo; break;
+  case 'ax-ai': copyText(aiPrompt(d.full === '1'), b); return;
+  case 'ax-start': newAdmit(); if (d.m === 'elec'){ UI.admit.w.mode = 'elec'; } go('admit'); return;
+  default: return;
+  }
+  wkRender();
+});
+document.addEventListener('click', e => {   // 還沒有 note 時的開始畫面（UI.admit 是空的，上面那個 handler 不會處理）
+  const b = e.target.closest('[data-act="ax-start"]'); if (!b || UI.admit) return;
+  newAdmit(); if (b.dataset.m === 'elec') UI.admit.w.mode = 'elec'; go('admit');
+});
+document.addEventListener('input', e => {
+  const el = e.target, k = el.dataset && el.dataset.in; if (!k || !k.startsWith('ax-') || !UI.admit) return;
+  const w = wkEnsure();
+  if (k === 'ax-hyp') w.hyp = el.value;
+  else { const r = (w.tl || [])[+el.dataset.i]; if (r) r[k === 'ax-tlw' ? 'w' : 'x'] = el.value; }
+  saveDraft();
+});
+document.addEventListener('submit', e => {
+  if (!e.target.matches('[data-axform="myq"]') || !UI.admit) return;
+  e.preventDefault();
+  const i = document.getElementById('myqIn'), t = i ? i.value.trim() : ''; if (!t) return;
+  const w = wkEnsure(); w.myq = w.myq || []; w.myq.push({t, d:0});
+  wkRender(); const n = document.getElementById('myqIn'); if (n) n.focus();
+}, true);
+function vAdmitStart(){
+  return `<div class="adm-head"><div><div class="eyebrow">接新病人</div><h1>Admission Note</h1></div></div>
+    <p class="muted" style="max-width:60ch">流程：在電腦先查病歷 → 整理思緒 → 到床邊照檢核表問 → 整理 PI → 補完病歷欄位。內容會同步到你登入同一個帳號的裝置。</p>
+    <div class="tiles" style="margin-top:14px">
+      <button class="tile" data-act="ax-start" data-m="sx">${ICON.bed}<div><b>症狀住院</b><span>從先查病歷開始，床邊照檢核表問診，PI 自動成稿</span></div></button>
+      <button class="tile" data-act="ax-start" data-m="elec">${ICON.bed}<div><b>預約入院處置</b><span>化療、手術、檢查等排程入院：不跑鑑別，直接寫 PI 與必填欄位</span></div></button>
+    </div>`;
+}
+/* 總站的導覽：請這個工具切到某個畫面；自己換畫面時也回報，讓導覽亮對的那一格 */
+const hubView = () => { try { if (parent !== window) parent.postMessage({hub:'view', view:UI.view === 'admit' ? 'admit' : 'main'}, '*'); } catch (e) {} };
+addEventListener('message', e => {
+  if (e.source !== parent || !e.data || e.data.hub !== 'go') return;
+  if (e.data.view === 'admit'){ if (UI.view !== 'admit') go('admit'); }
+  else if (UI.view === 'admit') go(cur() ? 'call' : 'home');
+});
+
 function newAdmit(){
   const n = new Date();
-  UI.admit = {f:{src:'住院', info:'本人', tool:'NRS', tadm:`${n.getFullYear() - 1911}/${pad(n.getMonth() + 1)}/${pad(n.getDate())} ${pad(n.getHours())}:${pad(n.getMinutes())}`}, sec:'basic', pid:null, hx:{}, started:Date.now(), done:null, ph:'prep', w:wkNew()};
+  UI.admit = {f:{src:'住院', info:'本人', tool:'NRS', tadm:`${n.getFullYear() - 1911}/${pad(n.getMonth() + 1)}/${pad(n.getDate())} ${pad(n.getHours())}:${pad(n.getMinutes())}`}, sec:'basic', pid:null, hx:{}, started:Date.now(), done:null, ph:'pre', w:wkNew()};
   saveDraft();
 }
 const visFields = (sec, f) => sec.groups.flatMap(g => g.fields.filter(x => !x.when || x.when(f)));
@@ -4283,7 +4544,7 @@ function fieldHTML(x){
     if (x.auto) tools.unshift(`<button class="btn sm" data-act="auto-mdc">依 AACCI 產生</button>`);
     ctl = `<textarea class="inp ${x.mono ? 'mono' : ''}" id="af_${x.k}" data-in="af" data-k="${x.k}" rows="${x.rows || 3}" placeholder="${esc(x.ph || '')}">${esc(v ?? '')}</textarea><div class="ta-tools">${tools.join('')}</div>`;
   }
-  return `<div class="frow ${x.t === 'ta' ? 'wide' : ''} ${miss ? 'missing' : ''}" id="row_${x.k}"><div class="lab">${esc(x.l)}${x.req ? '' : '<span class="op">選填</span>'}</div><div class="ctl">${ctl}</div></div>`;
+  return `<div class="frow ${x.t === 'ta' ? 'wide' : ''} ${miss ? 'missing' : ''}" id="row_${x.k}"><div class="lab">${esc(x.l)}${x.req ? '' : '<span class="op">選填</span>'}${srcTag(x.k)}</div><div class="ctl">${ctl}</div></div>`;
 }
 function groupHTML(g, gi){
   const f = UI.admit.f, fields = g.fields.filter(x => !x.when || x.when(f));
@@ -4304,10 +4565,10 @@ function secnavHTML(){
 function vAdmit(){
   const a = UI.admit;
   return `<div class="adm-head"><div><div class="eyebrow">接新病人</div><h1>Admission Note</h1>
-    <div class="phi">只存在這個分頁，關閉即清除，不會上傳。請勿輸入姓名、病歷號、身分證字號。</div></div>
+    <div class="phi">會同步到你登入同一個帳號的裝置（電腦先查、手機床邊問）。請勿輸入姓名、病歷號、身分證字號。</div></div>
     <div class="row">${UI.confirm === 'admit' ? `<span class="confirm">確定清除這份 note？<button class="btn sm" data-act="admit-clear-yes">清除</button><button class="btn sm ghost" data-act="admit-clear-no">取消</button></span>` : `<button class="btn sm ghost" data-act="admit-clear">清除這份 note</button>`}</div></div>
   ${wkPhaseBar()}
-  ${a.ph === 'form' ? `<div class="adm-grid"><nav class="secnav" id="secnav" aria-label="段落">${secnavHTML()}</nav><div id="admBody">${admBodyHTML()}</div></div>` : `<div id="wkBody">${wkBodyHTML()}</div>`}`;
+  ${a.ph === 'form' ? `<p class="src-legend">欄位旁的標籤是它平常的來源：<span class="srct s-c">病歷</span><span class="srct s-n">護理紀錄</span> 可以先在電腦查好；<span class="srct s-b">床邊</span> 要問或檢查；<span class="srct s-w">回來寫</span> 是判讀與計畫。</p><div class="adm-grid"><nav class="secnav" id="secnav" aria-label="段落">${secnavHTML()}</nav><div id="admBody">${admBodyHTML()}</div></div>` : `<div id="wkBody">${wkBodyHTML()}</div>`}`;
 }
 function admBodyHTML(){
   const a = UI.admit, idx = AN.findIndex(s => s.id === a.sec), sec = AN[idx];
@@ -4323,7 +4584,7 @@ function admBodyHTML(){
     <div class="secfoot">${prev ? `<button class="btn" data-act="sec" data-s="${prev.id}">← ${esc(prev.zh)}</button>` : '<span></span>'}${next ? `<button class="btn dark" data-act="sec" data-s="${next.id}">${esc(next.zh)} →</button>` : ''}</div>`;
 }
 function hpiAidHTML(){
-  return `<div class="hint">現病史建議用上方「1 準備 → 2 床邊問診 → 3 整理 PI」完成：按鈕記錄 LQQOPERA 與相關症狀，PI 依鑑別分組自動成稿，再按「放進 Present Illness」。 <button class="mini" data-act="wk-ph" data-ph="prep">前往準備 →</button></div>`;
+  return `<div class="hint">現病史建議用上方「2 整理思緒 → 3 床邊問診 → 4 整理 PI」完成：按鈕記錄 LQQOPERA 與相關症狀，PI 依鑑別分組自動成稿，再按「放進 Present Illness」。 <button class="mini" data-act="wk-ph" data-ph="prep">前往整理思緒 →</button></div>`;
 }
 function hpiAidLegacy(){
   const a = UI.admit, p = a.pid ? getProto(a.pid) : null;
@@ -4339,7 +4600,7 @@ function outHTML(){
   const bySec = {}; miss.forEach(({s, x}) => { (bySec[s.zh] = bySec[s.zh] || []).push(x); });
   return `<div class="sec-h"><h2>輸出 Note</h2></div>
     <div class="miss-box ${miss.length ? '' : 'ok'}">${miss.length ? `<b>還有 ${miss.length} 個必填項目沒完成</b>（點一下前往）<div class="miss-list">${Object.entries(bySec).map(([s, xs]) => `<div class="ms"><b>${esc(s)}</b>${xs.map(x => `<button data-act="jump" data-k="${x.k}">${esc(x.l)}</button>`).join('')}</div>`).join('')}</div>` : '<b>必填項目全部完成。</b>可以放心複製到 EMR。'}</div>
-    <div class="row" style="margin-bottom:12px"><button class="btn primary" data-act="copy-an">${ICON.copy}複製完整 Note</button>
+    <div class="row" style="margin-bottom:12px"><button class="btn primary" data-act="copy-an">${ICON.copy}複製完整 Note</button><button class="btn" data-act="ax-ai" data-full="1" title="複製整份 note＋問診紀錄＋檢查指示，貼給其他 AI">${ICON.copy}複製給 AI 檢查</button>
       </div>
     <pre class="notepre tall" id="anPre">${esc(buildAN(a.f))}</pre>`;
 }
@@ -4726,6 +4987,7 @@ loadLocal();
 loadDraft();
 try { if (location.hash === '#help') UI.view = 'help'; } catch {}
 render();
+hubView();
 
 </script>
 

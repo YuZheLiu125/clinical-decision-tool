@@ -4,32 +4,42 @@
 <meta name="app-version" content="1.3.2">
 <!-- 臨床輔助決策工具 · designed &amp; built by 劉宇哲 -->
 <meta name="claude:viewport-fit-sides" content="cover">
-<style id="hub-base">/* 臨床輔助決策工具 · 共用基底（每個工具都內嵌這一份）
-   字體：系統字（iPhone = 蘋方，Android = Noto CJK），不下載網路字型，開啟更快
-   色票：病房冷灰底 + 各工具辨識色；動畫：同一組曲線與時長 */
+<style id="hub-base">/*hub-common:start*/
+/* 臨床輔助決策工具 · 共用設計基底 v2（正本：shared/hub-common.css，由 scripts/sync_shared.py 寫進每個 HTML，不要直接改 HTML 裡這一段）
+   原則：顏色只用來表達臨床意義（紅＝危急、琥珀＝注意、綠＝正常／完成）；介面本身只有一個品牌色（墨藍）和一組帶藍調的中性灰。
+   字體：系統字（iPhone = 蘋方，Android = Noto Sans CJK），不下載網路字型。形狀：小圓角、細線、不用陰影堆層次。 */
 :root{
-  --hub-bg:#EEF1F2; --hub-surface:#FFFFFF; --hub-surface2:#E6EAEC; --hub-ink:#152025; --hub-ink2:#4A575E; --hub-ink3:#6E7A81; --hub-line:#D3DADD;
-  --hub-bad:#B3261E; --hub-bad-soft:#FBE6E4; --hub-warn:#9A5B00; --hub-warn-soft:#FBEFD9; --hub-ok:#1D7A3E; --hub-ok-soft:#E1F2E6;
-  --hub-code:#C0262F; --hub-code-soft:#FBE4E5; --hub-pilot:#A35500; --hub-pilot-soft:#F6E7D2;
-  --hub-consult:#2C5C8C; --hub-consult-soft:#DFE8F2; --hub-meds:#0D6870; --hub-meds-soft:#DDEFF0;
-  --hub-labs:#5B4699; --hub-labs-soft:#EBE6F6; --hub-todo:#B4573A; --hub-todo-soft:#F5E3DA;
-  --hub-p1:#B3322B; --hub-p2:#C27416; --hub-p3:#4F6B8A; --hub-p4:#8A867B;
-  --hub-sans:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",system-ui,sans-serif;
-  --hub-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Roboto Mono",monospace;
-  --hub-ease:cubic-bezier(.2,.8,.2,1); --hub-dur:.18s;
+  --hub-bg:#F2F4F6; --hub-surface:#FFFFFF; --hub-surface2:#E8ECF0; --hub-ink:#111B24; --hub-ink2:#44515E; --hub-ink3:#687685; --hub-line:#D5DBE1;
+  --hub-brand:#1F4E79; --hub-brand-soft:#E1EAF3; --hub-on-brand:#FFFFFF;
+  --hub-bad:#B3261E; --hub-bad-soft:#FBE6E4; --hub-warn:#8F5600; --hub-warn-soft:#FBEFD9; --hub-ok:#1D7A3E; --hub-ok-soft:#E1F2E6;
+  --hub-code:#B3261E; --hub-code-soft:#FBE6E4;
+  --hub-p1:#B3322B; --hub-p2:#B26A12; --hub-p3:#4F6B8A; --hub-p4:#7F8791;
+  --hub-sans:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",Roboto,system-ui,sans-serif;
+  --hub-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Roboto Mono","Droid Sans Mono",monospace;
+  --hub-ease:cubic-bezier(.2,.8,.2,1); --hub-dur:.16s; --hub-r:8px; --hub-r-lg:12px;
+  /* 舊的各工具辨識色：全部指到同一個品牌色（工具各自的對應層還在用這些名字） */
+  --hub-pilot:var(--hub-brand); --hub-pilot-soft:var(--hub-brand-soft); --hub-consult:var(--hub-brand); --hub-consult-soft:var(--hub-brand-soft);
+  --hub-meds:var(--hub-brand); --hub-meds-soft:var(--hub-brand-soft); --hub-labs:var(--hub-brand); --hub-labs-soft:var(--hub-brand-soft);
+  --hub-todo:var(--hub-brand); --hub-todo-soft:var(--hub-brand-soft);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --hub-bg:#0E1316; --hub-surface:#161D21; --hub-surface2:#1E272C; --hub-ink:#E4E9EB; --hub-ink2:#A2AEB4; --hub-ink3:#7E8B93; --hub-line:#2A353B;
+  --hub-bg:#0D1218; --hub-surface:#141B23; --hub-surface2:#1C2530; --hub-ink:#E2E8EE; --hub-ink2:#A1ADBA; --hub-ink3:#7B8896; --hub-line:#28323E;
+  --hub-brand:#8FB8E3; --hub-brand-soft:#17293D; --hub-on-brand:#0B1622;
   --hub-bad:#FF7A70; --hub-bad-soft:#3A1B19; --hub-warn:#F0B04A; --hub-warn-soft:#352812; --hub-ok:#6CCF8E; --hub-ok-soft:#15301F;
-  --hub-code:#FF6B70; --hub-code-soft:#3A1A1D; --hub-pilot:#F0A23A; --hub-pilot-soft:#3A2911;
-  --hub-consult:#80B1E0; --hub-consult-soft:#162636; --hub-meds:#5CC2C8; --hub-meds-soft:#16302F;
-  --hub-labs:#B4A2EC; --hub-labs-soft:#2A2440; --hub-todo:#E08A68; --hub-todo-soft:#3A241B; --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#A6A297; color-scheme:dark}}
+  --hub-code:#FF7A70; --hub-code-soft:#3A1B19;
+  --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#98A2AD; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --hub-bg:#0E1316; --hub-surface:#161D21; --hub-surface2:#1E272C; --hub-ink:#E4E9EB; --hub-ink2:#A2AEB4; --hub-ink3:#7E8B93; --hub-line:#2A353B;
+  --hub-bg:#0D1218; --hub-surface:#141B23; --hub-surface2:#1C2530; --hub-ink:#E2E8EE; --hub-ink2:#A1ADBA; --hub-ink3:#7B8896; --hub-line:#28323E;
+  --hub-brand:#8FB8E3; --hub-brand-soft:#17293D; --hub-on-brand:#0B1622;
   --hub-bad:#FF7A70; --hub-bad-soft:#3A1B19; --hub-warn:#F0B04A; --hub-warn-soft:#352812; --hub-ok:#6CCF8E; --hub-ok-soft:#15301F;
-  --hub-code:#FF6B70; --hub-code-soft:#3A1A1D; --hub-pilot:#F0A23A; --hub-pilot-soft:#3A2911;
-  --hub-consult:#80B1E0; --hub-consult-soft:#162636; --hub-meds:#5CC2C8; --hub-meds-soft:#16302F;
-  --hub-labs:#B4A2EC; --hub-labs-soft:#2A2440; --hub-todo:#E08A68; --hub-todo-soft:#3A241B; --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#A6A297; color-scheme:dark}
+  --hub-code:#FF7A70; --hub-code-soft:#3A1B19;
+  --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#98A2AD; color-scheme:dark}
+/* 各工具自己的強調色、強調色上的字，一律跟品牌色走（查房板的 --ac 也是） */
+html:root:root{--ac:var(--hub-brand);--ac-soft:var(--hub-brand-soft);--accent-ink:var(--hub-on-brand)}
+/* Android：內嵌在別的網頁裡時，往下拉不要帶動外層頁面（下拉重新整理）；左右方向不設，手機上工具之間才能左右滑 */
+html{overscroll-behavior-y:contain}
+:focus-visible{outline:2px solid var(--hub-brand);outline-offset:2px}
+@media (pointer:fine){*{scrollbar-width:thin;scrollbar-color:var(--hub-line) transparent}}
 
 /* 觸控：點擊不延遲、不閃灰框、iPhone 不自動放大字 */
 html{-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
@@ -42,20 +52,20 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeSpeed}
 :where(button,.btn,.chip,[role="tab"]):active:not(:disabled){transform:scale(.97)}
 @keyframes hub-in{from{opacity:0;transform:translateY(6px)}}
 @keyframes hub-pop{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
-.hub-toast{position:fixed;left:16px;right:16px;margin:0 auto;width:fit-content;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;max-width:min(520px,calc(100% - 32px));box-sizing:border-box;display:flex;gap:10px;align-items:center;background:var(--hub-ink);color:var(--hub-bg);font:500 14px/1.4 var(--hub-sans);padding:9px 14px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:hub-in .22s var(--hub-ease)}
+.hub-toast{position:fixed;left:16px;right:16px;margin:0 auto;width:fit-content;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;max-width:min(520px,calc(100% - 32px));box-sizing:border-box;display:flex;gap:10px;align-items:center;background:var(--hub-ink);color:var(--hub-bg);font:500 14px/1.4 var(--hub-sans);padding:10px 14px;border-radius:var(--hub-r);box-shadow:0 6px 20px rgba(0,0,0,.22);animation:hub-in .22s var(--hub-ease)}
 /* 待辦設定按鈕：跟待辦表的快速新增同一套（立即／緊急／待辦／有空，點緊急或待辦展開倒數） */
 .hp{display:flex;flex-direction:column;gap:8px;min-width:0}
 .hp-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.hp-pr{--pc:var(--hub-p3);display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:46px;padding:4px;border:1px solid color-mix(in srgb,var(--pc) 45%,var(--hub-line));border-radius:999px;background:transparent;color:var(--pc);font:500 15px/1.2 var(--hub-sans);cursor:pointer}
+.hp-pr{--pc:var(--hub-p3);display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:46px;padding:4px;border:1px solid color-mix(in srgb,var(--pc) 45%,var(--hub-line));border-radius:var(--hub-r);background:transparent;color:var(--pc);font:500 15px/1.2 var(--hub-sans);cursor:pointer}
 .hp-pr[data-p="1"]{--pc:var(--hub-p1)}.hp-pr[data-p="2"]{--pc:var(--hub-p2)}.hp-pr[data-p="4"]{--pc:var(--hub-p4)}
 .hp-pr small{font-size:12px;font-variant-numeric:tabular-nums}
 .hp-pr small:empty{display:none}
 .hp-pr[aria-pressed="true"]{background:var(--pc);border-color:var(--pc);color:var(--hub-surface)}
 .hp-tm{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px}
 .hp-tm::-webkit-scrollbar{display:none}
-.hp-c{flex:none;min-height:40px;border:1px solid var(--hub-line);background:transparent;border-radius:999px;padding:6px 14px;font:15px/1 var(--hub-sans);color:var(--hub-ink);white-space:nowrap;cursor:pointer;font-variant-numeric:tabular-nums}
+.hp-c{flex:none;min-height:40px;border:1px solid var(--hub-line);background:transparent;border-radius:var(--hub-r);padding:6px 14px;font:15px/1 var(--hub-sans);color:var(--hub-ink);white-space:nowrap;cursor:pointer;font-variant-numeric:tabular-nums}
 .hp-c[aria-pressed="true"]{background:var(--hub-ink);border-color:var(--hub-ink);color:var(--hub-bg)}
-.hp input{flex:none;font:16px var(--hub-sans);min-height:40px;padding:5px 10px;border-radius:999px;border:1px solid var(--hub-line);background:var(--hub-bg);color:var(--hub-ink);width:80px;text-align:center}
+.hp input{flex:none;font:16px var(--hub-sans);min-height:40px;padding:5px 10px;border-radius:var(--hub-r);border:1px solid var(--hub-line);background:var(--hub-bg);color:var(--hub-ink);width:80px;text-align:center}
 .hp-dt{display:flex;gap:6px}
 .hp-dt input[type="date"]{flex:1 1 9.5em;width:auto;max-width:12em}
 .hp-dt input[type="time"]{width:7em}
@@ -69,267 +79,248 @@ body.sw-on{-webkit-user-select:none;user-select:none}
 @keyframes hub-flash{from{background-color:var(--hub-todo-soft);box-shadow:inset 4px 0 0 var(--hub-todo)}}
 .sw-done{animation:hub-flash .9s var(--hub-ease)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+/*hub-common:end*/
 </style>
 <style>
-/* Layout: one-screen console. Top = clock + 待辦狀態; triage strip = 四種狀況依緊急度由左到右;
-   below = 左邊 ACLS／副駕／會診稿／用藥速查／正常值五選一，右邊待辦表常駐（手機改六個分頁）。
-   Palette: 病房冷灰底；每個工具保留自己的辨識色（急救紅、副駕琥珀、會診藍、用藥青、正常值紫、待辦陶土）。 */
-:root{
-  --bg:#EEF1F2; --surface:#FFFFFF; --ink:#152025; --ink-2:#4A575E; --line:#D3DADD;
-  --code:#C0262F; --code-soft:#FBE4E5;
-  --pilot:#A35500; --pilot-soft:#F6E7D2;
-  --consult:#2C5C8C; --consult-soft:#DFE8F2;
-  --meds:#0D6870; --meds-soft:#DDEFF0;
-  --todo:#B4573A; --todo-soft:#F5E3DA;
-  --labs:#5B4699; --labs-soft:#EBE6F6;
-  --rounds:#3F6B2E; --rounds-soft:#E3EEDC;
-  --f-body:var(--hub-sans);
-  --f-mono:var(--hub-mono);
-}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#0E1316; --surface:#161D21; --ink:#E4E9EB; --ink-2:#A2AEB4; --line:#2A353B;
-  --code:#FF6B70; --code-soft:#3A1A1D; --pilot:#F0A23A; --pilot-soft:#3A2911;
-  --consult:#80B1E0; --consult-soft:#162636; --meds:#5CC2C8; --meds-soft:#16302F;
-  --todo:#E08A68; --todo-soft:#3A241B; --labs:#B4A2EC; --labs-soft:#2A2440; --rounds:#93CC7C; --rounds-soft:#1E2E18; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#0E1316; --surface:#161D21; --ink:#E4E9EB; --ink-2:#A2AEB4; --line:#2A353B;
-  --code:#FF6B70; --code-soft:#3A1A1D; --pilot:#F0A23A; --pilot-soft:#3A2911;
-  --consult:#80B1E0; --consult-soft:#162636; --meds:#5CC2C8; --meds-soft:#16302F;
-  --todo:#E08A68; --todo-soft:#3A241B; --labs:#B4A2EC; --labs-soft:#2A2440; --rounds:#93CC7C; --rounds-soft:#1E2E18; color-scheme:dark}
-
+/* 總站外殼 v2。版面概念：
+   電腦＝左側工具欄（依情境分組，可收成圖示）｜中間目前的工具｜右側常駐待辦（可收起）
+   手機＝工具佔滿畫面（左右滑切換）｜下方導覽（ACLS 固定＋釘選 3 個＋待辦＋全部工具）
+   工具清單由下方 script 的 TOOLS 產生：加一個工具＝加一行，版面不會變擠（側欄可捲動、手機收進「全部工具」）。 */
 *{box-sizing:border-box}
 html,body{height:100%}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;display:flex;flex-direction:column;overflow:hidden}
-button,a{font:inherit;color:inherit}
-:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
-.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+html{overscroll-behavior:none}
+body{background:var(--hub-bg);color:var(--hub-ink);font-family:var(--hub-sans);font-size:15px;line-height:1.45;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.app{display:flex;height:100%;min-width:0}
 
-/* top bar */
-.top{flex:none;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block:10px 8px}
-.top h1{margin:0;font-size:19px;font-weight:900;letter-spacing:.06em;display:flex;align-items:center;gap:8px}
-.top h1::before{content:"";width:9px;height:9px;border-radius:2px;background:var(--code);box-shadow:12px 0 0 var(--pilot),24px 0 0 var(--meds);margin-right:26px}
-.clock{font-family:var(--f-mono);font-size:14px;color:var(--ink-2);font-variant-numeric:tabular-nums}
-.status{margin-left:auto;display:flex;gap:6px;align-items:center;font-size:13px}
-.pill{border-radius:999px;padding:2px 10px;background:var(--surface);border:1px solid var(--line);color:var(--ink-2);white-space:nowrap}
-.pill b{font-family:var(--f-mono);font-weight:600;color:var(--ink)}
-.pill.hot{background:var(--code);border-color:var(--code);color:var(--surface)}
-.pill.hot b{color:var(--surface)}
+/* ── 左側工具欄（電腦） ── */
+.rail{flex:none;width:216px;display:flex;flex-direction:column;min-height:0;background:var(--hub-surface);border-right:1px solid var(--hub-line);padding-left:env(safe-area-inset-left,0px)}
+.rail-h{flex:none;display:flex;align-items:center;gap:8px;padding:14px 10px 10px 16px}
+.rail-h b{flex:1;min-width:0;font-size:14px;font-weight:700;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icon-btn{flex:none;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:var(--hub-r);background:transparent;color:var(--hub-ink3)}
+.icon-btn:hover{background:var(--hub-surface2);color:var(--hub-ink)}
+.rail-list{flex:1;min-height:0;overflow-y:auto;padding:2px 8px 8px}
+.grp{margin:12px 8px 4px;font-size:11px;font-weight:600;letter-spacing:.14em;color:var(--hub-ink3)}
+.nav{position:relative;display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:6px 8px;border:0;border-radius:var(--hub-r);background:transparent;color:var(--hub-ink2);text-align:left}
+.nav:hover{background:var(--hub-surface2);color:var(--hub-ink)}
+.nav .tx{flex:1;min-width:0;display:flex;flex-direction:column}
+.nav .nm{font-size:14px;font-weight:500;color:var(--hub-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav .hint{font-size:11.5px;line-height:1.3;color:var(--hub-ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav[aria-selected="true"]{background:var(--hub-brand-soft);color:var(--hub-brand)}
+.nav[aria-selected="true"] .nm{font-weight:700;color:var(--hub-brand)}
+.nav[aria-selected="true"] .hint{color:var(--hub-ink2)}
+.nav.urgent .ic{color:var(--hub-code)}
+.badge{flex:none;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--hub-surface2);color:var(--hub-ink2);font:600 12px/20px var(--hub-mono);text-align:center;font-variant-numeric:tabular-nums}
+.badge.hot{background:var(--hub-code);color:var(--hub-surface)}
+.rail-f{flex:none;display:flex;flex-direction:column;gap:6px;padding:10px 16px 12px;border-top:1px solid var(--hub-line);font-size:12px;color:var(--hub-ink3)}
+.rail-f .row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.clock{font-family:var(--hub-mono);font-variant-numeric:tabular-nums;color:var(--hub-ink2);white-space:nowrap}
+.sig{font-size:11px;letter-spacing:.04em;color:var(--hub-ink3);white-space:nowrap}
+.sync{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--hub-ink2);white-space:nowrap}
+.sync::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--hub-ink3)}
+.sync[data-s="ok"]::before{background:var(--hub-ok)}
+.sync[data-s="busy"]::before{background:var(--hub-warn)}
+.sync[data-s="err"]{color:var(--hub-bad)}
+.sync[data-s="err"]::before{background:var(--hub-bad)}
+/* 收成圖示 */
+.app.rail-min .rail{width:60px}
+.app.rail-min .rail-h{padding:14px 0 10px;justify-content:center}
+.app.rail-min .rail-h b,.app.rail-min .nav .tx,.app.rail-min .grp,.app.rail-min .rail-f .sig,.app.rail-min .rail-f .clock,.app.rail-min .sync span{display:none}
+.app.rail-min .grp{display:block;height:1px;margin:8px 10px;background:var(--hub-line);font-size:0}
+.app.rail-min .nav{justify-content:center;padding:6px 0}
+.app.rail-min .nav .badge{position:absolute;top:2px;right:4px;min-width:16px;height:16px;padding:0 4px;font-size:10px;line-height:16px}
+.app.rail-min .rail-f{align-items:center;padding-inline:0}
+.app.rail-min .rail-f .row{justify-content:center}
 
-/* triage strip */
-.triage{flex:none;padding-block:4px 10px}
-.tlab{font-size:12px;letter-spacing:.12em;color:var(--ink-2);margin:0 0 6px;display:flex;justify-content:space-between;gap:8px}
-.tlab span:last-child{letter-spacing:0}
-.cards{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
-.card{--c:var(--ink);--cs:var(--surface);display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:2px 10px;align-items:center;text-decoration:none;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--c);border-radius:10px;padding:10px 12px;cursor:pointer;text-align:left;min-width:0}
-.card:hover{background:var(--cs)}
-.card .lv{grid-row:1/3;font-family:var(--f-mono);font-weight:600;font-size:12px;color:var(--c);border:1.5px solid var(--c);border-radius:6px;padding:2px 6px;align-self:start;margin-top:2px}
-.card .sit{font-size:13px;color:var(--ink-2);min-width:0}
-.card .nm{font-weight:700;font-size:16px;min-width:0}
-.card .go{grid-row:1/3;grid-column:3;font-size:12px;color:var(--c);white-space:nowrap}
-.card.code{--c:var(--code);--cs:var(--code-soft)}
-.card.pilot{--c:var(--pilot);--cs:var(--pilot-soft)}
-.card.consult{--c:var(--consult);--cs:var(--consult-soft)}
-.card.meds{--c:var(--meds);--cs:var(--meds-soft)}
-.card.labs{--c:var(--labs);--cs:var(--labs-soft)}
-.card.rounds{--c:var(--rounds);--cs:var(--rounds-soft)}
-/* 六張卡：寬度不夠時拿掉「在下方」，說明維持一行 */
-@media (max-width:1500px){.card .go{display:none}.card{grid-template-columns:auto minmax(0,1fr)}.card .sit,.card .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
-@media (max-width:1100px){.cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
-
-/* workspace: 寬螢幕 = 左邊主工作區（急救／會診／用藥，三選一）＋ 右邊常駐待辦；手機 = 六個分頁 */
-.tabs{flex:none;display:flex;gap:4px;padding-block:0 8px}
-.tabs button{flex:1;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;cursor:pointer;font-weight:500;color:var(--ink-2);display:flex;justify-content:center;gap:6px;align-items:center;min-width:0;white-space:nowrap}
-.tabs button i{width:8px;height:8px;border-radius:50%;flex:none}
-.tabs button[aria-selected="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
-.tabs .n{font-family:var(--f-mono);font-size:12px;border-radius:999px;padding:0 6px;background:var(--code);color:var(--surface)}
-.tabs .mob{display:none}
-.work{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,460px);grid-template-areas:"main side";gap:10px;padding-bottom:max(10px,env(safe-area-inset-bottom,0px))}
-.pane{grid-area:main;display:none;flex-direction:column;min-height:0;min-width:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+/* ── 工作區 ── */
+.work{flex:1;min-width:0;min-height:0;display:flex;position:relative}
+.pane{flex:1;min-width:0;min-height:0;display:none;flex-direction:column;position:relative;background:var(--hub-bg)}
 .pane.main-on{display:flex}
-#pane-todo{grid-area:side;display:flex}
-.pane-h{flex:none;display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink-2)}
-.pane-h b{color:var(--ink);font-size:14px}
-.pane-h i{width:8px;height:8px;border-radius:50%;flex:none}
-.pane iframe{flex:1;width:100%;border:0;display:block;background:var(--bg);opacity:0;transition:opacity .2s var(--hub-ease)}
-.pane{position:relative}
+.pane iframe{flex:1;width:100%;border:0;display:block;background:var(--hub-bg);opacity:0;transition:opacity .18s var(--hub-ease)}
 .pane.loaded iframe{opacity:1}
-.pane:not(.loaded)::after{content:"載入中";position:absolute;left:50%;top:40%;transform:translateX(-50%);font-size:13px;letter-spacing:.2em;color:var(--ink-2);animation:hub-blink 1.2s ease-in-out infinite}
+.pane:not(.loaded)::after{content:"載入中";position:absolute;left:50%;top:40%;transform:translateX(-50%);font-size:13px;letter-spacing:.2em;color:var(--hub-ink3);animation:hub-blink 1.2s ease-in-out infinite}
 @keyframes hub-blink{50%{opacity:.35}}
-.pane .reload{display:none;position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);z-index:2;max-width:calc(100% - 32px);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:10px 18px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.15)}
+.pane .reload{display:none;position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);z-index:2;max-width:calc(100% - 32px);border:1px solid var(--hub-line);background:var(--hub-surface);color:var(--hub-ink);border-radius:var(--hub-r);padding:10px 18px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.15)}
 .pane.failed .reload{display:block}
 .pane.failed iframe{opacity:.15}
-.fab.pop{animation:hub-pop .45s var(--hub-ease)}
-@media (max-width:900px){.hub-toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}}
-.hub-toast .undo{background:transparent;color:var(--bg);box-shadow:inset 0 0 0 1px currentColor}
-.hub-toast button{white-space:nowrap;flex:none;border:0;background:var(--todo);color:var(--surface);border-radius:999px;padding:3px 12px;font-weight:700;cursor:pointer}
-@media (max-width:900px){
-  .tabs .mob{display:flex}
-  .tabs button{padding:7px 4px;font-size:14px}
-  .work{grid-template-columns:minmax(0,1fr);grid-template-areas:"main"}
-  .pane,.pane.main-on,#pane-todo{grid-area:main;display:none}
-  .pane.on,#pane-todo.on{display:flex}
-  .pane-h{display:none}
-}
-/* 手機：待辦改成左側抽屜，右滑拉出、左滑收起（iframe 同源，手勢也綁在工具內） */
-.pane-h .close{display:none;margin-left:auto;flex:none;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:3px 10px;font-size:13px;cursor:pointer}
-.pane-h span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pane-h .sig{margin-left:auto;flex:none;font-style:normal;font-size:10px;letter-spacing:.08em;opacity:.38}
-.pane-h .sig+.close{margin-left:8px}
-.scrim{display:none}
-@media (max-width:900px){
-  #pane-todo{display:flex;position:fixed;z-index:20;top:0;bottom:0;left:0;width:min(92vw,460px);border-left:0;border-radius:0 14px 14px 0;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);transform:translateX(-102%);visibility:hidden;transition:transform .22s ease,visibility 0s linear .22s}
-  #pane-todo.open{transform:none;visibility:visible;transition:transform .22s ease;box-shadow:8px 0 30px rgba(0,0,0,.28)}
-  #pane-todo .pane-h{display:flex}
-  #pane-todo .pane-h .close{display:inline-flex}
-  .scrim{display:block;position:fixed;inset:0;z-index:19;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .22s}
-  .scrim.on{opacity:1;pointer-events:auto}
-}
-@media (prefers-reduced-motion:reduce){#pane-todo,#pane-todo.open,.scrim{transition:none}}
-@media (prefers-reduced-motion:no-preference){.card{transition:background .15s}}
+.pane.failed::after{display:none}
 
-/* 直立手機（≤900px）：不要卡片列，工具區佔滿螢幕，導覽列放在最上面（狀態列下方）。
-   每個分頁用「工具名＋什麼狀況用」兩行，顏色沿用各工具的辨識色。 */
-.tabs .hint{display:none}
-@media (max-width:900px){
-  html,body{background:var(--surface)}
-  .top{flex-wrap:nowrap;gap:8px;padding-block:6px;border-bottom:1px solid var(--line)}
-  .top h1{font-size:16px;letter-spacing:.04em;min-width:0;white-space:nowrap}
-  .top h1::before{display:none}
-  .clock{margin-left:auto;font-size:12px;white-space:nowrap}
-  .status{margin-left:0;font-size:12px}
-  .pill:not(.hot){display:none}
-  .triage{display:none}
-  .work.gut{order:2;gap:0;padding:0 env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px)}
-  .pane,.pane.main-on{border:0;border-radius:0}
-  .tabs{order:1;gap:0;background:var(--surface);border-bottom:1px solid var(--line)}
-  .tabs.gut{padding:0 env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px)}
-  .tabs button{flex:1 1 0;flex-direction:column;justify-content:center;gap:0;min-height:46px;padding:4px 1px 5px;border:0;border-bottom:3px solid transparent;border-radius:0;background:transparent;color:var(--ink-2);font-size:13.5px;font-weight:500;letter-spacing:0}
-  .tabs button i{display:none}
-  .tabs .hint{display:block;font-size:10px;font-weight:400;line-height:1.15;color:var(--ink-2)}
-  .tabs button[aria-selected="true"]{background:var(--cs);border-bottom-color:var(--c);color:var(--ink);font-weight:700}
-  .tabs button[aria-selected="true"] .hint{color:var(--ink);font-weight:500}
-  .tabs .n{font-size:11px;padding:0 5px;margin-left:2px}
-  #pane-todo .pane-h{padding:8px 12px}
-  #pane-todo .pane-h b{white-space:nowrap}
-  #pane-todo .pane-h span{display:none}
-}
-@media (max-width:380px){.tabs button{font-size:12.5px}.tabs .hint{font-size:10px}}
+/* ── 右側待辦（電腦） ── */
+.side{flex:none;display:flex;min-height:0;width:clamp(340px,29vw,440px);border-left:1px solid var(--hub-line)}
+#pane-todo{display:flex;flex:1}
+.pane-h{flex:none;display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 8px 6px 16px;border-bottom:1px solid var(--hub-line);background:var(--hub-surface);font-size:12.5px;color:var(--hub-ink2)}
+.pane-h b{color:var(--hub-ink);font-size:14px;white-space:nowrap}
+.pane-h .counts{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.pane-h .counts .hot{color:var(--hub-code);font-weight:700}
+.app.side-off .side{display:none}
+.scrim,.mnav,.sheet{display:none}
 
-/* 手機：五個工具排成一條橫向軌道，手指拖多少畫面跟多少（scroll-snap，放開自動吸附到最近的工具）。
-   待辦表改成右下角圓形浮窗，點開是左側抽屜。 */
-.fab{display:none}
+@media (min-width:901px) and (max-width:1180px){
+  .side{width:340px}
+}
+
+/* ── 手機 ── */
 @media (max-width:900px){
-  .work.gut{display:flex;gap:0;padding:0;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none}
+  body{background:var(--hub-surface)}
+  .app{flex-direction:column}
+  .rail{display:none}
+  /* 工具排成一條橫向軌道：手指拖多少畫面跟多少，放開吸附到最近的工具 */
+  .work{overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none}
   .work::-webkit-scrollbar{display:none}
-  .pane:not(#pane-todo){display:flex;flex:0 0 100%;min-width:0;scroll-snap-align:start;scroll-snap-stop:always;padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
-  #pane-todo{touch-action:pan-y;overscroll-behavior:contain}
-  .fab{display:flex;position:fixed;z-index:15;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));width:56px;height:56px;padding:0;border:0;border-radius:50%;align-items:center;justify-content:center;background:var(--todo);color:var(--surface);box-shadow:0 6px 18px rgba(0,0,0,.3);cursor:pointer}
-  .fab svg{width:26px;height:26px}
-  .fab .n{position:absolute;top:-5px;right:-5px;min-width:22px;height:22px;padding:0 5px;border-radius:11px;border:2px solid var(--surface);box-sizing:content-box;background:var(--code);color:var(--surface);font:600 12px/18px var(--f-mono);text-align:center;font-variant-numeric:tabular-nums}
-  .fab{transition:opacity .15s}
-  body.drawer .fab,body.gl-open .fab{opacity:0;pointer-events:none}
+  .pane:not(#pane-todo){display:flex;flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always;padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+  .pane:not(#pane-todo):not(.near){visibility:hidden}   /* 離目前工具兩格以上的不畫，滑動比較順 */
+  .side{display:contents}
+  #pane-todo{position:fixed;z-index:30;top:0;bottom:0;left:0;width:min(92vw,460px);flex:none;border-radius:0 var(--hub-r-lg) var(--hub-r-lg) 0;overflow:hidden;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);background:var(--hub-surface);transform:translateX(-102%);visibility:hidden;transition:transform .22s var(--hub-ease),visibility 0s linear .22s;touch-action:pan-y;overscroll-behavior:contain}
+  #pane-todo.open{transform:none;visibility:visible;transition:transform .22s var(--hub-ease);box-shadow:8px 0 30px rgba(0,0,0,.28)}
+  .app.side-off .side{display:contents}
+  .scrim{display:block;position:fixed;inset:0;z-index:29;background:rgba(8,12,16,.42);opacity:0;pointer-events:none;transition:opacity .2s}
+  .scrim.on{opacity:1;pointer-events:auto}
+  .mnav{flex:none;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);background:var(--hub-surface);border-top:1px solid var(--hub-line);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+  .mnav button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:0;min-height:54px;padding:6px 2px 5px;border:0;background:transparent;color:var(--hub-ink3);font-size:11px;line-height:1.2}
+  .mnav button span.lb{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mnav button[aria-selected="true"],.mnav button[aria-expanded="true"]{color:var(--hub-brand);font-weight:700}
+  .mnav button.urgent .ic{color:var(--hub-code)}
+  .mnav button.warn::after{content:"";position:absolute;top:8px;left:calc(50% + 9px);width:8px;height:8px;border-radius:50%;background:var(--hub-bad)}
+  .mnav button[aria-selected="true"]::before{content:"";position:absolute;top:-1px;left:22%;right:22%;height:2px;background:var(--hub-brand)}
+  .mnav .badge{position:absolute;top:4px;left:calc(50% + 6px);min-width:18px;height:18px;line-height:18px;font-size:11px;padding:0 5px;border:0}
+  .mnav .pop{animation:hub-pop .45s var(--hub-ease)}
+  /* 全部工具：由下往上的面板 */
+  .sheet{display:flex;flex-direction:column;position:fixed;z-index:31;left:0;right:0;bottom:0;max-height:min(82%,640px);background:var(--hub-surface);border-radius:var(--hub-r-lg) var(--hub-r-lg) 0 0;padding-bottom:env(safe-area-inset-bottom,0px);transform:translateY(102%);visibility:hidden;transition:transform .22s var(--hub-ease),visibility 0s linear .22s;box-shadow:0 -8px 30px rgba(0,0,0,.25)}
+  .sheet.open{transform:none;visibility:visible;transition:transform .22s var(--hub-ease)}
+  .sheet-h{flex:none;display:flex;align-items:center;gap:8px;padding:12px 8px 6px;padding-left:max(16px,env(safe-area-inset-left,0px))}
+  .sheet-h b{flex:1;font-size:16px}
+  .sheet-q{flex:none;margin:0 16px 4px;min-height:40px;padding:6px 12px;border:1px solid var(--hub-line);border-radius:var(--hub-r);background:var(--hub-bg);color:var(--hub-ink);font:16px var(--hub-sans)}
+  .sheet-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0 8px 8px;padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
+  .sheet-row{display:flex;align-items:center;gap:4px}
+  .sheet-row .nav{flex:1;min-width:0;min-height:52px}
+  .sheet-row .nav .nm{font-size:15px}
+  .sheet-row .nav .hint{font-size:12.5px}
+  .pin{flex:none;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:0;border-radius:var(--hub-r);background:transparent;color:var(--hub-ink3)}
+  .pin[aria-pressed="true"]{color:var(--hub-brand)}
+  .pin[aria-pressed="true"] svg{fill:currentColor}
+  .sheet-f{flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 16px;border-top:1px solid var(--hub-line);font-size:12px;color:var(--hub-ink3)}
+  .sheet-note{margin:6px 8px 2px;font-size:12px;color:var(--hub-ink3)}
+  .hub-toast{bottom:calc(70px + env(safe-area-inset-bottom,0px))}
 }
+.hub-toast .undo{background:transparent;color:var(--hub-bg);box-shadow:inset 0 0 0 1px currentColor}
+.hub-toast button{white-space:nowrap;flex:none;border:0;background:var(--hub-bg);color:var(--hub-ink);border-radius:6px;padding:4px 12px;font-weight:700}
+@media (prefers-reduced-motion:reduce){#pane-todo,#pane-todo.open,.scrim,.sheet,.sheet.open{transition:none}}
 </style>
 
-<header class="top gut">
-  <h1 title="by 劉宇哲">臨床輔助決策工具</h1>
-  <span class="clock" id="clock">--:--</span>
-  <div class="status" id="status" aria-live="polite"></div>
-  <span class="sync" id="sync" data-s="wait" title="雲端同步：連線中">連線中</span>
-</header>
-
-<section class="triage gut" aria-label="依狀況選工具">
-  <p class="tlab"><span>現在的狀況</span><span>由左到右越不急</span></p>
-  <div class="cards">
-    <button class="card code" type="button" data-go="acls">
-      <span class="lv">P0</span><span class="sit">急救、心律不整</span><span class="nm">ACLS 輔助工具</span><span class="go">在下方</span>
-    </button>
-    <button class="card pilot" type="button" data-go="pilot">
-      <span class="lv">P1</span><span class="sit">剛被 call、病人不穩</span><span class="nm">主訴處理</span><span class="go">在下方</span>
-    </button>
-    <button class="card consult" type="button" data-go="consult">
-      <span class="lv">P2</span><span class="sit">要打電話找人會診</span><span class="nm">會診電話稿</span><span class="go">在下方</span>
-    </button>
-    <button class="card meds" type="button" data-go="meds">
-      <span class="lv">P3</span><span class="sit">病人穩定、要開藥</span><span class="nm">值班用藥速查</span><span class="go">在下方</span>
-    </button>
-    <button class="card labs" type="button" data-go="labs">
-      <span class="lv">P3</span><span class="sit">報告回來、要判讀數字</span><span class="nm">檢驗正常值</span><span class="go">在下方</span>
-    </button>
-    <button class="card rounds" type="button" data-go="rounds">
-      <span class="lv">日常</span><span class="sit">查房、追病人、交班</span><span class="nm">查房板</span><span class="go">在下方</span>
-    </button>
-  </div>
-</section>
-
-<nav class="tabs gut" role="tablist" aria-label="工作區">
-  <button role="tab" id="tab-acls" data-p="acls" aria-selected="false" title="急救、心律不整" style="--c:var(--code);--cs:var(--code-soft)"><i style="background:var(--code)"></i><span class="nm">ACLS</span><span class="hint">急救</span></button>
-  <button role="tab" id="tab-pilot" data-p="pilot" aria-selected="false" title="剛被 call、病人不穩" style="--c:var(--pilot);--cs:var(--pilot-soft)"><i style="background:var(--pilot)"></i><span class="nm">主訴處理</span><span class="hint">被 call</span></button>
-  <button role="tab" id="tab-consult" data-p="consult" aria-selected="false" title="要打電話找人會診" style="--c:var(--consult);--cs:var(--consult-soft)"><i style="background:var(--consult)"></i><span class="nm">會診稿</span><span class="hint">要打電話</span></button>
-  <button role="tab" id="tab-meds" data-p="meds" aria-selected="false" title="病人穩定、要開藥" style="--c:var(--meds);--cs:var(--meds-soft)"><i style="background:var(--meds)"></i><span class="nm">用藥速查</span><span class="hint">要開藥</span></button>
-  <button role="tab" id="tab-labs" data-p="labs" aria-selected="false" title="報告回來、要判讀數字" style="--c:var(--labs);--cs:var(--labs-soft)"><i style="background:var(--labs)"></i><span class="nm">正常值</span><span class="hint">看報告</span></button>
-  <button role="tab" id="tab-rounds" data-p="rounds" aria-selected="false" title="查房、追病人、交班" style="--c:var(--rounds);--cs:var(--rounds-soft)"><i style="background:var(--rounds)"></i><span class="nm">查房板</span><span class="hint">查房</span></button>
-</nav>
-
-<main class="work gut" id="work">
-  <section class="pane" id="pane-acls" aria-label="ACLS 輔助工具">
-    <div class="pane-h"><i style="background:var(--code)"></i><b>ACLS 輔助工具</b><span>切到別的工具時，計時器照樣在跑</span></div>
-    <iframe id="f-acls" data-src="tools/acls.html" title="ACLS 輔助工具"></iframe>
-  </section>
-  <section class="pane" id="pane-pilot" aria-label="主訴處理">
-    <div class="pane-h"><i style="background:var(--pilot)"></i><b>主訴處理</b><span>剛被 call：叫人時機、問診、貝氏鑑別、醫囑、即時 note</span></div>
-    <iframe id="f-pilot" data-src="tools/copilot.html" title="主訴處理"></iframe>
-  </section>
-  <section class="pane" id="pane-consult" aria-label="會診電話稿">
-    <div class="pane-h"><i style="background:var(--consult)"></i><b>會診電話稿</b><span>打完電話可一鍵加進待辦等回電</span></div>
-    <iframe id="f-consult" data-src="tools/consult.html" title="會診電話稿"></iframe>
-  </section>
-  <section class="pane" id="pane-meds" aria-label="值班用藥速查">
-    <div class="pane-h"><i style="background:var(--meds)"></i><b>值班用藥速查</b><span>病人穩定、有時間查劑量時用</span></div>
-    <iframe id="f-meds" data-src="tools/meds.html" title="值班用藥速查"></iframe>
-  </section>
-  <section class="pane" id="pane-labs" aria-label="檢驗正常值">
-    <div class="pane-h"><i style="background:var(--labs)"></i><b>檢驗正常值</b><span>正常值＋值班警覺值，含 CrCl／eGFR／AKI 計算</span></div>
-    <iframe id="f-labs" data-src="tools/labs.html" title="檢驗正常值"></iframe>
-  </section>
-  <section class="pane" id="pane-rounds" aria-label="查房板">
-    <div class="pane-h"><i style="background:var(--rounds)"></i><b>查房板</b><span>每床 problem、每日清單、等待中結果、異常值趨勢；逐床跑、產生交班</span></div>
-    <iframe id="f-rounds" data-src="tools/rounds.html" title="查房板"></iframe>
-  </section>
-  <section class="pane" id="pane-todo" aria-label="待辦表">
-    <div class="pane-h"><i style="background:var(--todo)"></i><b>待辦表</b><span>常駐，倒數到了會響（先開提醒音）</span><em class="sig" aria-hidden="true">by 劉宇哲</em><button class="close" type="button" id="todoClose">← 收起</button></div>
-    <iframe id="f-todo" data-src="tools/todo.html" title="待辦表"></iframe>
-  </section>
-</main>
+<div class="app" id="app">
+  <nav class="rail" id="rail" aria-label="工具">
+    <div class="rail-h"><b title="by 劉宇哲">臨床輔助決策工具</b><button class="icon-btn" id="railToggle" type="button" aria-label="收合工具欄" title="收合／展開工具欄"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM9 5v14"/></svg></button></div>
+    <div class="rail-list" id="railList" role="tablist" aria-orientation="vertical"></div>
+    <div class="rail-f">
+      <div class="row"><span class="clock" id="clock">--:--</span><span class="sync" id="sync" data-s="wait" title="雲端同步：連線中">連線中</span></div>
+      <div class="row"><span class="sig" id="sig">by 劉宇哲</span></div>
+    </div>
+  </nav>
+  <main class="work" id="work"></main>
+  <aside class="side" id="side">
+    <section class="pane" id="pane-todo" aria-label="待辦表">
+      <div class="pane-h"><b>待辦</b><span class="counts" id="status" aria-live="polite"></span><button class="icon-btn" type="button" id="todoClose" aria-label="收起待辦" title="收起待辦"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+      <iframe id="f-todo" data-src="tools/todo.html" title="待辦表"></iframe>
+    </section>
+  </aside>
+  <nav class="mnav" id="mnav" aria-label="工具"></nav>
+</div>
 <div class="scrim" id="scrim"></div>
-<button class="fab" id="fab" type="button" aria-label="待辦表" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 6h10M10 12h10M10 18h10"/><path d="M3.5 6l1.5 1.5L7.5 4.5M3.5 12l1.5 1.5 2.5-3M3.5 18l1.5 1.5 2.5-3"/></svg><span class="n" id="tabN" hidden></span></button>
+<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="全部工具">
+  <div class="sheet-h"><b>全部工具</b><button class="icon-btn" type="button" id="sheetClose" aria-label="關閉"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <input class="sheet-q" id="sheetQ" type="search" placeholder="找工具" aria-label="找工具" hidden>
+  <div class="sheet-list" id="sheetList"></div>
+  <div class="sheet-f"><span class="sync" id="sSync" data-s="wait">連線中</span><span class="sig" id="sSig">by 劉宇哲</span></div>
+</section>
 
 <script>
 (() => {
-  // 版本號：由 scripts/release.py 寫進 <meta name="app-version">，顯示在待辦表標頭的署名後面
-  const APP_V = (document.querySelector('meta[name="app-version"]') || {}).content || '';
-  try { console.log('%c臨床輔助決策工具 v' + APP_V + ' · made by 劉宇哲', 'color:#B4573A;font-weight:700'); } catch (e) {}
-  try { const sg = document.querySelector('#pane-todo .sig'); if (sg && APP_V) sg.textContent = 'by 劉宇哲 · v' + APP_V; } catch (e) {}
-  const $ = id => document.getElementById(id);
-  const MAIN = ['acls', 'pilot', 'consult', 'meds', 'labs', 'rounds'], ALL = [...MAIN, 'todo'];
-  const narrow = matchMedia('(max-width:900px)');
-  let cur = 'meds', lastMain = 'meds';
+  /* ═══ 工具清單：要加工具，在這裡加一行就好 ═══
+     id    分頁代號（網址 #id 可直接打開）
+     src   工具檔案；沒有 src 而有 pane＋view 的，是「某個工具裡的一個畫面」（例如接新病人在主訴處理裡）
+     name  顯示名稱（手機底部只放得下 4 個字）　hint  什麼情況用　group  分組　icon  ICONS 裡的名字
+     urgent 急救類：圖示用紅色，手機上方固定有捷徑 */
+  const TOOLS = [
+    { id: 'acls',    src: 'tools/acls.html',    name: 'ACLS',     full: 'ACLS 輔助工具', hint: '急救、心律不整',       group: '急性處置', icon: 'bolt', urgent: 1 },
+    { id: 'pilot',   src: 'tools/copilot.html', name: '主訴處理', full: '主訴處理',     hint: '被 call、病人不穩',     group: '急性處置', icon: 'bell' },
+    { id: 'admit',   pane: 'pilot', view: 'admit', name: '接新病人', full: '接新病人',  hint: '先查病歷、床邊問診、PI', group: '病人',     icon: 'clip' },
+    { id: 'rounds',  src: 'tools/rounds.html',  name: '查房板',   full: '查房板',       hint: '查房、追病人、交班',     group: '病人',     icon: 'rows' },
+    { id: 'consult', src: 'tools/consult.html', name: '會診稿',   full: '會診電話稿',   hint: '要打電話找人',           group: '溝通',     icon: 'phone' },
+    { id: 'meds',    src: 'tools/meds.html',    name: '用藥速查', full: '值班用藥速查', hint: '病人穩定、要開藥',       group: '查詢',     icon: 'pill' },
+    { id: 'labs',    src: 'tools/labs.html',    name: '正常值',   full: '檢驗正常值',   hint: '報告回來、判讀數字',     group: '查詢',     icon: 'flask' },
+  ];
+  const DEFAULT_PINS = ['pilot', 'admit', 'rounds']   /* 手機底部預設釘選（使用者可在「全部工具」改） */, MAX_PINS = 3;
+  const ICONS = {
+    bolt: 'M13 2 4 14h7l-1 8 9-12h-7z',
+    bell: 'M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9M10 20a2 2 0 0 0 4 0',
+    clip: 'M9 4h6v3H9zM9 5.5H6V21h12V5.5h-3M12 11v6M9 14h6',
+    rows: 'M4 5h16v5.5H4zM4 13.5h16V19H4zM7.5 7.75h3M7.5 16.25h3',
+    phone: 'M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2',
+    pill: 'M10.5 20.5a5 5 0 0 1-7-7l7-7a5 5 0 0 1 7 7zM7 10l7 7',
+    flask: 'M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3M7.5 15h9',
+    todo: 'M10 6h10M10 12h10M10 18h10M3.5 6 5 7.5l2.5-3M3.5 12 5 13.5l2.5-3M3.5 18 5 19.5l2.5-3',
+    grid: 'M5 5h5v5H5zM14 5h5v5h-5zM5 14h5v5H5zM14 14h5v5h-5z',
+    pin: 'M9 4h6l-1 6 3 3H7l3-3zM12 13v7',
+  };
+  const ic = n => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONS[n] || ICONS.grid}"/></svg>`;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  // cur：手機上顯示的分頁；lastMain：寬螢幕左邊顯示的工具（待辦永遠在右邊）
-  // 手機上的待辦抽屜
-  const drawerOpen = () => $('pane-todo').classList.contains('open');
-  function setDrawer(open) {
-    const on = !!open && narrow.matches;
-    $('pane-todo').classList.toggle('open', on);
-    $('scrim').classList.toggle('on', on);
-    $('pane-todo').inert = narrow.matches && !on;
-    $('fab').setAttribute('aria-expanded', on);
-    document.body.classList.toggle('drawer', on);
+  const $ = id => document.getElementById(id);
+  const APP_V = (document.querySelector('meta[name="app-version"]') || {}).content || '';
+  try { console.log('%c臨床輔助決策工具 v' + APP_V + ' · made by 劉宇哲', 'font-weight:700'); } catch (e) {}
+  if (APP_V) ['sig', 'sSig'].forEach(i => { $(i).textContent = 'by 劉宇哲 · v' + APP_V; });
+  const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+  const lsJSON = (k, d) => { try { const v = JSON.parse(lsGet(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
+
+  const PANES = TOOLS.filter(t => t.src);            // 真的有自己一個 iframe 的工具
+  const MAIN = PANES.map(t => t.id), ALL = [...MAIN, 'todo'];
+  const ENTRY = Object.fromEntries(TOOLS.map(t => [t.id, t]));
+  const paneOf = id => (ENTRY[id] && (ENTRY[id].pane || ENTRY[id].id)) || null;
+  const narrow = matchMedia('(max-width:900px)');
+  const app = $('app'), track = $('work');
+
+  // 工具的 iframe：依清單產生
+  track.innerHTML = PANES.map(t => `<section class="pane" id="pane-${t.id}" aria-label="${esc(t.full)}"><iframe id="f-${t.id}" data-src="${esc(t.src)}" title="${esc(t.full)}"></iframe></section>`).join('');
+
+  // 目前的位置：cur＝哪個工具（iframe）；views[工具]＝那個工具回報它現在在哪個畫面
+  let cur = MAIN.includes('meds') ? 'meds' : MAIN[0];
+  const views = {};
+  const selected = () => { const v = views[cur]; const e = TOOLS.find(t => t.pane === cur && t.view === v); return e ? e.id : cur; };
+
+  /* ── 導覽：側欄（電腦）、底部列與全部工具（手機） ── */
+  let pins = lsJSON('hub.ui.pins', DEFAULT_PINS).filter(id => ENTRY[id]).slice(0, MAX_PINS);
+  const groups = () => { const g = []; TOOLS.forEach(t => { let x = g.find(y => y.n === t.group); if (!x) g.push(x = { n: t.group, items: [] }); x.items.push(t); }); return g; };
+  const navBtn = (t, prefix) => `<button class="nav${t.urgent ? ' urgent' : ''}" type="button" role="tab" id="${prefix}${t.id}" data-go="${t.id}" aria-selected="false" title="${esc(t.full + '：' + t.hint)}">${ic(t.icon)}<span class="tx"><span class="nm">${esc(t.full)}</span><span class="hint">${esc(t.hint)}</span></span></button>`;
+  function buildRail() {
+    $('railList').innerHTML = groups().map(g => `<div class="grp">${esc(g.n)}</div>` + g.items.map(t => navBtn(t, 'tab-')).join('')).join('') +
+      `<div class="grp">值班</div><button class="nav" type="button" id="sideToggle" aria-pressed="true" title="顯示／收起右側待辦">${ic('todo')}<span class="tx"><span class="nm">待辦</span><span class="hint" id="railTodoHint">常駐在右側</span></span><span class="badge" id="railN" hidden></span></button>`;
+  }
+  function buildMnav() {
+    // 急救類固定在最左邊，後面是釘選的
+    const fixed = TOOLS.filter(t => t.urgent).map(t => t.id);
+    $('mnav').innerHTML = [...fixed, ...pins.filter(id => !fixed.includes(id))].map(id => { const t = ENTRY[id]; return `<button type="button"${t.urgent ? ' class="urgent"' : ''} id="m-${t.id}" data-go="${t.id}" aria-selected="false">${ic(t.icon)}<span class="lb">${esc(t.name)}</span></button>`; }).join('') +
+      `<button type="button" id="fab" aria-label="待辦表" aria-expanded="false">${ic('todo')}<span class="lb">待辦</span><span class="badge hot" id="tabN" hidden></span></button>` +
+      `<button type="button" id="mAll" aria-label="全部工具" aria-expanded="false" aria-selected="false">${ic('grid')}<span class="lb" id="mAllLb">全部</span></button>`;
+  }
+  function buildSheet(q) {
+    q = (q || '').trim().toLowerCase();
+    const hit = t => !q || (t.name + t.full + t.hint + t.group + t.id).toLowerCase().includes(q);
+    const html = groups().map(g => { const it = g.items.filter(hit); return it.length ? `<div class="grp">${esc(g.n)}</div>` + it.map(t =>
+      `<div class="sheet-row">${navBtn(t, 's-')}${t.urgent ? '' : `<button class="pin" type="button" data-pin="${t.id}" aria-pressed="${pins.includes(t.id)}" aria-label="${pins.includes(t.id) ? '取消釘選' : '釘選到底部'}：${esc(t.full)}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONS.pin}"/></svg></button>`}</div>`).join('') : ''; }).join('');
+    $('sheetList').innerHTML = (html || '<p class="sheet-note">找不到符合的工具</p>') + `<p class="sheet-note">圖釘＝放到底部導覽（最多 ${MAX_PINS} 個，ACLS 固定在最左邊）。工具之間也可以左右滑。</p>`;
+    $('sheetQ').hidden = TOOLS.length <= 8;
+  }
+  function paintNav() {
+    const sel = selected(), t = ENTRY[sel];
+    TOOLS.forEach(x => ['tab-', 'm-', 's-'].forEach(p => { const b = $(p + x.id); if (b) b.setAttribute('aria-selected', x.id === sel); }));
+    const all = $('mAll'); if (all) { const off = !$('m-' + sel); all.setAttribute('aria-selected', off); $('mAllLb').textContent = off ? t.name : '全部'; }
   }
 
-  // 延遲載入：先載現在看的工具和待辦表，其他的等畫面閒下來再一個一個載（副駕和用藥速查很大）
+  /* ── 載入：先載眼前的工具，其他的排隊一個一個載（上一個載完、畫面閒下來才載下一個）──
+     全部都會預先載好：病房網路不穩時，已經載好的工具照樣能用（急救時不能等）。 */
   const loaded = new Set();
-  // 工具有沒有真的載出來：空白頁、錯誤頁（contentDocument 是 null）、body 是空的都算沒有
   function healthy(f) {
     try {
       const d = f.contentDocument;
@@ -337,8 +328,7 @@ button,a{font:inherit;color:inherit}
       return !!(d.body && d.body.childElementCount);
     } catch (e) { return true; }
   }
-  // 自我修復：沒載出來就自動重載一次；還是不行就在畫面上放「重新載入」按鈕，不會只停在空白或「載入中」
-  // （11/12：iPhone 主畫面 App 開，用藥速查、會診稿有時載不出來，Claude App 開正常）
+  // 自我修復：沒載出來就自動重載（最多兩次），還是不行就放「重新載入」按鈕
   const tries = {}, wt = {};
   function failUI(k) {
     const p = $('pane-' + k);
@@ -366,6 +356,7 @@ button,a{font:inherit;color:inherit}
     f.src = f.dataset.src;
     watch(k);
   }
+  const waiters = {};
   function ensure(k) {
     if (!k || loaded.has(k)) return;
     const f = $('f-' + k); if (!f) return;
@@ -373,131 +364,186 @@ button,a{font:inherit;color:inherit}
     f.addEventListener('load', () => {
       if (!healthy(f)) { (tries[k] || 0) < 2 ? reloadTool(k) : failUI(k); return; }
       clearTimeout(wt[k]);
+      delete views[k];
       $('pane-' + k).classList.remove('failed');
       $('pane-' + k).classList.add('loaded');
+      syncTheme(); if (k === 'todo') bindTodoDoc();
+      (waiters[k] || []).splice(0).forEach(fn => fn());
     });
     f.src = f.dataset.src;
     watch(k);
   }
-  // 從背景回來（iOS 可能把內嵌的工具回收掉）：檢查一遍，空掉的重載
+  const whenLoaded = (k, fn) => { if ($('pane-' + k).classList.contains('loaded')) fn(); else (waiters[k] = waiters[k] || []).push(fn); };
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     loaded.forEach(k => { const f = $('f-' + k); if ($('pane-' + k).classList.contains('loaded') && !healthy(f)) { tries[k] = 0; reloadTool(k); } });
   });
-  const idle = cb => (window.requestIdleCallback ? requestIdleCallback(cb, { timeout: 1500 }) : setTimeout(cb, 300));
+  const idle = cb => (window.requestIdleCallback ? requestIdleCallback(cb, { timeout: 1200 }) : setTimeout(cb, 200));
   function warmRest() {
-    const order = [...MAIN].sort((a, b) => Math.abs(MAIN.indexOf(a) - MAIN.indexOf(cur)) - Math.abs(MAIN.indexOf(b) - MAIN.indexOf(cur)));
-    const next = () => { const k = order.find(x => !loaded.has(x)); if (!k) return; ensure(k); idle(() => setTimeout(next, 250)); };
+    const recent = lsJSON('hub.ui.recent', []);
+    const rank = k => (k === 'todo' ? -3 : k === 'acls' ? -2 : recent.includes(k) ? recent.indexOf(k) : 50 + Math.abs(MAIN.indexOf(k) - MAIN.indexOf(cur)));
+    const order = [...ALL].sort((a, b) => rank(a) - rank(b));
+    const lite = !!(navigator.connection && navigator.connection.saveData);   // 省流量模式：只預載待辦和 ACLS
+    const next = () => {
+      const k = order.find(x => !loaded.has(x)); if (!k || (lite && rank(k) >= 0)) return;
+      ensure(k);
+      let gone = false; const go = () => { if (gone) return; gone = true; idle(next); };
+      whenLoaded(k, go); setTimeout(go, 4000);
+    };
     idle(next);
   }
 
-  const track = $('work');
+  /* ── 切換工具 ── */
   let lockUntil = 0, syncT = 0;
   function paint() {
-    const sel = narrow.matches ? cur : lastMain;
-    ALL.forEach(k => {
-      $('pane-' + k).classList.toggle('on', k === cur);
-      $('pane-' + k).classList.toggle('main-on', k === lastMain);
-      const t = $('tab-' + k); if (t) t.setAttribute('aria-selected', k === sel);
+    const i = MAIN.indexOf(cur);
+    MAIN.forEach((k, j) => {
+      const p = $('pane-' + k);
+      p.classList.toggle('main-on', k === cur); p.classList.toggle('on', k === cur);
+      p.classList.toggle('near', Math.abs(j - i) <= 1);
     });
-    try { localStorage.setItem('hub.pane', JSON.stringify({ cur, lastMain })); } catch (e) {}
-    applyFab();
+    paintNav();
+    lsSet('hub.pane', JSON.stringify({ cur, lastMain: cur }));
   }
-  // 手機上切換工具 = 把橫向軌道捲到那一格（點上方分頁會平順滑過去）
-  function show(p, instant) {
-    if (!MAIN.includes(p)) return;
-    cur = lastMain = p; ensure(p);
+  function remember(k) { const r = [k, ...lsJSON('hub.ui.recent', []).filter(x => x !== k && MAIN.includes(x))].slice(0, 4); lsSet('hub.ui.recent', JSON.stringify(r)); }
+  // 進到工具裡的某個畫面（例如主訴處理裡的接新病人）；點「主訴處理」本身而它正停在接新病人時，請它回到主畫面
+  function tellView(pane, view) {
+    whenLoaded(pane, () => { try { $('f-' + pane).contentWindow.postMessage({ hub: 'go', view }, '*'); } catch (e) {} });
+  }
+  function show(id, instant) {
+    const p = paneOf(id); if (!MAIN.includes(p)) return;
+    const e = ENTRY[id], far = Math.abs(MAIN.indexOf(p) - MAIN.indexOf(cur)) > 1, was = cur;
+    cur = p; ensure(p); remember(p);
+    if (e.view) { views[p] = e.view; tellView(p, e.view); }
+    else if (TOOLS.some(t => t.pane === p && t.view === views[p])) { delete views[p]; tellView(p, 'main'); }
     paint();
     if (narrow.matches) {
+      if (far || instant) MAIN.forEach(k => $('pane-' + k).classList.add('near'));
       lockUntil = Date.now() + 600;
-      track.scrollTo({ left: MAIN.indexOf(p) * track.clientWidth, behavior: instant ? 'instant' : 'smooth' });
+      track.scrollTo({ left: MAIN.indexOf(p) * track.clientWidth, behavior: instant || far || was === p ? 'instant' : 'smooth' });
+      if (far || instant) requestAnimationFrame(paint);
     }
   }
-  // 手指拖動時，過半就換上方分頁的亮起；拖完停下來再校正一次
+  // 工具回報自己現在在哪個畫面 → 導覽的亮燈跟著變
+  window.addEventListener('message', e => {
+    if (!e.data || e.data.hub !== 'view') return;
+    const k = MAIN.find(x => { try { return $('f-' + x).contentWindow === e.source; } catch (er) { return false; } });
+    if (!k) return;
+    views[k] = e.data.view; if (k === cur) paintNav();
+  });
   function fromScroll() {
     const i = Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
-    ensure(MAIN[i]); ensure(MAIN[i + 1]); ensure(MAIN[i - 1]);
-    if (MAIN[i] && MAIN[i] !== cur) { cur = lastMain = MAIN[i]; paint(); }
+    ensure(MAIN[i]);
+    if (MAIN[i] && MAIN[i] !== cur) { cur = MAIN[i]; remember(cur); paint(); }
   }
   track.addEventListener('scroll', () => {
     if (!narrow.matches) return;
     clearTimeout(syncT); syncT = setTimeout(() => { lockUntil = 0; fromScroll(); }, 100);
     if (Date.now() >= lockUntil) fromScroll();
   }, { passive: true });
-  narrow.addEventListener('change', () => { setDrawer(false); show(cur, true); });
+  // 手指開始左右滑時，先把左右鄰居載起來
+  track.addEventListener('touchstart', () => { const i = MAIN.indexOf(cur); ensure(MAIN[i + 1]); ensure(MAIN[i - 1]); }, { passive: true });
   addEventListener('resize', () => { if (narrow.matches) track.scrollTo({ left: MAIN.indexOf(cur) * track.clientWidth, behavior: 'instant' }); });
-  $('fab').addEventListener('click', () => setDrawer(true));
-  // 值班用藥速查的辭典彈出時，隱藏右下角待辦按鈕（它會蓋到辭典）
-  let glOpen = false, sheetOpen = false;
-  function applyFab() { document.body.classList.toggle('gl-open', (glOpen && cur === 'meds') || (sheetOpen && cur === 'pilot')); }
-  window.addEventListener('message', e => { if (e.data && e.data.hub === 'sheet') { sheetOpen = !!e.data.open; applyFab(); } });
-  $('f-meds').addEventListener('load', () => { glOpen = false; applyFab(); });
-  $('f-pilot').addEventListener('load', () => { sheetOpen = false; applyFab(); });
-  window.addEventListener('message', e => {
-    const f = $('f-meds');
-    if (!f || e.source !== f.contentWindow || !e.data || e.data.hub !== 'gloss') return;
-    glOpen = !!e.data.open; applyFab();
+
+  /* ── 浮層：待辦抽屜、全部工具（手機）。Android 的返回鍵會先關掉浮層，不會直接離開 ── */
+  const drawerOpen = () => $('pane-todo').classList.contains('open');
+  const sheetOpen = () => $('sheet').classList.contains('open');
+  let histOn = false;
+  function histPush() { if (histOn) return; try { history.pushState({ hubOverlay: 1 }, ''); histOn = true; } catch (e) {} }
+  function histPop() { if (!histOn) return; histOn = false; try { if (history.state && history.state.hubOverlay) history.back(); } catch (e) {} }
+  window.addEventListener('popstate', () => { if (!histOn) return; histOn = false; setDrawer(false, true); setSheet(false, true); });
+  function setDrawer(open, fromHist) {
+    const on = !!open && narrow.matches;
+    $('pane-todo').classList.toggle('open', on);
+    $('pane-todo').inert = narrow.matches && !on;
+    const fab = $('fab'); if (fab) fab.setAttribute('aria-expanded', on);
+    document.body.classList.toggle('drawer', on);
+    if (on) { setSheet(false, true); ensure('todo'); histPush(); } else if (!fromHist && !sheetOpen()) histPop();
+    paintScrim();
+  }
+  function setSheet(open, fromHist) {
+    const on = !!open && narrow.matches;
+    if (on) { buildSheet(''); $('sheetQ').value = ''; paintNav(); }
+    $('sheet').classList.toggle('open', on);
+    $('sheet').inert = !on;
+    const b = $('mAll'); if (b) b.setAttribute('aria-expanded', on);
+    if (on) { setDrawer(false, true); histPush(); } else if (!fromHist && !drawerOpen()) histPop();
+    paintScrim();
+  }
+  function paintScrim() { $('scrim').classList.toggle('on', drawerOpen() || sheetOpen()); }
+  $('sheet').inert = true;
+
+  // 電腦：右側待辦可收起；左側工具欄可收成圖示（只記在這台裝置）
+  function setSide(on) { app.classList.toggle('side-off', !on); const b = $('sideToggle'); if (b) { b.setAttribute('aria-pressed', on); $('railTodoHint').textContent = on ? '常駐在右側' : '已收起，點一下打開'; } lsSet('hub.ui.side', on ? '1' : '0'); }
+  function setRail(min) { app.classList.toggle('rail-min', min); lsSet('hub.ui.rail', min ? '1' : '0'); }
+
+  function toast(text, actions) {
+    document.querySelector('.hub-toast')?.remove(); clearTimeout(toast.t);
+    const t = document.createElement('div'); t.className = 'hub-toast'; t.setAttribute('role', 'status');
+    const msg = document.createElement('span'); msg.textContent = text; t.appendChild(msg);
+    (actions || []).forEach(([label, fn, cls]) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; if (cls) b.className = cls; b.onclick = () => fn(t, msg, b); t.appendChild(b); });
+    document.body.appendChild(t); toast.t = setTimeout(() => t.remove(), 3200);
+    return t;
+  }
+  function togglePin(id) {
+    if (pins.includes(id)) pins = pins.filter(x => x !== id);
+    else if (pins.length >= MAX_PINS) { toast(`底部最多釘選 ${MAX_PINS} 個，先取消一個`); return; }
+    else pins = TOOLS.map(t => t.id).filter(x => x === id || pins.includes(x));
+    lsSet('hub.ui.pins', JSON.stringify(pins));
+    buildMnav(); buildSheet($('sheetQ').value); status(true); paintNav(); mirror();
+  }
+
+  // 事件一律委派：導覽是依清單產生的
+  document.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.pin) { togglePin(b.dataset.pin); return; }
+    if (b.dataset.go) { const s = sheetOpen(); if (s) setSheet(false); if (drawerOpen()) setDrawer(false); show(b.dataset.go, s); return; }
+    switch (b.id) {
+      case 'fab': setDrawer(!drawerOpen()); break;
+      case 'mAll': setSheet(!sheetOpen()); break;
+      case 'sheetClose': setSheet(false); break;
+      case 'todoClose': narrow.matches ? setDrawer(false) : setSide(false); break;
+      case 'sideToggle': setSide(app.classList.contains('side-off')); break;
+      case 'railToggle': setRail(!app.classList.contains('rail-min')); break;
+    }
   });
-  // 其他工具匯入待辦時：底部提示＋待辦按鈕跳一下；手機可直接打開待辦
-  let hubT = 0;
+  $('scrim').addEventListener('click', () => { setDrawer(false); setSheet(false); });
+  $('sheetQ').addEventListener('input', e => { buildSheet(e.target.value); paintNav(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { setDrawer(false); setSheet(false); } });
+  narrow.addEventListener('change', () => { setDrawer(false, true); setSheet(false, true); histPop(); show(selected(), true); });
+
+  // 其他工具把東西加進待辦：底部提示（可撤銷），待辦按鈕跳一下
   window.addEventListener('message', e => {
     if (!e.data || e.data.hub !== 'todo-add') return;
-    document.querySelector('.hub-toast')?.remove(); clearTimeout(hubT);
-    const t = document.createElement('div'); t.className = 'hub-toast'; t.setAttribute('role', 'status');
-    const msg = document.createElement('span');
-    msg.textContent = `已加入待辦：${e.data.bed ? e.data.bed + ' 床 ' : ''}${e.data.text}${e.data.n ? `（${e.data.n} 項）` : ''}`;
-    t.appendChild(msg);
-    if (e.data.id) {
-      const u = document.createElement('button'); u.type = 'button'; u.className = 'undo'; u.textContent = '撤銷';
-      u.onclick = () => {
-        try {
-          const st = JSON.parse(localStorage.getItem('shiftboard.v1') || 'null');
-          if (st && Array.isArray(st.items)) { st.items = st.items.filter(i => i.id !== e.data.id); st.del = { ...(st.del || {}), [e.data.id]: Date.now() }; localStorage.setItem('shiftboard.v1', JSON.stringify(st)); }
-        } catch (er) {}
-        msg.textContent = '已撤銷'; u.remove(); t.querySelector('button')?.remove(); status(); clearTimeout(hubT); hubT = setTimeout(() => t.remove(), 1200);
-      };
-      t.appendChild(u);
-    }
-    if (narrow.matches) {
-      const b = document.createElement('button'); b.type = 'button'; b.textContent = '打開';
-      b.onclick = () => { t.remove(); setDrawer(true); }; t.appendChild(b);
-    }
-    document.body.appendChild(t); hubT = setTimeout(() => t.remove(), 3200);
-    const fab = $('fab'); fab.classList.remove('pop'); void fab.offsetWidth; fab.classList.add('pop');
-    status();
+    const d = e.data, acts = [];
+    if (d.id) acts.push(['撤銷', (t, msg, b) => {
+      try {
+        const st = JSON.parse(localStorage.getItem('shiftboard.v1') || 'null');
+        if (st && Array.isArray(st.items)) { st.items = st.items.filter(i => i.id !== d.id); st.del = { ...(st.del || {}), [d.id]: Date.now() }; localStorage.setItem('shiftboard.v1', JSON.stringify(st)); }
+      } catch (er) {}
+      msg.textContent = '已撤銷'; t.querySelectorAll('button').forEach(x => x.remove()); status(true); clearTimeout(toast.t); toast.t = setTimeout(() => t.remove(), 1200);
+    }, 'undo']);
+    if (narrow.matches) acts.push(['打開', t => { t.remove(); setDrawer(true); }]);
+    else if (app.classList.contains('side-off')) acts.push(['打開', t => { t.remove(); setSide(true); }]);
+    toast(`已加入待辦：${d.bed ? d.bed + ' 床 ' : ''}${d.text}${d.n ? `（${d.n} 項）` : ''}`, acts);
+    const fab = $('fab'); if (fab) { fab.classList.remove('pop'); void fab.offsetWidth; fab.classList.add('pop'); }
+    status(true);
   });
-  $('scrim').addEventListener('click', () => setDrawer(false));
-  $('todoClose').addEventListener('click', () => setDrawer(false));
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') setDrawer(false); });
-  document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => show(b.dataset.p)));
-  document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => show(b.dataset.go)));
-
-  try { const s = JSON.parse(localStorage.getItem('hub.pane') || 'null'); if (s && MAIN.includes(s.lastMain)) lastMain = s.lastMain; } catch (e) {}
-  cur = lastMain;
-  const h = location.hash.slice(1);
-  if (MAIN.includes(h)) cur = lastMain = h;
-  show(cur, true);
-  ensure('todo');
-  if (h === 'todo' && narrow.matches) setDrawer(true);
-  if (document.readyState === 'complete') warmRest(); else addEventListener('load', warmRest, { once: true });
 
   // 讓內嵌工具跟著總站的明暗主題
-  const frames = ALL.map(k => $('f-' + k));
   function syncTheme() {
     const t = document.documentElement.getAttribute('data-theme');
-    frames.forEach(f => {
+    ALL.forEach(k => {
       try {
-        const r = f.contentDocument && f.contentDocument.documentElement;
+        const r = $('f-' + k).contentDocument && $('f-' + k).contentDocument.documentElement;
         if (!r) return;
         t ? r.setAttribute('data-theme', t) : r.removeAttribute('data-theme');
       } catch (e) {}
     });
   }
   new MutationObserver(syncTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-  frames.forEach(f => f.addEventListener('load', syncTheme));
 
-  // 手勢：工具之間的左右滑由上面的橫向軌道原生處理（跟手、有慣性）。
-  // 待辦抽屜開著時，往左拖會跟著手指收起；在輸入框或可左右捲動的區塊裡不觸發。
+  // 手勢：待辦抽屜開著時，往左拖會跟著手指收起；在輸入框或可左右捲動的區塊裡不觸發
   function scrollsX(el) {
     for (; el && el.nodeType === 1; el = el.parentElement) {
       if (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return true;
@@ -543,51 +589,52 @@ button,a{font:inherit;color:inherit}
     el.addEventListener('touchcancel', dEnd, { passive: true });
   }
   bindDrag(drawer); bindDrag($('scrim'));
-  const ft = $('f-todo');
-  const bindTodoDoc = () => { try { bindDrag(ft.contentDocument); } catch (e) {} };
-  ft.addEventListener('load', bindTodoDoc); bindTodoDoc();
+  function bindTodoDoc() { try { bindDrag($('f-todo').contentDocument); } catch (e) {} }
 
-  // 頂部狀態：讀待辦表存的資料（同一個來源的 localStorage）
-  function status() {
-    const now = Date.now();
-    $('clock').textContent = new Date().toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
-    let items = [];
-    try { const s = JSON.parse(localStorage.getItem('shiftboard.v1') || 'null'); if (s && Array.isArray(s.items)) items = s.items.filter(i => !i.ex); } catch (e) {}
+  /* ── 狀態：時間、待辦數量（讀待辦表存的資料；內容沒變就不重算）、同步狀態鏡射到手機版位置 ── */
+  let lastRaw, lastMin = -1, lastOver = -1;
+  function status(force) {
+    const now = Date.now(), d = new Date(), min = d.getHours() * 60 + d.getMinutes();
+    if (min !== lastMin) {
+      lastMin = min;
+      $('clock').textContent = d.toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
+    }
+    const raw = lsGet('shiftboard.v1');
+    if (raw !== lastRaw) { lastRaw = raw; status.items = []; try { const s = JSON.parse(raw || 'null'); if (s && Array.isArray(s.items)) status.items = s.items.filter(i => !i.ex); } catch (e) {} force = true; }
+    const items = status.items || [];
     const over = items.filter(i => i.due && i.due <= now).length;
+    if (!force && over === lastOver) return;
+    lastOver = over;
     const p1 = items.filter(i => i.p === 1).length;
-    $('status').innerHTML =
-      `<span class="pill${over ? ' hot' : ''}">已到時 <b>${over}</b></span>` +
-      `<span class="pill">立即 <b>${p1}</b></span>` +
-      `<span class="pill">待辦共 <b>${items.length}</b></span>`;
-    $('tabN').hidden = !over; $('tabN').textContent = over;
+    $('status').innerHTML = `${over ? `<span class="hot">已到時 ${over}</span> · ` : ''}立即 ${p1} · 共 ${items.length}`;
+    const rn = $('railN'); if (rn) { rn.hidden = !items.length; rn.textContent = over || items.length; rn.classList.toggle('hot', !!over); }
+    const tn = $('tabN'); if (tn) { tn.hidden = !over; tn.textContent = over; }
   }
-  status(); setInterval(status, 2000);
-  window.addEventListener('storage', status);
+  window.addEventListener('storage', () => status());
+  const syncEl = $('sync');
+  const mirror = () => {
+    const s = syncEl.dataset.s, txt = syncEl.textContent, tip = syncEl.title;
+    if (!syncEl.firstElementChild) syncEl.innerHTML = `<span>${esc(txt)}</span>`;
+    const all = $('mAll'); if (all) all.classList.toggle('warn', s === 'err');
+    $('sSync').dataset.s = s; $('sSync').textContent = txt; $('sSync').title = tip;
+  };
+  new MutationObserver(mirror).observe(syncEl, { attributes: true, attributeFilter: ['data-s'], childList: true });
+
+  /* ── 開機 ── */
+  buildRail(); buildMnav(); buildSheet('');
+  setRail(lsGet('hub.ui.rail') === '1');
+  setSide(lsGet('hub.ui.side') !== '0');
+  mirror(); status(true); setInterval(status, 2000);
+  const saved = lsJSON('hub.pane', null); if (saved && MAIN.includes(saved.lastMain)) cur = saved.lastMain;
+  const h = location.hash.slice(1);
+  show(ENTRY[h] ? h : cur, true);
+  if (!narrow.matches) ensure('todo');
+  if (h === 'todo' && narrow.matches) setDrawer(true);
+  addEventListener('hashchange', () => { const x = location.hash.slice(1); if (ENTRY[x]) show(x, true); else if (x === 'todo') narrow.matches ? setDrawer(true) : setSide(true); });
+  if (document.readyState === 'complete') warmRest(); else addEventListener('load', warmRest, { once: true });
 })();
 </script>
 
-<style>
-/* 精簡版面：拿掉「現在的狀況」大卡片列，只留一排分頁；分頁上直接寫什麼狀況用 */
-.triage{display:none!important}
-@media (min-width:901px){
-  .top{padding-block:8px 6px}
-  .tabs{padding-block:0 6px}
-  .tabs button{padding:5px 10px;gap:6px;border-top:3px solid var(--c,var(--line))}
-  .tabs .hint{display:inline;font-size:12px;font-weight:400;color:var(--ink-2)}
-  .tabs .hint::before{content:"· "}
-  .tabs button[aria-selected="true"] .hint{color:var(--bg);opacity:.75}
-}
-</style>
-<style>
-/* 雲端同步狀態 */
-.sync{flex:none;font-size:12px;line-height:1;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2);white-space:nowrap}
-.sync::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;vertical-align:1px;background:var(--ink-2)}
-.sync[data-s="ok"]::before{background:#2E8B57}
-.sync[data-s="busy"]::before{background:var(--pilot)}
-.sync[data-s="err"]{color:var(--code);border-color:var(--code)}
-.sync[data-s="err"]::before{background:var(--code)}
-@media (max-width:900px){.sync{font-size:11px;padding:2px 6px}}
-</style>
 <script>
 /* 雲端同步：把這個工具所有 localStorage 資料存到「每個人自己的」雲端空間（data/users/<id>/）。
    主畫面 App 被滑掉、換手機、清快取都不會掉。沒登入或沒有寫入權限時，照舊只存本機。 */
@@ -598,7 +645,7 @@ button,a{font:inherit;color:inherit}
     local: '沒有登入 claude.ai 或沒有寫入權限：資料只存在這台裝置，被清掉就沒了', err: '雲端同步失敗，資料暫時只在這台裝置' };
   const ind = s => { el.dataset.s = s; el.textContent = LABEL[s]; el.title = TIP[s]; };
   const META = 'hub.sync.meta', CH = 60000;
-  const skip = k => !k || k.startsWith('hub.sync') || k === 'acls-run';
+  const skip = k => !k || k.startsWith('hub.sync') || k.startsWith('hub.ui.') || k === 'acls-run';   // hub.ui.*：只跟這台裝置有關的版面設定（釘選、側欄收合）
   const enc = k => 'k' + Array.from(new TextEncoder().encode(k), b => b.toString(16).padStart(2, '0')).join('');
   const dec = id => new TextDecoder().decode(new Uint8Array(id.slice(1).match(/../g).map(h => parseInt(h, 16))));
   const ls = {
