@@ -24,15 +24,15 @@ def test_hub_shows_version(page, base_url):
     import pathlib
     v = (pathlib.Path(__file__).resolve().parent.parent / 'VERSION').read_text().strip()
     page.goto(base_url + 'index.html')
-    assert page.text_content('#pane-todo .sig') == f'by 劉宇哲 · v{v}'
+    assert page.text_content('#sig') == f'by 劉宇哲 · v{v}'
 
 
 def test_hub_phone_tabs_and_drawer(phone, base_url):
     phone.goto(base_url + 'index.html')
     phone.wait_for_timeout(800)
-    phone.click('#tab-rounds')
+    phone.click('#m-rounds')
     phone.wait_for_timeout(800)
-    assert phone.get_attribute('#tab-rounds', 'aria-selected') == 'true'
+    assert phone.get_attribute('#m-rounds', 'aria-selected') == 'true'
     phone.click('#fab')
     assert 'open' in phone.get_attribute('#pane-todo', 'class')
     phone.click('#todoClose')

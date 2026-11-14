@@ -239,18 +239,18 @@ svg {
 .desk{left:96px;top:300px;width:1020px;height:620px}
 .desk .cards6{position:absolute;left:24px;right:24px;top:56px;height:84px;display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
 .desk .cards6 i{background:#fff;border-top:7px solid var(--c);border:1px solid #cfd6d9;border-top:7px solid var(--c)}
-.desk .tabs6{position:absolute;left:24px;right:24px;top:56px;height:40px;display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
-.desk .tabs6 i{background:#fff;border:1px solid #cfd6d9}
-.desk .tabs6 i:last-child{background:var(--ink)}
-.desk .main{position:absolute;left:24px;top:112px;bottom:22px;width:600px;background:#fff;border:1px solid #cfd6d9}
+.desk .tabs6{position:absolute;left:0;top:30px;bottom:0;width:17%;padding:22px 12px;display:grid;grid-auto-rows:26px;gap:10px;align-content:start;background:#fff;border-right:1px solid #cfd6d9}
+.desk .tabs6 i{background:#e8ecf0;border:0!important}
+.desk .tabs6 i:nth-child(3){background:#1F4E79}
+.desk .main{position:absolute;left:198px;top:52px;bottom:22px;width:440px;background:#fff;border:1px solid #cfd6d9}
 .desk .main::before{content:"";position:absolute;left:24px;right:24px;top:24px;height:14px;background:repeating-linear-gradient(#e3e7e9 0 14px,transparent 14px 34px);bottom:24px}
-.desk .side{position:absolute;right:24px;top:112px;bottom:22px;width:330px;background:#fff;border:1px solid #cfd6d9}
+.desk .side{position:absolute;right:24px;top:52px;bottom:22px;width:330px;background:#fff;border:1px solid #cfd6d9}
 .desk .side::before{content:"";position:absolute;left:18px;right:18px;top:20px;bottom:20px;background:repeating-linear-gradient(#fff 0 8px,#f5e3da 8px 70px,#fff 70px 84px);border-left:6px solid var(--t-todo)}
 .phone{left:1280px;top:250px;width:330px;height:680px;border-radius:46px;border-width:10px;overflow:hidden;background:#fff}
-.phone .ptabs{position:absolute;left:0;right:0;top:44px;height:56px;display:grid;grid-template-columns:repeat(6,1fr);border-bottom:1px solid #cfd6d9}
-.phone .ptabs i{border-bottom:5px solid transparent}
-.phone .ptabs i:last-child{border-bottom-color:var(--t-rounds);background:#e3eedc}
-.phone .pbody{position:absolute;left:18px;right:18px;top:120px;bottom:20px;background:repeating-linear-gradient(#eef1f2 0 70px,#fff 70px 86px)}
+.phone .ptabs{position:absolute;left:0;right:0;bottom:0;height:60px;display:grid;grid-template-columns:repeat(6,1fr);border-top:1px solid #cfd6d9;background:#fff}
+.phone .ptabs i{border-top:5px solid transparent}
+.phone .ptabs i:nth-child(2){border-top-color:#1F4E79;background:#e1eaf3}
+.phone .pbody{position:absolute;left:18px;right:18px;top:60px;bottom:80px;background:repeating-linear-gradient(#eef1f2 0 70px,#fff 70px 86px)}
 .phone .fab{position:absolute;right:20px;bottom:24px;width:64px;height:64px;border-radius:50%;background:var(--t-todo);box-shadow:0 6px 16px rgba(0,0,0,.25)}
 .phone .fab::after{content:"3";position:absolute;right:-6px;top:-6px;width:28px;height:28px;border-radius:50%;background:var(--t-code);color:#fff;font:800 16px/28px var(--display);text-align:center;border:3px solid #fff}
 .callout{position:absolute;display:flex;align-items:center;gap:12px;font:700 23px/1.35 var(--body);z-index:3}
@@ -392,19 +392,19 @@ body.editing [contenteditable=true]{outline:2px dashed rgba(255,51,0,.5);outline
   <div class="top r"><span>臨床輔助決策工具</span><span class="sec">畫面導覽</span></div>
   <div style="position:absolute;left:96px;top:150px;z-index:2">
     <h2 class="r" style="font:900 72px/1.1 var(--display)">一個畫面，七個工具</h2>
-    <p class="r d1" style="font:600 28px/1.5 var(--body);color:var(--ink2);margin-top:12px">電腦：左邊放工具、右邊待辦表常駐。手機：上方分頁，左右滑切換。</p>
+    <p class="r d1" style="font:600 28px/1.5 var(--body);color:var(--ink2);margin-top:12px">電腦：左邊工具欄、中間工具、右邊待辦表常駐。手機：下方導覽，左右滑切換。</p>
   </div>
   <div class="mock desk r d2">
     <div class="bar"></div>
     <div class="tabs6"><i style="border-top:4px solid var(--t-code)"></i><i style="border-top:4px solid var(--t-pilot)"></i><i style="border-top:4px solid var(--t-consult)"></i><i style="border-top:4px solid var(--t-meds)"></i><i style="border-top:4px solid var(--t-labs)"></i><i style="border-top:4px solid var(--t-rounds)"></i></div>
     <div class="main"></div><div class="side"></div>
   </div>
-  <div class="callout r d3" style="left:150px;top:312px"><b>1</b><span>上方分頁：工具名＋什麼狀況用，由左到右越不急</span></div>
-  <div class="callout r d3" style="left:150px;top:610px"><b>2</b><span>工作區：目前打開的工具</span></div>
-  <div class="callout r d3" style="left:760px;top:940px"><b>3</b><span>待辦表：永遠在右邊，倒數到了會響</span></div>
-  <div class="mock phone r d4"><div class="ptabs"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="pbody"></div><div class="fab"></div></div>
-  <div class="callout r d5" style="left:1250px;top:196px"><b>4</b><span>上方分頁，左右滑切換</span></div>
-  <div class="callout r d5" style="left:1360px;top:928px"><b>5</b><span>右下圓鈕＝待辦<br>紅色數字＝已到時</span></div>
+  <div class="callout r d3" style="left:120px;top:560px"><b>1</b><span>左側工具欄：依情境分組，寫著什麼狀況用；可收成圖示</span></div>
+  <div class="callout r d3" style="left:330px;top:440px"><b>2</b><span>工作區：目前打開的工具</span></div>
+  <div class="callout r d3" style="left:760px;top:940px"><b>3</b><span>待辦表：常駐在右邊（可收起），倒數到了會響</span></div>
+  <div class="mock phone r d4"><div class="ptabs"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="pbody"></div></div>
+  <div class="callout r d5" style="left:1250px;top:196px"><b>4</b><span>工具佔滿畫面，左右滑切換</span></div>
+  <div class="callout r d5" style="left:1150px;top:945px"><b>5</b><span>下方導覽：ACLS、釘選 3 個、待辦、全部工具<br>待辦的紅色數字＝已到時</span></div>
   <div class="pn r"></div><div class="foot-url r"><i>→</i> lycdx.notion.site</div>
 </section>
 
@@ -425,6 +425,7 @@ body.editing [contenteditable=true]{outline:2px dashed rgba(255,51,0,.5);outline
       <tr><td><span class="tag" style="--c:var(--t-consult)">P2</span></td><td>要打電話找人會診</td><td>會診電話稿</td><td>ISBAR 填空，照稿唸</td></tr>
       <tr><td><span class="tag" style="--c:var(--t-meds)">P3</span></td><td>病人穩定、要開藥</td><td>值班用藥速查</td><td>依病人狀態標首選／慎用／禁用</td></tr>
       <tr><td><span class="tag" style="--c:var(--t-labs)">P3</span></td><td>報告回來、要判讀</td><td>檢驗正常值</td><td>正常值、警覺值、腎功能計算</td></tr>
+      <tr><td><span class="tag" style="--c:var(--t-rounds)">日常</span></td><td>接新住院病人</td><td>接新病人</td><td>先查病歷、床邊檢核、PI、admission note</td></tr>
       <tr><td><span class="tag" style="--c:var(--t-rounds)">日常</span></td><td>查房、追病人、交班</td><td>查房板</td><td>每床 problem、清單、交班</td></tr>
       <tr><td><span class="tag" style="--c:var(--t-todo)">常駐</span></td><td>每一件要做的事</td><td>待辦表</td><td>倒數提醒，不漏事</td></tr>
     </table>
@@ -473,7 +474,31 @@ body.editing [contenteditable=true]{outline:2px dashed rgba(255,51,0,.5);outline
       <div><b>5</b><strong>Note</strong><p>寫 Assessment 第一行，複製 note 貼回 EMR</p></div>
     </div>
     <div class="tip r d3" style="margin-top:22px">收尾：沒做完的醫囑<b>送到待辦表</b>，再按「結束這個 call」。同時好幾個 call，就回首頁開新的。</div>
-    <p class="note r d4" style="margin-top:14px"><b style="color:var(--ink)">接新病人</b>：手機問診寫的 admission note 會<b style="color:var(--ink)">同步到電腦</b>（右上角「已同步」時）。電腦打開主訴處理 →「撰寫中」按繼續 → 複製貼回 EMR。</p>
+    <p class="note r d4" style="margin-top:14px">接新住院病人不是從這裡開始：導覽有自己的入口「接新病人」，下一頁。</p>
+  </div>
+  <div class="pn r"></div><div class="foot-url r"><i>→</i> lycdx.notion.site</div>
+</section>
+
+<!-- ============ 07 接新病人 ============ -->
+<section class="slide s">
+  <div class="top r"><span>臨床輔助決策工具</span><span class="sec">日常・接新病人</span></div>
+  <div class="hd" style="width:560px">
+    <span class="no r" style="background:var(--t-rounds)">新</span>
+    <h2 class="r d1">接新病人</h2>
+    <p class="lead r d2">電腦先查、手機床邊問，兩邊自動同步。走到床邊前<b>腦袋不會一片空白</b>，離開前<b>不會漏問</b>。</p>
+    <div class="rule r d3"></div>
+    <p class="note r d3" style="margin-top:26px">每個欄位旁有來源標籤：病歷、護理紀錄、床邊、回來寫。<br><b style="color:var(--ink)">每家醫院不一樣</b>：點標籤就能改成你的醫院的情況，設定一次，之後每個病人都照你的。</p>
+  </div>
+  <div class="bd" style="left:740px">
+    <div class="six r d1">
+      <div><b>1</b><strong>先查病歷</strong><p>電腦上把護理紀錄、病歷查得到的欄位先填好；可以只看還沒填的</p></div>
+      <div><b>2</b><strong>整理思緒</strong><p>選主訴 → 這次不能漏的鑑別；寫下假設，加「我一定要問到的事」</p></div>
+      <div><b>3</b><strong>床邊問診</strong><p>LQQOPERA、時間軸、相關症狀（紅字「必問」）、關鍵資訊 12 項，邊問邊點</p></div>
+      <div><b>4</b><strong>整理 PI</strong><p>先列出還沒問到的；PI 草稿自動成稿，可以「複製給 AI 修改」</p></div>
+      <div><b>5</b><strong>病歷欄位</strong><p>補完 ROS、PE、計畫；必填沒填會提醒，複製整份貼回 EMR</p></div>
+      <div><b>＊</b><strong>我的醫院</strong><p>「設定我的醫院查得到的欄位」：標成查得到的，下次就列在第 1 步</p></div>
+    </div>
+    <div class="tip r d3" style="margin-top:22px">不要輸入姓名、病歷號、身分證字號：內容會同步到你自己的雲端空間。清單沒有的主訴選「其他」，檢核表照樣能用。</div>
   </div>
   <div class="pn r"></div><div class="foot-url r"><i>→</i> lycdx.notion.site</div>
 </section>
@@ -677,7 +702,7 @@ body.editing [contenteditable=true]{outline:2px dashed rgba(255,51,0,.5);outline
 </main>
 </div>
 
-<nav class="deck-controls" aria-label="簡報控制"><button id="prevBtn" aria-label="上一頁">‹</button><span id="counter">1 / 14</span><button id="nextBtn" aria-label="下一頁">›</button></nav>
+<nav class="deck-controls" aria-label="簡報控制"><button id="prevBtn" aria-label="上一頁">‹</button><span id="counter">1 / 15</span><button id="nextBtn" aria-label="下一頁">›</button></nav>
 
 <script>
 /* ===========================================

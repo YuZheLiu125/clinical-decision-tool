@@ -65,3 +65,16 @@ def phone(browser):
     pg.on('pageerror', lambda e: pg.errors.append(str(e)))
     yield pg
     ctx.close()
+
+
+@pytest.fixture
+def android(browser):
+    """Android 手機（Pixel 7 的 Chrome）：Chromium 引擎＋Android 的 user agent、觸控、螢幕大小。"""
+    ctx = browser.new_context(
+        viewport={'width': 412, 'height': 839}, device_scale_factor=2.625, has_touch=True, is_mobile=True,
+        user_agent='Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36')
+    pg = ctx.new_page()
+    pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    yield pg
+    ctx.close()

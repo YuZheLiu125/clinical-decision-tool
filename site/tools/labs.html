@@ -118,33 +118,42 @@ mark{background:var(--mark);color:var(--markfg);border-radius:2px}
   .lab .nv{text-align:right}
 }
 </style>
-<style id="hub-base">
-/* 臨床輔助決策工具 · 共用基底（每個工具都內嵌這一份）
-   字體：系統字（iPhone = 蘋方，Android = Noto CJK），不下載網路字型，開啟更快
-   色票：病房冷灰底 + 各工具辨識色；動畫：同一組曲線與時長 */
+<style id="hub-base">/*hub-common:start*/
+/* 臨床輔助決策工具 · 共用設計基底 v2（正本：shared/hub-common.css，由 scripts/sync_shared.py 寫進每個 HTML，不要直接改 HTML 裡這一段）
+   原則：顏色只用來表達臨床意義（紅＝危急、琥珀＝注意、綠＝正常／完成）；介面本身只有一個品牌色（墨藍）和一組帶藍調的中性灰。
+   字體：系統字（iPhone = 蘋方，Android = Noto Sans CJK），不下載網路字型。形狀：小圓角、細線、不用陰影堆層次。 */
 :root{
-  --hub-bg:#EEF1F2; --hub-surface:#FFFFFF; --hub-surface2:#E6EAEC; --hub-ink:#152025; --hub-ink2:#4A575E; --hub-ink3:#6E7A81; --hub-line:#D3DADD;
-  --hub-bad:#B3261E; --hub-bad-soft:#FBE6E4; --hub-warn:#9A5B00; --hub-warn-soft:#FBEFD9; --hub-ok:#1D7A3E; --hub-ok-soft:#E1F2E6;
-  --hub-code:#C0262F; --hub-code-soft:#FBE4E5; --hub-pilot:#A35500; --hub-pilot-soft:#F6E7D2;
-  --hub-consult:#2C5C8C; --hub-consult-soft:#DFE8F2; --hub-meds:#0D6870; --hub-meds-soft:#DDEFF0;
-  --hub-labs:#5B4699; --hub-labs-soft:#EBE6F6; --hub-todo:#B4573A; --hub-todo-soft:#F5E3DA;
-  --hub-p1:#B3322B; --hub-p2:#C27416; --hub-p3:#4F6B8A; --hub-p4:#8A867B;
-  --hub-sans:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",system-ui,sans-serif;
-  --hub-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Roboto Mono",monospace;
-  --hub-ease:cubic-bezier(.2,.8,.2,1); --hub-dur:.18s;
+  --hub-bg:#F2F4F6; --hub-surface:#FFFFFF; --hub-surface2:#E8ECF0; --hub-ink:#111B24; --hub-ink2:#44515E; --hub-ink3:#687685; --hub-line:#D5DBE1;
+  --hub-brand:#1F4E79; --hub-brand-soft:#E1EAF3; --hub-on-brand:#FFFFFF;
+  --hub-bad:#B3261E; --hub-bad-soft:#FBE6E4; --hub-warn:#8F5600; --hub-warn-soft:#FBEFD9; --hub-ok:#1D7A3E; --hub-ok-soft:#E1F2E6;
+  --hub-code:#B3261E; --hub-code-soft:#FBE6E4;
+  --hub-p1:#B3322B; --hub-p2:#B26A12; --hub-p3:#4F6B8A; --hub-p4:#7F8791;
+  --hub-sans:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",Roboto,system-ui,sans-serif;
+  --hub-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Roboto Mono","Droid Sans Mono",monospace;
+  --hub-ease:cubic-bezier(.2,.8,.2,1); --hub-dur:.16s; --hub-r:8px; --hub-r-lg:12px;
+  /* 舊的各工具辨識色：全部指到同一個品牌色（工具各自的對應層還在用這些名字） */
+  --hub-pilot:var(--hub-brand); --hub-pilot-soft:var(--hub-brand-soft); --hub-consult:var(--hub-brand); --hub-consult-soft:var(--hub-brand-soft);
+  --hub-meds:var(--hub-brand); --hub-meds-soft:var(--hub-brand-soft); --hub-labs:var(--hub-brand); --hub-labs-soft:var(--hub-brand-soft);
+  --hub-todo:var(--hub-brand); --hub-todo-soft:var(--hub-brand-soft);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --hub-bg:#0E1316; --hub-surface:#161D21; --hub-surface2:#1E272C; --hub-ink:#E4E9EB; --hub-ink2:#A2AEB4; --hub-ink3:#7E8B93; --hub-line:#2A353B;
+  --hub-bg:#0D1218; --hub-surface:#141B23; --hub-surface2:#1C2530; --hub-ink:#E2E8EE; --hub-ink2:#A1ADBA; --hub-ink3:#7B8896; --hub-line:#28323E;
+  --hub-brand:#8FB8E3; --hub-brand-soft:#17293D; --hub-on-brand:#0B1622;
   --hub-bad:#FF7A70; --hub-bad-soft:#3A1B19; --hub-warn:#F0B04A; --hub-warn-soft:#352812; --hub-ok:#6CCF8E; --hub-ok-soft:#15301F;
-  --hub-code:#FF6B70; --hub-code-soft:#3A1A1D; --hub-pilot:#F0A23A; --hub-pilot-soft:#3A2911;
-  --hub-consult:#80B1E0; --hub-consult-soft:#162636; --hub-meds:#5CC2C8; --hub-meds-soft:#16302F;
-  --hub-labs:#B4A2EC; --hub-labs-soft:#2A2440; --hub-todo:#E08A68; --hub-todo-soft:#3A241B; --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#A6A297; color-scheme:dark}}
+  --hub-code:#FF7A70; --hub-code-soft:#3A1B19;
+  --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#98A2AD; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --hub-bg:#0E1316; --hub-surface:#161D21; --hub-surface2:#1E272C; --hub-ink:#E4E9EB; --hub-ink2:#A2AEB4; --hub-ink3:#7E8B93; --hub-line:#2A353B;
+  --hub-bg:#0D1218; --hub-surface:#141B23; --hub-surface2:#1C2530; --hub-ink:#E2E8EE; --hub-ink2:#A1ADBA; --hub-ink3:#7B8896; --hub-line:#28323E;
+  --hub-brand:#8FB8E3; --hub-brand-soft:#17293D; --hub-on-brand:#0B1622;
   --hub-bad:#FF7A70; --hub-bad-soft:#3A1B19; --hub-warn:#F0B04A; --hub-warn-soft:#352812; --hub-ok:#6CCF8E; --hub-ok-soft:#15301F;
-  --hub-code:#FF6B70; --hub-code-soft:#3A1A1D; --hub-pilot:#F0A23A; --hub-pilot-soft:#3A2911;
-  --hub-consult:#80B1E0; --hub-consult-soft:#162636; --hub-meds:#5CC2C8; --hub-meds-soft:#16302F;
-  --hub-labs:#B4A2EC; --hub-labs-soft:#2A2440; --hub-todo:#E08A68; --hub-todo-soft:#3A241B; --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#A6A297; color-scheme:dark}
+  --hub-code:#FF7A70; --hub-code-soft:#3A1B19;
+  --hub-p1:#EF6A5E; --hub-p2:#E3A04A; --hub-p3:#8FABC9; --hub-p4:#98A2AD; color-scheme:dark}
+/* 各工具自己的強調色、強調色上的字，一律跟品牌色走（查房板的 --ac 也是） */
+html:root:root{--ac:var(--hub-brand);--ac-soft:var(--hub-brand-soft);--accent-ink:var(--hub-on-brand)}
+/* Android：內嵌在別的網頁裡時，往下拉不要帶動外層頁面（下拉重新整理）；左右方向不設，手機上工具之間才能左右滑 */
+html{overscroll-behavior-y:contain}
+:focus-visible{outline:2px solid var(--hub-brand);outline-offset:2px}
+@media (pointer:fine){*{scrollbar-width:thin;scrollbar-color:var(--hub-line) transparent}}
 
 /* 觸控：點擊不延遲、不閃灰框、iPhone 不自動放大字 */
 html{-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
@@ -157,20 +166,20 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeSpeed}
 :where(button,.btn,.chip,[role="tab"]):active:not(:disabled){transform:scale(.97)}
 @keyframes hub-in{from{opacity:0;transform:translateY(6px)}}
 @keyframes hub-pop{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
-.hub-toast{position:fixed;left:16px;right:16px;margin:0 auto;width:fit-content;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;max-width:min(520px,calc(100% - 32px));box-sizing:border-box;display:flex;gap:10px;align-items:center;background:var(--hub-ink);color:var(--hub-bg);font:500 14px/1.4 var(--hub-sans);padding:9px 14px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:hub-in .22s var(--hub-ease)}
+.hub-toast{position:fixed;left:16px;right:16px;margin:0 auto;width:fit-content;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;max-width:min(520px,calc(100% - 32px));box-sizing:border-box;display:flex;gap:10px;align-items:center;background:var(--hub-ink);color:var(--hub-bg);font:500 14px/1.4 var(--hub-sans);padding:10px 14px;border-radius:var(--hub-r);box-shadow:0 6px 20px rgba(0,0,0,.22);animation:hub-in .22s var(--hub-ease)}
 /* 待辦設定按鈕：跟待辦表的快速新增同一套（立即／緊急／待辦／有空，點緊急或待辦展開倒數） */
 .hp{display:flex;flex-direction:column;gap:8px;min-width:0}
 .hp-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.hp-pr{--pc:var(--hub-p3);display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:46px;padding:4px;border:1px solid color-mix(in srgb,var(--pc) 45%,var(--hub-line));border-radius:999px;background:transparent;color:var(--pc);font:500 15px/1.2 var(--hub-sans);cursor:pointer}
+.hp-pr{--pc:var(--hub-p3);display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:46px;padding:4px;border:1px solid color-mix(in srgb,var(--pc) 45%,var(--hub-line));border-radius:var(--hub-r);background:transparent;color:var(--pc);font:500 15px/1.2 var(--hub-sans);cursor:pointer}
 .hp-pr[data-p="1"]{--pc:var(--hub-p1)}.hp-pr[data-p="2"]{--pc:var(--hub-p2)}.hp-pr[data-p="4"]{--pc:var(--hub-p4)}
 .hp-pr small{font-size:12px;font-variant-numeric:tabular-nums}
 .hp-pr small:empty{display:none}
 .hp-pr[aria-pressed="true"]{background:var(--pc);border-color:var(--pc);color:var(--hub-surface)}
 .hp-tm{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px}
 .hp-tm::-webkit-scrollbar{display:none}
-.hp-c{flex:none;min-height:40px;border:1px solid var(--hub-line);background:transparent;border-radius:999px;padding:6px 14px;font:15px/1 var(--hub-sans);color:var(--hub-ink);white-space:nowrap;cursor:pointer;font-variant-numeric:tabular-nums}
+.hp-c{flex:none;min-height:40px;border:1px solid var(--hub-line);background:transparent;border-radius:var(--hub-r);padding:6px 14px;font:15px/1 var(--hub-sans);color:var(--hub-ink);white-space:nowrap;cursor:pointer;font-variant-numeric:tabular-nums}
 .hp-c[aria-pressed="true"]{background:var(--hub-ink);border-color:var(--hub-ink);color:var(--hub-bg)}
-.hp input{flex:none;font:16px var(--hub-sans);min-height:40px;padding:5px 10px;border-radius:999px;border:1px solid var(--hub-line);background:var(--hub-bg);color:var(--hub-ink);width:80px;text-align:center}
+.hp input{flex:none;font:16px var(--hub-sans);min-height:40px;padding:5px 10px;border-radius:var(--hub-r);border:1px solid var(--hub-line);background:var(--hub-bg);color:var(--hub-ink);width:80px;text-align:center}
 .hp-dt{display:flex;gap:6px}
 .hp-dt input[type="date"]{flex:1 1 9.5em;width:auto;max-width:12em}
 .hp-dt input[type="time"]{width:7em}
@@ -184,6 +193,7 @@ body.sw-on{-webkit-user-select:none;user-select:none}
 @keyframes hub-flash{from{background-color:var(--hub-todo-soft);box-shadow:inset 4px 0 0 var(--hub-todo)}}
 .sw-done{animation:hub-flash .9s var(--hub-ease)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+/*hub-common:end*/
 
 html:root:root{--bg:var(--hub-bg);--surface:var(--hub-surface);--line:var(--hub-line);--fg:var(--hub-ink);--muted:var(--hub-ink2);--accent:var(--hub-labs);--accent-soft:var(--hub-labs-soft);--ok:var(--hub-ok);--ok-soft:var(--hub-ok-soft);--warn:var(--hub-warn);--warn-soft:var(--hub-warn-soft);--bad:var(--hub-bad);--bad-soft:var(--hub-bad-soft);--hub-accent:var(--hub-labs);--ff-body:var(--hub-sans);--ff-mono:var(--hub-mono)}
 </style>
