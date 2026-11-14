@@ -28,8 +28,9 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SITE = ROOT / 'site'
 SLUG = 'dd7bba5d-4f79-4d51-9ce8-bae6b37db5da'
-TRAILER = ('\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n'
-           'Claude-Session: https://claude.ai/code/session_01Bqgikxqn1RoMQik3S3rVXQ')
+TRAILER = '
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>'
 
 
 def sh(*a, check=True):
