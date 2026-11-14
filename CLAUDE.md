@@ -32,7 +32,7 @@
 
 ## 交班（2026-11-14，v2 重塑，分支 `v2-redesign`，還沒發布）
 
-**現況**：線上 artifact 仍是 `1794496654-a425` = v1.3.2（`main`）。`v2-redesign` 分支是整體設計重塑＋總站導覽重做＋接新病人新流程，82 項測試全過，另由獨立 subagent 檢核過一輪並修完。**還沒合併、還沒發布**：要先問使用者。發布時用 `release.py minor`（→ v1.4.0；資料格式相容，不是 major），使用手冊 `docs/guide/index.html` 也改了，要一起發布。給更新 Agent 的總覽文件在 Notion：https://app.notion.com/p/418b4a3589698152938cf5e3723bed9c
+**現況**：線上 artifact 仍是 `1794496654-a425` = v1.3.2（`main`）。`v2-redesign` 分支是整體設計重塑＋總站導覽重做＋接新病人新流程，75 項測試全過，另由獨立 subagent 檢核過一輪並修完。**還沒合併、還沒發布**：要先問使用者。發布時用 `release.py minor`（→ v1.4.0；資料格式相容，不是 major），使用手冊 `docs/guide/index.html` 也改了，要一起發布。給更新 Agent 的總覽文件在 Notion：https://app.notion.com/p/418b4a3589698152938cf5e3723bed9c
 
 **等使用者回饋**
 - 接新病人的欄位來源分類（`copilot.html` 的 `FSRC`／`CONFIRM`／`PRE_SECS`）是 Claude 預設的，要請使用者對照萬芳護理紀錄確認哪些其實查不到／查得到
