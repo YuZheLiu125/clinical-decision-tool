@@ -1642,7 +1642,7 @@ function ask(msg, { ok = '確定', danger = false, type = '' } = {}) {
     const done = v => { d.remove(); res(v); };
     const tryOk = () => { if (type && inp.value.trim() !== type) { inp.focus(); toast(`請輸入「${type}」`); return; } done(true); };
     d.addEventListener('click', e => { const a = e.target.closest('[data-a]'); if (a) a.dataset.a === '1' ? tryOk() : done(false); else if (e.target === d) done(false); });
-    d.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') done(false); if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); tryOk(); } });
+    d.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') done(false); if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); tryOk(); } });
     document.body.appendChild(d); (inp || d.querySelector('[data-a="1"]')).focus();
   });
 }
@@ -1667,7 +1667,7 @@ function copy(txt) {
   const done = () => toast('已複製');
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, () => fallback());
   else fallback();
-  function fallback() { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { toast('複製失敗，請手動選取'); } ta.remove(); }
+  function fallback() { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e) {} ta.remove(); ok ? done() : toast('複製失敗，請手動選取'); }
 }
 function startRound() {
   sortBeds();
@@ -1889,7 +1889,7 @@ document.addEventListener('change', e => {
   if (el.dataset.fudaily) { const d = document.querySelector(`[data-fudate="${el.dataset.fudaily}"]`); if (d) d.disabled = el.checked; }
 });
 document.addEventListener('keydown', e => {
-  if (e.key !== 'Enter' || e.isComposing) return;
+  if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;  // 229：Safari 選字確認的那個 Enter
   const id = e.target.id, map = { ordIn: 'ordAdd', nbCode: 'addBed', nbBed: 'addBed', lrIn: 'learnAdd', pdWhat: 'pendAdd', lnName: 'lineAdd', pFree: 'pAddFree' };
   if (map[id]) { e.preventDefault(); document.querySelector(`[data-act="${map[id]}"]`)?.click(); }
   if (e.target.dataset.fuin) { e.preventDefault(); document.querySelector(`[data-act="fuAdd"][data-p="${e.target.dataset.fuin}"]`)?.click(); }

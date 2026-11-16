@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html lang="zh-Hant"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>值班用藥速查</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
@@ -36,7 +36,7 @@ header.top .wrap{padding-block:10px;display:flex;flex-wrap:wrap;gap:8px 12px;ali
 .brand{font-family:var(--ff-display);font-size:1.15rem;margin:0;white-space:nowrap}
 .search{flex:1 1 260px;display:flex;gap:6px;min-width:0}
 .search input{flex:1;min-width:0;font:inherit;font-size:16px;padding:8px 11px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
-.search input:focus{outline:none;border-color:var(--accent)}
+.search input:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
 .hbtns{display:flex;gap:6px}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;font-size:.88rem;white-space:nowrap}
 .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:500}
@@ -1355,7 +1355,7 @@ function impGo(){const R=impRows().filter(r=>r.on);if(!R.length)return;const I=S
  const ok=hubTodo.add({text:"開藥："+(tops.join("、")||"評估與確認"),src:"用藥速查",subs:R.map(r=>({t:r.t,tag:r.tag}))});
  if(!ok){hubToast(hubTodo.lastErr||"存不進待辦表");return}
  S.pick={};S.as={};I.ex={};save();render();window.scrollTo(0,0)}
-function hubToast(m){const o=document.querySelector(".hub-toast");if(o)o.remove();const d=document.createElement("div");d.className="hub-toast";d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),2000)}
+function hubToast(m){const o=document.querySelector(".hub-toast");if(o)o.remove();const d=document.createElement("div");d.className="hub-toast";d.setAttribute("role","status");d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),2000)}
 function summaryText(){const {picks,asses,open}=summaryData();const L=[];
  L.push("【病人狀態】"+(actSt().length?actSt().map(k=>SN[k]).join("、"):"未選擇"));const rv=RV();if(rv)L.push("【腎功能】"+rv.label+(S.rn&&S.rn.cr?"（Cr "+S.rn.cr+"）":""));
  L.push("","【處置】");picks.forEach(([t,i])=>{const e=evalItem(i);L.push("- "+i.n+(i.d?"："+i.d:"")+(e.lv==="x"?"（⚠ 目前狀態禁用）":e.lv==="c"?"（慎用）":""));const cd=cdOf(t,i);if(cd)L.push("  保守劑量："+cd);const r=rdEval(t,i);if(r&&r.text)L.push("  腎劑量（"+r.by+"）："+r.text)});

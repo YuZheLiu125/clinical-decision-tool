@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html lang="zh-Hant"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>臨床輔助決策工具</title>
 <meta name="author" content="劉宇哲">
 <meta name="app-version" content="1.4.0">
@@ -529,6 +529,8 @@ svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-wid
   // 其他工具把東西加進待辦：底部提示（可撤銷），待辦按鈕跳一下
   window.addEventListener('message', e => {
     if (!e.data || e.data.hub !== 'todo-add') return;
+    // 只收自己的工具 iframe 送來的（同源、而且真的是其中一個工具的視窗）；外層頁面或別的來源送的不理
+    if (e.origin !== location.origin || !ALL.some(k => { try { return $('f-' + k).contentWindow === e.source; } catch (er) { return false; } })) return;
     const d = e.data, acts = [];
     if (d.id) acts.push(['撤銷', (t, msg, b) => {
       try {
