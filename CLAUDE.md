@@ -30,9 +30,9 @@
 - claude.ai 雲端工作環境（不會保留）：先 add_repo `YuZheLiu125/clinical-decision-tool` 並 clone，再 `pip install pytest playwright --break-system-packages && python3 -m playwright install chromium`
 - 開工先跑一次 `python3 scripts/check.py && python3 -m pytest -q tests`，確定起點是綠的（約 4 分鐘）
 
-## 交班（2026-11-14，v1.4.0）
+## 交班（2026-11-17，v1.4.1）
 
-**現況**：線上 artifact `1794636639-7dc3` = repo v1.4.0（設計重塑、總站導覽重做、接新病人新流程、欄位來源可自訂）。使用手冊 artifact `1794636760-c9d0` = `docs/guide/index.html`（15 頁；Notion 公開入口頁的「簡易上手引導」連到 `#15` 小抄頁，之後增減頁數要記得改那個連結）。77 項測試全過。GitHub 有 tag 與 release `v1.4.0`。給更新 Agent 的總覽文件在 Notion：https://app.notion.com/p/418b4a3589698152938cf5e3723bed9c
+**現況**：線上 artifact `1794873687-dcb8` = repo v1.4.1（v1.4.0 的設計重塑、總站導覽重做、接新病人新流程、欄位來源可自訂；v1.4.1 依 modern-web-guidance 審視補了語言標記、注音 Enter、訊息來源檢查、複製失敗提示、提示可報讀、焦點框，測試在 `tests/test_web_platform.py`）。使用手冊 artifact `1794636760-c9d0` = `docs/guide/index.html`（15 頁；Notion 公開入口頁的「簡易上手引導」連到 `#15` 小抄頁，之後增減頁數要記得改那個連結）。91 項測試全過。GitHub 有 tag `v1.4.1`（release 頁面還沒建）。給更新 Agent 的總覽文件在 Notion：https://app.notion.com/p/418b4a3589698152938cf5e3723bed9c
 
 **等使用者回饋**
 - 接新病人的欄位來源：`FSRC` 只是預設值。使用者明講這個工具是給很多不同醫院的人用的，**來源不要寫死**，所以做成每個人自己在畫面上改（存在 `oncall.fsrc.v1`，只存跟預設不同的）。不要為了某一家醫院去改預設值
@@ -45,6 +45,8 @@
 - 接新病人兩台同時改：整份後寫者贏（沒有欄位層級合併）。要做的話在 `applyRemoteAdmit` 合併：`f` 逐 key、`w.kq` 聯集、`w.tl`／`w.myq` 給 id
 - 手機橫放（寬度 >900px）會變成電腦版面，可用但擠
 - `#railList` 的 ARIA 角色不嚴謹（tablist 裡混了分組標題和待辦開關）；焦點在工具 iframe 裡時 Esc 關不了浮層
+- 自製浮層還沒改成原生 `<dialog>`：主訴處理的「輸入床號」「送出到待辦表」開啟時背景沒有設 `inert`；總站 index.html 的 `lang` 寫在 `<html>` 上，artifact 發布時外殼會不會保留還沒在線上確認
+- 字級幾乎全用 px，沒有跟隨系統字體大小；觸控目標大小沒有實測
 - ACLS 深色模式 `.step.s .n` 白字配淺紅底，對比不足（舊問題）
 - 以下沿用 v1.3.2：查房板 `rounds.v1` 衝突備份沒有還原介面；雲端同步只用假的雲端測過；主訴處理進行中的 call 存在 sessionStorage；查房板匯入只分血液／尿液；`hubTodo` 有三份一樣的程式
 
