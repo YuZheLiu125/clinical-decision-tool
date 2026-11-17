@@ -425,6 +425,14 @@ svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-wid
       if (far || instant) requestAnimationFrame(paint);
     }
   }
+  // 工具請總站打開另一個工具的某個畫面（主訴處理 ⇄ 用藥速查）：只接受自己的 iframe 送來的
+  window.addEventListener('message', e => {
+    if (!e.data || e.data.hub !== 'open') return;
+    const from = MAIN.some(x => { try { return $('f-' + x).contentWindow === e.source; } catch (er) { return false; } });
+    const t = TOOLS.find(x => x.id === e.data.tool && x.src);
+    if (!from || !t || !/^[\w-]{1,40}$/.test(String(e.data.view || ''))) return;
+    show(t.id); tellView(t.id, e.data.view);
+  });
   // 工具回報自己現在在哪個畫面 → 導覽的亮燈跟著變
   window.addEventListener('message', e => {
     if (!e.data || e.data.hub !== 'view') return;

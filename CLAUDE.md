@@ -56,6 +56,16 @@
 3. 各工具內部還留著舊的膠囊形按鈕（999px 圓角），可以逐個工具收斂成 `--hub-r`
 4. 查房板加還原同步前版本的按鈕
 
+## 未發布：分支 `v1.5-orders`（2026-11-17）
+
+共用醫囑庫＋22 個新主訴＋ACLS 鎮靜分頁＋用藥速查重組，124 項測試全過，**還沒合併、還沒發布**。發布用 `release.py minor`（→ v1.5.0）；使用手冊 `docs/guide/index.html` 還沒跟著更新。臨床內容（`shared/rx.js` 的劑量、稀釋、腎劑量；`copilot.html` 的 `PROTOS_RAW.push(` 第三段）是 Claude 起草，使用者還沒審閱，根據列在 CHANGELOG。
+
+- **醫囑庫正本是 `shared/rx.js`**，`python3 scripts/sync_shared.py` 會寫進 copilot／meds／acls 的 `<script id="hub-rx">`（`/*hub-rx:start*/…/*hub-rx:end*/`，不要直接改 HTML 裡這段）。一筆 = `rx(id, 分組, 名稱, o 英文醫囑, 中文用法, {mon, max, ci, adj, alt, kg, cc})`；`adj` 以「✕」開頭＝禁用；`alt` 是該狀態下整張換掉的醫囑；`rxEval(id, {rn, hepatic, hf, elderly, preg, wt})` 回傳要顯示的醫囑
+- **主訴的用藥醫囑**寫成 `['rx', 醫囑庫 id, '什麼情況開']`；其他類別照舊 `[cat, 中文, English]`。加主訴＝在 `PROTOS_RAW` 加一筆，再把 id 放進 `CC_GROUPS`（首頁分組）與 meds.html 的 `CCN`（連結用的中文名）
+- 病人條件存在每個 call 的 `c.px`；取醫囑文字一律用 `ordText(c, o)`，不要直接讀 `o.o`
+- 工具互開：工具送 `{hub:'open', tool, view}`，總站只接受自己 iframe 送來的，再用 `{hub:'go', view}` 轉給目標工具（主訴處理收 `cc-<主訴 id>`，用藥速查收主題 id，例如 `rx-lyte`）
+- `tests/test_rx.py` 會檢查每筆醫囑都有劑量單位、途徑、頻次或時間
+
 ## v2 之後的做法（改之前先讀）
 
 - **共用樣式**：正本是 `shared/hub-common.css`，改完跑 `python3 scripts/sync_shared.py`。不要改 HTML 裡 `/*hub-common:start*/…/*hub-common:end*/` 之間的內容（`check.py` 會擋）。標記後面是各工具自己的對應層，可以改

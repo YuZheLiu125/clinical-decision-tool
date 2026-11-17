@@ -6,6 +6,8 @@
   /*hub-common:start*/ … /*hub-common:end*/   ← 這支腳本整段換掉
   後面是那個工具自己的對應層（把工具自己的變數名對到 --hub-*），腳本不動
 
+同一支腳本也把 shared/rx.js（共用醫囑庫）寫進有 <script id="hub-rx"> 的工具，標記是 /*hub-rx:start*/ … /*hub-rx:end*/。
+
 用法：python3 scripts/sync_shared.py          # 寫入
       python3 scripts/sync_shared.py --check  # 只檢查有沒有不同步（check.py 會呼叫）
 """
@@ -34,21 +36,33 @@ def render(html, css):
     return LEGACY.sub(lambda m: m.group(1) + block + '\n', html, count=1)
 
 
+RX_START, RX_END = '/*hub-rx:start*/', '/*hub-rx:end*/'
+RX_BLOCK = re.compile(re.escape(RX_START) + r'.*?' + re.escape(RX_END), re.S)
+
+
+def render_rx(html, js):
+    """共用醫囑庫 shared/rx.js → 有 <script id="hub-rx"> 的工具（主訴處理、用藥速查、ACLS）。"""
+    if RX_START not in html:
+        return html
+    return RX_BLOCK.sub(lambda m: RX_START + '\n' + js.rstrip('\n') + '\n' + RX_END, html, count=1)
+
+
 def main():
     css = (ROOT / 'shared' / 'hub-common.css').read_text(encoding='utf8')
+    js = (ROOT / 'shared' / 'rx.js').read_text(encoding='utf8')
     check = '--check' in sys.argv
     stale = []
     for f in files():
         old = f.read_text(encoding='utf8')
-        new = render(old, css)
+        new = render_rx(render(old, css), js)
         if new != old:
             stale.append(f.relative_to(ROOT))
             if not check:
                 f.write_text(new, encoding='utf8')
     if check and stale:
-        print('✗ 共用樣式沒同步（跑 python3 scripts/sync_shared.py）：' + '、'.join(map(str, stale)))
+        print('✗ 共用樣式或醫囑庫沒同步（跑 python3 scripts/sync_shared.py）：' + '、'.join(map(str, stale)))
         sys.exit(1)
-    print('✓ 共用樣式一致' if check else f'✓ 已同步 {len(stale)} 個檔案')
+    print('✓ 共用樣式與醫囑庫一致' if check else f'✓ 已同步 {len(stale)} 個檔案')
 
 
 if __name__ == '__main__':

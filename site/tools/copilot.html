@@ -240,6 +240,38 @@ textarea.inp{resize:vertical;min-height:64px}
 @media (max-width:560px){.ddx,.item{grid-template-columns:minmax(0,1fr)}}
 .safetynote{border-radius:10px;padding:10px 14px;background:var(--info-soft);font-size:13.5px;margin-bottom:14px}
 .ogroup{margin-bottom:14px}
+.pxbar{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px 14px;margin-bottom:12px;display:grid;gap:8px}
+.pxh{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.pxn{color:var(--hub-warn);font-weight:600}
+.pxrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.pxl{font-size:12.5px;color:var(--ink-3);min-width:3.2em}
+.pxbar .seg button{min-height:36px}
+.pxbar .chip{min-height:36px}
+.pxwt{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-2);margin-left:auto}
+.pxwt .inp{width:4.6em;padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums}
+.rxi{align-items:start}
+.rxw{display:block;font-size:12.5px;font-weight:500;color:var(--ink-3)}
+.rxi .rxo{color:var(--ink);font-size:12.5px;margin-top:3px;overflow-wrap:anywhere}
+.rxi.rx-adj .rxo{box-shadow:inset 2px 0 var(--hub-warn);padding-left:8px}
+.rxi.rx-x .rxo{box-shadow:inset 2px 0 var(--crit);padding-left:8px;text-decoration:line-through;color:var(--ink-3)}
+.tag.adj{color:var(--hub-warn);border-color:var(--hub-warn)}
+.rxk:empty{display:none}
+.pxbar .seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.rxk{font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--ink-2);margin-top:3px}
+.rxn{font-size:12.5px;margin-top:4px;padding:4px 8px;border-radius:6px;background:var(--hub-warn-soft);color:var(--ink)}
+.rxn.bad{background:var(--crit-soft)}
+.rxn b{margin-right:6px;font-weight:600}
+.rxd{margin-top:6px;font-size:12.5px}
+.rxd summary{cursor:pointer;color:var(--info);min-height:28px;display:inline-flex;align-items:center;gap:4px;list-style:none}
+.rxd summary::-webkit-details-marker{display:none}
+.rxd summary::before{content:"＋"}
+.rxd[open] summary::before{content:"－"}
+.rxb{display:grid;gap:4px;padding:6px 0 2px;color:var(--ink-2)}
+.rxr{display:grid;grid-template-columns:6.4em minmax(0,1fr);gap:8px}
+.rxr .l{color:var(--ink-3)}
+.cc-sec{margin-top:18px}
+.cc-sec h2{font-size:13px;font-weight:500;color:var(--ink-3);letter-spacing:.06em;margin:0 0 8px}
+.cc-sec .cc-grid{margin-top:0}
 .imp{padding:2px 16px 16px}
 .imp-h{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .imp-h .sh{margin:14px 0 8px}
@@ -854,6 +886,588 @@ html:root:root{--bg:var(--hub-bg);--surface:var(--hub-surface);--line:var(--hub-
   document.addEventListener('click', e => { if (Date.now() - swiped < 400) { e.preventDefault(); e.stopPropagation(); } }, true);
 })();
 </script>
+<script id="hub-rx">/*hub-rx:start*/
+/* 臨床輔助決策工具 · 共用醫囑庫（正本：shared/rx.js，由 scripts/sync_shared.py 寫進主訴處理、用藥速查、ACLS，不要直接改 HTML 裡這一段）
+   一筆 = 一張可以直接開的醫囑：藥名、劑量、途徑、頻次／時間都寫在 o（英文醫囑文字）。
+   rx(id, 分組, 名稱, o, 中文說明, {
+     mon 監測, max 上限, ci 禁忌／先確認,
+     adj {r, r30, hd, hepatic, hf, elderly, preg}  該狀態下要注意什麼；以「✕」開頭＝禁用
+     alt {同上}                                     該狀態下整張醫囑換成這一句
+     kg  {lo, hi, u, max, t}                        依體重計算的單次劑量（每 kg）
+     cc  主訴處理的主訴 id（用藥速查連回去用）
+   })
+   成人劑量。來源與年份記在 CHANGELOG；台灣品項含量可能不同，開立前核對院內藥典。 */
+const RX = {};
+const RXG = [
+  ['lyte', '電解質矯正'], ['fluid', '輸液・升壓・休克'], ['cv', '心血管'], ['resp', '呼吸'],
+  ['neuro', '神經・精神'], ['sed', '鎮靜・插管用藥'], ['pain', '止痛・退燒'], ['gi', '腸胃'],
+  ['endo', '血糖'], ['allergy', '過敏・輸血反應'], ['heme', '出血・輸血・抗凝'], ['abx', '抗生素（含腎劑量）'],
+];
+const RX_ST = { r: 'eGFR 30–59', r30: 'eGFR <30', hd: '透析', hepatic: '肝功能不全', hf: '心衰竭', elderly: '高齡 ≥65', preg: '懷孕' };
+const rx = (id, g, n, o, d, x) => { RX[id] = Object.assign({ id, g, n, o, d }, x || {}); };
+
+/* ───────── 電解質 ───────── */
+rx('kcl_po', 'lyte', 'KCl 口服（Slow-K／KCl 口服液）', 'KCl 20 mEq PO BID with meals; recheck K next morning',
+  'K 3.0–3.4、可進食。Slow-K 600 mg/錠＝8 mEq（2–3 錠 BID–TID）。每補 10 mEq 血鉀約升 0.1 mEq/L。',
+  { cc: 'hypok', mon: '隔天晨血追 K；同時驗 Mg（低血鎂不補，鉀補不上來）', max: '口服單次 ≤40 mEq',
+    adj: { r: '劑量減半，補完 4–6 小時就複驗', r30: '只在 K <3.0 或有症狀時補；單次 10–20 mEq 後複驗再決定', hd: '只在 K <3.0 或有症狀時補；單次 10–20 mEq 後複驗，並告知透析室' },
+    alt: { r: 'KCl 10 mEq PO BID with meals; recheck K in 6 h', r30: 'KCl 10 mEq PO once; recheck K in 4–6 h', hd: 'KCl 10 mEq PO once; recheck K in 4–6 h' } });
+rx('kcl_iv', 'lyte', 'KCl 靜脈滴注（周邊）', 'KCl 20 mEq in N/S 500 mL IVD over 4 h (peripheral line); recheck K 1–2 h after infusion',
+  'K <3.0、有症狀、ECG 變化或無法口服。周邊濃度 ≤40 mEq/L、速率 ≤10 mEq/h。不可 IV push。不要泡在含糖輸液（胰島素分泌會讓鉀更低）。',
+  { cc: 'hypok', mon: '滴完 1–2 小時複驗 K；注射部位疼痛、靜脈炎', max: '周邊 ≤10 mEq/h；一天一般 ≤200 mEq', ci: '無尿或少尿先確認腎功能',
+    adj: { r: '每次 10–20 mEq，每補一次就複驗', r30: '每次 10 mEq，滴完複驗再決定下一劑', hd: '每次 10 mEq，滴完複驗；告知透析室', hf: '限水者改走中央靜脈濃縮給法或口服，不要用大量輸液補鉀' },
+    alt: { r30: 'KCl 10 mEq in N/S 250 mL IVD over 2 h; recheck K after infusion', hd: 'KCl 10 mEq in N/S 250 mL IVD over 2 h; recheck K after infusion' } });
+rx('kcl_cvc', 'lyte', 'KCl 靜脈滴注（中央靜脈、需 monitor）', 'KCl 20 mEq in N/S 100 mL IVD via central line over 2 h (10 mEq/h) with continuous ECG monitoring; recheck K after infusion',
+  'K <2.5、心律不整或肌肉無力。只走中央靜脈，要有 ECG monitor。危及生命時可到 20 mEq/h，先與學長姊確認。',
+  { cc: 'hypok', mon: '連續 ECG；每 20 mEq 複驗 K', max: '一般 10 mEq/h；危急 20 mEq/h（ICU 等級）',
+    adj: { r30: '每次 10 mEq 後複驗', hd: '每次 10 mEq 後複驗' } });
+rx('mgso4_iv', 'lyte', 'MgSO4 靜脈補充', 'MgSO4 2 g (10% 20 mL) in N/S 100 mL IVD over 2 h; recheck Mg next morning',
+  'Mg <1.5 mg/dL、合併低血鉀或低血鈣、QT 延長。10% MgSO4 20 mL＝2 g＝16 mEq。滴太快會潮紅、低血壓。',
+  { cc: 'hypomgp', mon: '隔天晨血 Mg；膝反射、呼吸、血壓（高血鎂徵象）', max: '非急症 ≤1 g/h',
+    adj: { r: '劑量減半', r30: '劑量減半以下，每劑後驗 Mg；膝反射消失就停', hd: '只在有症狀或心律不整時給 1 g，給完驗 Mg' },
+    alt: { r30: 'MgSO4 1 g (10% 10 mL) in N/S 100 mL IVD over 2 h; recheck Mg in 6 h', hd: 'MgSO4 1 g (10% 10 mL) in N/S 100 mL IVD over 2 h; recheck Mg in 6 h' } });
+rx('mgso4_tdp', 'lyte', 'MgSO4（Torsades de pointes／嚴重低血鎂）', 'MgSO4 2 g (10% 20 mL) IV slow push over 15 min (pulseless: over 1–2 min); may repeat once',
+  '多形性 VT 合併 QT 延長，不論血鎂多少都給。有脈搏 15 分鐘推完；沒有脈搏 1–2 分鐘。',
+  { cc: 'hypomgp', mon: '連續 ECG、血壓；同時把 K 補到 ≥4', adj: { r30: '首劑照給（救命），之後不要重複，驗 Mg' } });
+rx('mgo_po', 'lyte', 'MgO 口服', 'Magnesium oxide 250 mg PO TID',
+  '輕度低血鎂（1.5–1.8）且無症狀。會腹瀉，腹瀉本身又會流失鎂。',
+  { cc: 'hypomgp', adj: { r30: '✕ 排不掉，會高血鎂', hd: '✕ 排不掉，會高血鎂', r: '減為 QD–BID，追 Mg' } });
+rx('ca_hyperk', 'lyte', 'Calcium gluconate（高血鉀穩定心肌）', '10% calcium gluconate 10 mL (1 g) IV slow push over 3–5 min with ECG monitoring; repeat in 5 min if ECG changes persist',
+  'K ≥6.5 或 ECG 有變化（peaked T、QRS 變寬、PR 延長）。只穩定心肌，不降血鉀；效果 30–60 分鐘。',
+  { cc: 'hyperk', mon: '連續 ECG', ci: '使用 digoxin 者改成 100 mL D5W 滴 20–30 分鐘', adj: { r30: '不需調整', hd: '不需調整' } });
+rx('ri_hyperk', 'lyte', 'Regular insulin＋葡萄糖（把鉀趕進細胞）', 'Regular insulin 10 U IV push + 50% glucose 50 mL IV push; finger sugar q1h x 6 h',
+  '15 分鐘起效、維持 4–6 小時、降 0.6–1.2 mEq/L。血糖 >250 可以不給葡萄糖。',
+  { cc: 'hyperk', mon: '血糖 q1h ×6 小時（低血糖常在 1–3 小時出現）；1–2 小時複驗 K',
+    adj: { r: '低血糖風險高，考慮 5 U', r30: '用 5 U，血糖追滿 6 小時', hd: '用 5 U，血糖追滿 6 小時', elderly: '體重輕或給藥前血糖 <140 用 5 U' },
+    alt: { r30: 'Regular insulin 5 U IV push + 50% glucose 50 mL IV push; finger sugar q1h x 6 h', hd: 'Regular insulin 5 U IV push + 50% glucose 50 mL IV push; finger sugar q1h x 6 h' } });
+rx('salb_hyperk', 'lyte', 'Salbutamol 吸入（高血鉀）', 'Salbutamol 10 mg nebulization over 10 min',
+  '30 分鐘起效、降 0.5–1 mEq/L；是氣喘劑量的 4 倍。約三成病人沒反應，不要單獨使用。',
+  { cc: 'hyperk', mon: '心跳、心悸', ci: '心搏過速、缺血性心臟病要小心' });
+rx('bicarb', 'lyte', 'Sodium bicarbonate', 'Sodium bicarbonate 7% 60 mL (50 mEq) IV slow push over 5 min',
+  '只在合併代謝性酸中毒（pH <7.2）時用；降鉀效果慢且不穩定。7% 20 mL/支＝16.6 mEq。',
+  { cc: 'hyperk', mon: 'Na、容積狀態、iCa（鹼化會降游離鈣）', adj: { hf: '鈉負荷大，容易肺水腫', hd: '鈉與水排不掉，優先安排透析' } });
+rx('kalimate', 'lyte', 'Kalimate（calcium polystyrene sulfonate）', 'Calcium polystyrene sulfonate (Kalimate) 15 g PO TID',
+  '把鉀排出體外，數小時到一天才有效，不是急救藥。意識不清、腸阻塞、術後腸道未通不要給。',
+  { cc: 'hyperk', mon: '排便、腹脹', ci: '腸阻塞、腸缺血、術後 ileus' });
+rx('lokelma', 'lyte', 'Lokelma（sodium zirconium cyclosilicate）', 'Sodium zirconium cyclosilicate (Lokelma) 10 g PO TID for up to 48 h, then 5 g QD',
+  '1 小時起效，比 Kalimate 快。每 5 g 含鈉 400 mg。',
+  { cc: 'hyperk', mon: '水腫、K（低血鉀）', adj: { hf: '含鈉，注意水腫' } });
+rx('nacl3', 'lyte', '3% NaCl bolus', '3% NaCl 150 mL IVD over 20 min; recheck Na immediately after; may repeat up to 2 more times until Na rises 5 mEq/L or symptoms improve',
+  '低血鈉合併抽搐、昏迷、嘔吐加意識變差。目標先升 4–6 mEq/L 就停，不是矯正到正常。',
+  { cc: 'hypona', mon: '每劑後驗 Na，之後 q2–4h；尿量（突然大量排尿＝矯正過快的前兆）', max: '24 小時上升 ≤8 mEq/L（酗酒、營養不良、低血鉀、肝病者 ≤6）',
+    adj: { hf: '容積負荷：可改 100 mL，給完聽肺', hepatic: 'ODS 高風險，24 小時 ≤6 mEq/L' } });
+rx('ddavp_rescue', 'lyte', 'Desmopressin（低血鈉矯正過快）', 'Desmopressin 2 mcg IV q8h + D5W 3 mL/kg IVD over 1 h; recheck Na q2h',
+  '矯正超過上限或尿量突然 >100 mL/h 且尿稀時，把血鈉拉回來。先與學長姊、腎臟科確認。',
+  { cc: 'hypona', mon: 'Na q2h、尿量', kg: { lo: 3, hi: 3, u: 'mL', t: 'D5W' } });
+rx('d5w_hyperna', 'lyte', 'D5W（補自由水）', 'D5W IVD at 1.35 mL/kg/h (lowers Na about 10 mEq/L per day); recheck Na q4–6h',
+  '慢性或不明時程的高血鈉：一天降 ≤10–12 mEq/L。低血容先用 N/S 把血壓補起來。能用腸道就用腸道補水。',
+  { cc: 'hyperna', mon: 'Na q4–6h、血糖（D5W 會高血糖，高血糖滲透性利尿會更糟）、尿量', max: '慢性：一天降 ≤12 mEq/L',
+    kg: { lo: 1.35, hi: 1.35, u: 'mL/h', t: 'D5W 速率' },
+    adj: { hf: '改用腸道補水為主，輸液速率減半並聽肺', r30: '排水能力差，速率減半、Na q4h', hd: '與腎臟科討論，用透析矯正' } });
+rx('water_ng', 'lyte', '腸道補水', 'Free water 200 mL via NG/PO q4h',
+  '腸道可用時最安全的補水方式。',
+  { cc: 'hyperna', mon: 'Na q6–12h、嗆咳', adj: { hf: '改 100–150 mL q4h' } });
+rx('ca_hypoca', 'lyte', 'Calcium gluconate（有症狀的低血鈣）', '10% calcium gluconate 20 mL (2 g) in D5W 100 mL IVD over 20 min with ECG monitoring',
+  '抽筋、tetany、喉痙攣、抽搐、QT 延長，或校正鈣 <7.5 mg/dL。一劑只能維持 2–3 小時，之後接持續滴注或口服。',
+  { cc: 'hypoca', mon: 'ECG；1–2 小時後驗 iCa；注射部位（外滲會組織壞死）', ci: '不可與 bicarbonate、phosphate 同一條線；使用 digoxin 者慢滴',
+    adj: { r30: '高血磷時補鈣會鈣磷沉積，只在有症狀時補，並同時處理高血磷', hd: '同左；無症狀者交給透析調整' } });
+rx('ca_drip', 'lyte', 'Calcium gluconate 持續滴注', '10% calcium gluconate 100 mL (10 g) in D5W 900 mL IVD at 50 mL/h; adjust by iCa q4–6h',
+  '約 0.9 mg/mL 元素鈣，50 mL/h 起（0.5–1.5 mg/kg/h）。同時開始口服鈣與活性維生素 D。',
+  { cc: 'hypoca', mon: 'iCa q4–6h；Mg（低血鎂要先補）', adj: { hf: '輸液量大，可改濃縮走中央靜脈' } });
+rx('caco3_po', 'lyte', '口服鈣＋活性維生素 D', 'Calcium carbonate 500 mg PO TID with meals + calcitriol 0.25 mcg PO QD',
+  '輕度、無症狀的低血鈣。隨餐吃可同時當磷結合劑；要補鈣吸收好就空腹吃。',
+  { cc: 'hypoca', mon: 'Ca、P 每 2–3 天', adj: { r30: '首選（同時結合磷）；注意鈣磷乘積' } });
+rx('ns_hyperca', 'lyte', 'N/S 大量輸液（高血鈣）', 'N/S IVD at 200 mL/h; adjust to urine output 100–150 mL/h',
+  '高血鈣的病人幾乎都脫水，補水是第一步。水補夠之前不要給 loop diuretic。',
+  { cc: 'hyperca', mon: 'I/O、肺部聽診、Ca 與電解質 q6–12h',
+    adj: { hf: '速率減半，肺水腫時加 Furosemide', r30: '排不掉會 overload；與腎臟科討論透析', hd: '與腎臟科討論低鈣透析液' },
+    alt: { hf: 'N/S IVD at 100 mL/h; reassess lung sounds and urine output q2h', r30: 'N/S IVD at 100 mL/h; reassess volume status q2h' } });
+rx('calcitonin', 'lyte', 'Calcitonin', 'Calcitonin 4 IU/kg SC q12h for 48 h',
+  '4–6 小時起效，最快。48 小時後會失效（tachyphylaxis），要同時給 bisphosphonate 接手。',
+  { cc: 'hyperca', kg: { lo: 4, hi: 4, u: 'IU' }, mon: 'Ca q12h', adj: { r30: '不需調整，腎差時的首選降鈣藥' } });
+rx('zoledronate', 'lyte', 'Zoledronic acid', 'Zoledronic acid 4 mg in N/S 100 mL IVD over 15 min once',
+  '2–4 天才見效，維持數週。先把水補起來再給。',
+  { cc: 'hyperca', mon: 'Cr、Ca、P、Mg', ci: '近期要做侵入性牙科處置者小心（顎骨壞死）',
+    adj: { r: '減量（CrCl 50–60：3.5 mg；40–49：3.3 mg；30–39：3 mg），滴注時間拉長', r30: '✕ CrCl <30 避免，與腎臟科討論 Denosumab 120 mg SC', hd: '✕ 與腎臟科討論 Denosumab 或透析' } });
+rx('kphos_iv', 'lyte', 'Potassium phosphate 靜脈', 'Potassium phosphate 15 mmol in N/S 250 mL IVD over 4–6 h; recheck P, K, Ca after infusion',
+  'P <1.0 mg/dL，或 <2.0 合併肌肉無力、呼吸肌無力、脫離呼吸器困難。每 3 mmol 磷帶 4.4 mEq 鉀；K >4 改用 sodium phosphate。',
+  { cc: 'hypomgp', mon: '滴完驗 P、K、Ca（會低血鈣）', max: '≤7.5 mmol/h',
+    adj: { r: '劑量減半', r30: '劑量減半以下，只在有症狀時給', hd: '只在嚴重且有症狀時給，與腎臟科確認' },
+    alt: { r30: 'Potassium phosphate 7.5 mmol in N/S 250 mL IVD over 6 h; recheck P, K, Ca after infusion' } });
+rx('phos_po', 'lyte', '口服磷', 'Sodium/potassium phosphate 500 mg (16 mmol P) PO TID',
+  'P 1.0–2.0、無症狀。常見副作用是腹瀉。',
+  { cc: 'hypomgp', adj: { r30: '減半並追 P、K' } });
+
+/* ───────── 輸液・休克 ───────── */
+rx('ns_bolus', 'fluid', 'Crystalloid bolus', 'N/S (or lactated Ringer) 500 mL IV bolus over 15 min; reassess BP, HR, lung sounds and urine output, repeat if fluid-responsive',
+  '低血壓、疑低血容。每給一次就重新評估，沒有反應不要一直灌。',
+  { cc: 'hypotension', mon: '血壓、心跳、呼吸音、SpO2、尿量',
+    adj: { hf: '250 mL 一次，給完就聽肺', r30: '250 mL 一次；少尿者容易 overload', hd: '250 mL 一次；無尿病人排不掉' },
+    alt: { hf: 'N/S 250 mL IV bolus over 15 min; reassess lung sounds and BP before repeating', r30: 'N/S 250 mL IV bolus over 15 min; reassess before repeating', hd: 'N/S 250 mL IV bolus over 15 min; reassess before repeating' } });
+rx('sepsis_fluid', 'fluid', 'Sepsis 輸液復甦', 'Balanced crystalloid 30 mL/kg IV within the first 3 h (give in 500 mL boluses, reassess after each)',
+  'Sepsis 合併低血壓或 lactate ≥4 mmol/L。用實際體重；BMI >30 用理想體重。',
+  { cc: 'fever', kg: { lo: 30, hi: 30, u: 'mL', t: '總量' }, mon: '每 500 mL 評估一次；lactate 2–4 小時後複驗',
+    adj: { hf: '分次 250 mL，邊給邊聽肺；提早接 norepinephrine', hd: '分次 250 mL；提早接 norepinephrine', r30: '分次 250–500 mL，注意 overload' } });
+rx('norepi', 'fluid', 'Norepinephrine（Levophed）', 'Norepinephrine 4 mg in D5W 250 mL (16 mcg/mL), start 0.05 mcg/kg/min IVD, titrate q5min to MAP ≥65 mmHg',
+  '輸液後 MAP 仍 <65 的第一線升壓劑。中央靜脈優先；來不及可先走肘窩以上的大口徑周邊線，盡快換。',
+  { cc: 'hypotension', kg: { lo: 0.19, hi: 0.19, u: 'mL/h', t: '起始速率（16 mcg/mL）' }, mon: 'A-line 或 q5min 量血壓；周邊給藥看外滲', max: '一般 ≤1 mcg/kg/min；>0.25 加第二種藥',
+    ci: '外滲會組織壞死（phentolamine 5–10 mg 局部浸潤）' });
+rx('epi_im', 'fluid', 'Epinephrine IM（過敏性休克）', 'Epinephrine 0.5 mg (1 mg/mL, 0.5 mL) IM at anterolateral thigh; repeat q5–15 min if no improvement',
+  '過敏性休克的唯一第一線。大腿前外側肌肉注射，不要皮下、不要直接 IV push。',
+  { cc: 'allergy', mon: '血壓、心跳、SpO2、喘鳴；至少觀察 4–6 小時（雙相反應）',
+    adj: { elderly: '冠心病者仍然要給，可用 0.3 mg；不給的風險更高', preg: '照給，母親低血壓對胎兒更危險' } });
+rx('epi_drip', 'fluid', 'Epinephrine 滴注', 'Epinephrine 2 mg in D5W 250 mL (8 mcg/mL), start 2 mcg/min (15 mL/h) IVD, titrate to 2–10 mcg/min',
+  '過敏性休克打了 2–3 劑 IM 沒效，或有症狀的心搏過緩 atropine 無效。',
+  { cc: 'brady', mon: '連續 ECG、血壓', ci: '走中央靜脈或大口徑周邊線' });
+rx('dopamine', 'fluid', 'Dopamine', 'Dopamine 400 mg in D5W 250 mL (1600 mcg/mL), start 5 mcg/kg/min IVD, titrate to 5–20 mcg/kg/min',
+  '有症狀的心搏過緩 atropine 無效、等待 pacing 時。',
+  { cc: 'brady', kg: { lo: 0.19, hi: 0.19, u: 'mL/h', t: '5 mcg/kg/min 的速率（1600 mcg/mL）' }, mon: '連續 ECG、血壓；心律不整' });
+rx('hydrocort_shock', 'fluid', 'Hydrocortisone（腎上腺危象／頑固休克）', 'Hydrocortisone 100 mg IV stat, then 50 mg IV q6h',
+  '長期用類固醇突然停藥或遇到壓力、升壓劑反應差的休克。疑腎上腺危象不要等 cortisol 報告。',
+  { cc: 'hypotension', mon: '血糖、Na、K' });
+
+/* ───────── 心血管 ───────── */
+rx('furosemide_iv', 'cv', 'Furosemide（Lasix）IV', 'Furosemide 40 mg IV push over 2 min; reassess urine output in 2 h (target >100 mL/h), double the dose if inadequate',
+  '肺水腫、volume overload。沒用過利尿劑 20–40 mg；長期口服者給「每日口服總量的 1–2.5 倍」IV。',
+  { cc: 'dyspnea', mon: '2 小時尿量、血壓、K、Mg、Cr', max: '單次 ≤200 mg；推注 ≤4 mg/min（耳毒性）',
+    adj: { r: '需要較高劑量才有反應，從 40–80 mg 起', r30: '從 80 mg 起，無效加倍到 160–200 mg', hd: '還有尿的病人才有用（80–160 mg）；無尿者安排緊急透析或 UF', elderly: '20 mg 起，注意低血壓與低血鉀' },
+    alt: { r30: 'Furosemide 80 mg IV push over 20 min; reassess urine output in 2 h, double the dose if inadequate' } });
+rx('ntg_sl', 'cv', 'Nitroglycerin 舌下', 'Nitroglycerin 0.6 mg SL q5min PRN chest pain, up to 3 doses; hold if SBP <90 mmHg',
+  '缺血性胸痛。給之前量血壓、做完 12-lead ECG。',
+  { cc: 'chestpain', mon: '每次給藥前後血壓', ci: '24 小時內用過 sildenafil／48 小時內 tadalafil、右心室梗塞、嚴重主動脈瓣狹窄、SBP <90' });
+rx('ntg_iv', 'cv', 'Nitroglycerin 滴注', 'Nitroglycerin 50 mg in D5W 250 mL (200 mcg/mL), start 10 mcg/min (3 mL/h) IVD, increase by 5–10 mcg/min q5min; hold if SBP <100 mmHg',
+  '持續胸痛、高血壓合併急性肺水腫。',
+  { cc: 'chestpain', mon: '血壓 q5–15min、頭痛', max: '一般 ≤200 mcg/min', ci: '同舌下 NTG' });
+rx('aspirin_load', 'cv', 'Aspirin loading', 'Aspirin 300 mg PO chewed once, then 100 mg PO QD',
+  '疑 ACS：越早越好，嚼碎吞下。先排除主動脈剝離與活動性出血。',
+  { cc: 'chestpain', ci: '活動性出血、aspirin 過敏、疑主動脈剝離', adj: { r30: '不需調整' } });
+rx('captopril', 'cv', 'Captopril（Cabudan）', 'Captopril 25 mg PO once; recheck BP in 1 h',
+  '沒有器官損傷的血壓高：先處理疼痛、脹氣、尿滯留，再給口服藥。目標是幾小時到幾天內慢慢降。',
+  { cc: 'hypertension', mon: '1 小時後量血壓；K、Cr',
+    adj: { r: 'AKI 或高血鉀時不要用，改 Amlodipine', r30: '✕ AKI 或 K 偏高時禁用；穩定的 CKD 從 12.5 mg 起', hd: '12.5 mg 起，注意高血鉀', preg: '✕ 懷孕禁用，改 Labetalol 或 Nifedipine', elderly: '12.5 mg 起，避免降太快' },
+    alt: { elderly: 'Captopril 12.5 mg PO once; recheck BP in 1 h', hd: 'Captopril 12.5 mg PO once; recheck BP in 1 h' } });
+rx('amlodipine', 'cv', 'Amlodipine（Norvasc）', 'Amlodipine 5 mg PO once, then QD if BP remains high',
+  '不能用 ACEI 時的選擇。起效慢（6–12 小時），不會一下降太多。',
+  { cc: 'hypertension', adj: { hepatic: '2.5 mg 起', elderly: '2.5 mg 起', r30: '不需調整' }, alt: { hepatic: 'Amlodipine 2.5 mg PO once, then QD if BP remains high' } });
+rx('labetalol_iv', 'cv', 'Labetalol（Trandate）IV', 'Labetalol 10 mg IV slow push over 2 min; may repeat or double q10min (max 300 mg per 24 h)',
+  '高血壓急症、不能口服時。Trandate 25 mg/5 mL：0.5 amp≈12.5 mg，加 N/S 稀釋慢推。',
+  { cc: 'hypertension', mon: '血壓、心跳 q5–10min', ci: '氣喘、心跳 <60、二度以上 AV block、急性失代償心衰竭',
+    adj: { hf: '✕ 急性失代償時避免，改 NTG 或 Nicardipine', preg: '孕期首選之一', hepatic: '代謝變慢，拉長間隔' } });
+rx('nicardipine_iv', 'cv', 'Nicardipine（Perdipine）滴注', 'Nicardipine 5 mg/h IVD, increase by 2.5 mg/h q5–15min to target BP (max 15 mg/h)',
+  '高血壓急症：第一小時 MAP 降幅 ≤25%（主動脈剝離、腦出血另有目標）。',
+  { cc: 'hypertension', mon: 'A-line 或 q5min 量血壓；周邊靜脈炎（12 小時換部位）', ci: '嚴重主動脈瓣狹窄', adj: { hf: '可用，但注意反射性心跳快', hepatic: '減量慢調' } });
+rx('adenosine', 'cv', 'Adenosine', 'Adenosine 6 mg rapid IV push followed by 20 mL N/S flush; if no conversion in 1–2 min, 12 mg rapid IV push',
+  '規則的窄 QRS 心搏過速（SVT）。走最靠近心臟的大口徑線，推完馬上沖水、抬高手臂。先告訴病人會胸悶幾秒。',
+  { cc: 'tachycardia', mon: '全程印 ECG 條', ci: '氣喘發作中、二度以上 AV block、不規則寬 QRS（預激合併 AF）',
+    adj: { hf: '心臟移植、走中央靜脈、併用 dipyridamole 或 carbamazepine：起始 3 mg' } });
+rx('diltiazem_iv', 'cv', 'Diltiazem（Herbesser）IV', 'Diltiazem 0.25 mg/kg (about 15–20 mg) IV over 2 min; if needed 0.35 mg/kg after 15 min; then 5–15 mg/h IVD',
+  'AF／AFL 快速心室反應、血壓穩定、心臟收縮功能正常。',
+  { cc: 'tachycardia', kg: { lo: 0.25, hi: 0.25, u: 'mg', max: 25, t: '首劑' }, mon: '血壓、心跳、ECG', ci: '低血壓、WPW 合併 AF、二度以上 AV block',
+    adj: { hf: '✕ HFrEF 或急性失代償禁用，改 Amiodarone 或 Digoxin', elderly: '首劑 10 mg', hepatic: '減量' } });
+rx('amiodarone_iv', 'cv', 'Amiodarone 靜脈', 'Amiodarone 150 mg in D5W 100 mL IVD over 10 min, then 1 mg/min for 6 h, then 0.5 mg/min for 18 h',
+  '穩定的寬 QRS 心搏過速；心衰竭病人的 AF 控速。只能用 D5W 稀釋。',
+  { cc: 'tachycardia', mon: '血壓（低血壓多半跟滴速有關）、QTc、心跳；周邊靜脈炎', max: '24 小時 ≤2.2 g', ci: 'QT 延長、甲狀腺疾病、碘過敏；預激合併 AF 不要用',
+    adj: { hepatic: '肝毒性，追肝指數', r30: '不需調整' } });
+rx('digoxin_iv', 'cv', 'Digoxin 靜脈', 'Digoxin 0.25 mg IV slow push q6h x 2 doses (total 0.5 mg), then reassess',
+  '心衰竭或低血壓病人的 AF 控速。起效慢（數小時）。',
+  { cc: 'tachycardia', mon: 'K、Mg、Cr；隔天 digoxin level', ci: 'WPW、肥厚型心肌病、低血鉀未矯正',
+    adj: { r: '負荷劑量減半', r30: '只給 0.125 mg 一次，不排維持劑量，驗濃度再決定', hd: '只給 0.125 mg 一次，驗濃度再決定', elderly: '負荷劑量減半' },
+    alt: { r30: 'Digoxin 0.125 mg IV slow push once; check digoxin level before further doses', hd: 'Digoxin 0.125 mg IV slow push once; check digoxin level before further doses' } });
+rx('bisoprolol', 'cv', 'Bisoprolol（Concor）', 'Bisoprolol 1.25 mg PO QD',
+  '血壓穩定的 AF 控速、竇性心搏過速的原因已處理後。急性失代償心衰竭先不要新加。',
+  { cc: 'tachycardia', ci: '心跳 <60、二度以上 AV block、急性失代償心衰竭、氣喘發作中', adj: { r30: '起始 1.25 mg，上限 10 mg/day', hepatic: '上限 10 mg/day' } });
+rx('atropine', 'cv', 'Atropine', 'Atropine 1 mg IV push q3–5min PRN symptomatic bradycardia (max 3 mg)',
+  '有症狀的心搏過緩（低血壓、意識改變、胸痛、心衰竭）。劑量 <0.5 mg 可能反而更慢。',
+  { cc: 'brady', mon: '連續 ECG', ci: '移植心臟、Mobitz II、三度阻滯合併寬 QRS 多半無效：直接準備 pacing' });
+rx('enoxaparin_tx', 'cv', 'Enoxaparin（Clexane）治療劑量', 'Enoxaparin 1 mg/kg SC q12h',
+  'DVT、PE、ACS 的抗凝。開之前確認沒有活動性出血、血小板 >50k。',
+  { cc: 'dyspnea', kg: { lo: 1, hi: 1, u: 'mg', t: '每劑' }, mon: 'CBC（血小板）、出血、Cr', ci: '活動性出血、HIT 病史、24 小時內要做腰椎穿刺或手術',
+    adj: { r: 'CrCl 30–50 不調，但出血風險增加', r30: 'CrCl <30 改 1 mg/kg QD', hd: '✕ 改用 Heparin 滴注', elderly: '≥75 歲 ACS：不給 bolus、0.75 mg/kg q12h' },
+    alt: { r30: 'Enoxaparin 1 mg/kg SC q24h' } });
+rx('heparin_drip', 'cv', 'Heparin 滴注', 'Heparin 80 U/kg IV bolus, then 18 U/kg/h IVD; aPTT q6h, target 1.5–2.5 x control',
+  '腎功能差、可能要手術或出血風險高（半衰期短、可逆轉）時的抗凝選擇。',
+  { cc: 'dyspnea', kg: { lo: 80, hi: 80, u: 'U', max: 10000, t: 'bolus' }, mon: 'aPTT q6h 到穩定、血小板 q2–3 天', ci: '活動性出血、HIT', adj: { r30: '不需調整，腎差首選', hd: '不需調整，腎差首選' } });
+
+/* ───────── 呼吸 ───────── */
+rx('o2', 'resp', '氧氣', 'O2 via nasal cannula 2–4 L/min, titrate to SpO2 92–96% (COPD with CO2 retention: 88–92%)',
+  'SpO2 <92% 才需要。鼻導管 1–6 L/min；mask 5–10；non-rebreathing 10–15；還不夠就 HFNC 或 NIV。',
+  { cc: 'dyspnea', mon: 'SpO2、呼吸型態；CO2 滯留者 30–60 分鐘後追 ABG' });
+rx('neb_saba', 'resp', 'Salbutamol＋Ipratropium 吸入', 'Salbutamol 2.5 mg + ipratropium 0.5 mg nebulization q20min x 3 doses, then q4–6h PRN wheezing',
+  '氣喘或 COPD 急性發作、有 wheezing。',
+  { cc: 'dyspnea', mon: '心跳、K（大量使用會低血鉀）、SpO2', adj: { hf: '心搏過速、缺血者拉長間隔' } });
+rx('steroid_ae', 'resp', '全身性類固醇（氣喘／COPD 發作）', 'Prednisolone 40 mg PO QD for 5 days (if NPO: methylprednisolone 40 mg IV QD)',
+  '中重度發作都要給，口服與靜脈效果相同。5 天不需要 taper。',
+  { cc: 'dyspnea', mon: '血糖（糖尿病人加驗 finger sugar）', adj: { elderly: '注意譫妄、失眠，早上給' } });
+rx('mgso4_asthma', 'resp', 'MgSO4（嚴重氣喘）', 'MgSO4 2 g (10% 20 mL) in N/S 100 mL IVD over 20 min once',
+  '吸入支氣管擴張劑反應不好的嚴重氣喘發作。',
+  { cc: 'dyspnea', mon: '血壓、膝反射', adj: { r30: '給 1 g，注意高血鎂' } });
+rx('naloxone', 'resp', 'Naloxone', 'Naloxone 0.04 mg IV q2–3min, titrate to RR ≥12/min (dilute 0.4 mg in N/S to 10 mL, give 1 mL each time); apnea or arrest: 0.4–2 mg IV',
+  '鴉片類造成的呼吸抑制（RR <8–10、瞳孔縮小、叫不醒）。小量分次給，避免急性戒斷與劇痛。',
+  { cc: 'ams', mon: '呼吸、意識至少 2 小時：naloxone 只有 30–90 分鐘，比多數鴉片短，會再睡回去', adj: { r30: 'morphine 代謝物累積，常需要重複給或持續滴注' } });
+rx('flumazenil', 'resp', 'Flumazenil', 'Flumazenil 0.2 mg IV over 30 s; repeat 0.2 mg q1min PRN (max 1 mg)',
+  '醫療給藥造成的 benzodiazepine 過度鎮靜。',
+  { cc: 'ams', mon: '意識、呼吸；1 小時內可能再鎮靜', ci: '長期使用 BZD、癲癇病史、可能合併 TCA 中毒：會誘發抽搐，不要給', adj: { hepatic: '重複劑量減半' } });
+rx('txa_iv', 'resp', 'Tranexamic acid（Transamin）IV', 'Tranexamic acid 500 mg IV slow push over 10 min q8h',
+  '咳血、黏膜出血的輔助止血。',
+  { cc: 'hemoptysis', mon: '出血量、抽搐', ci: '活動性血栓、肉眼血尿（會形成血塊阻塞）',
+    adj: { r: '500 mg q12h', r30: '500 mg q24h（蓄積會抽搐）', hd: '500 mg q48h 或透析後給' },
+    alt: { r: 'Tranexamic acid 500 mg IV slow push over 10 min q12h', r30: 'Tranexamic acid 500 mg IV slow push over 10 min q24h', hd: 'Tranexamic acid 500 mg IV slow push over 10 min q48h (after dialysis)' } });
+rx('txa_neb', 'resp', 'Tranexamic acid 吸入', 'Tranexamic acid 500 mg (5 mL) nebulization TID for up to 5 days',
+  '非大量咳血。全身吸收少，腎功能差也可以用。',
+  { cc: 'hemoptysis', mon: '支氣管痙攣' });
+rx('codeine_cough', 'resp', 'Codeine 止咳', 'Codeine 15–30 mg PO q6h PRN cough',
+  '咳血時壓制劇烈咳嗽；一般乾咳也可用。大量咳血不要完全壓住咳嗽反射。',
+  { cc: 'cough', mon: '呼吸、便秘', adj: { r30: '減半並拉長間隔', elderly: '15 mg 起', hepatic: '減量', preg: '✕ 避免' } });
+rx('dextromethorphan', 'resp', 'Dextromethorphan（Medicon）', 'Dextromethorphan 30 mg PO TID PRN cough',
+  '乾咳。有痰的咳嗽不要壓。',
+  { cc: 'cough', ci: '併用 MAOI、linezolid（serotonin syndrome）' });
+rx('acetylcysteine', 'resp', 'Acetylcysteine（Fluimucil）', 'Acetylcysteine 600 mg PO QD (or 200 mg TID)',
+  '痰黏咳不出來。咳嗽力氣差的病人要搭配拍痰、抽痰。',
+  { cc: 'cough', ci: '氣喘病人吸入劑型可能支氣管痙攣' });
+
+/* ───────── 神經・精神 ───────── */
+rx('lorazepam_sz', 'neuro', 'Lorazepam（抽搐）', 'Lorazepam 4 mg IV push at 2 mg/min; may repeat once after 5 min if still seizing',
+  '抽搐 ≥5 分鐘，或連續發作中間沒有醒。體重 <40 kg 用 0.1 mg/kg。',
+  { cc: 'seizure', kg: { lo: 0.1, hi: 0.1, u: 'mg', max: 4, t: '每劑' }, mon: '呼吸、SpO2、血壓；準備 BVM', adj: { elderly: '呼吸抑制風險高，但劑量不足更危險：照給、備好氣道', hepatic: 'BZD 裡的首選（不經 CYP）' } });
+rx('midazolam_im', 'neuro', 'Midazolam IM（沒有 IV 的抽搐）', 'Midazolam 10 mg IM once (5 mg if body weight 13–40 kg)',
+  '打不上 IV 時。不要為了找血管延誤第一劑。',
+  { cc: 'seizure', mon: '呼吸、SpO2', adj: { elderly: '照給、備好氣道', r30: '活性代謝物蓄積，鎮靜時間拉長' } });
+rx('levetiracetam_load', 'neuro', 'Levetiracetam（Keppra）負荷', 'Levetiracetam 60 mg/kg (max 4500 mg) in N/S 100 mL IVD over 10 min',
+  '給完 benzodiazepine 還在抽（第二線）。交互作用最少。',
+  { cc: 'seizure', kg: { lo: 60, hi: 60, u: 'mg', max: 4500 }, mon: '躁動、意識',
+    adj: { r: '負荷劑量不調；維持 500–750 mg q12h', r30: '負荷劑量不調；維持 250–500 mg q12h', hd: '負荷劑量不調；維持 500–1000 mg QD，透析後補 250–500 mg' } });
+rx('valproate_load', 'neuro', 'Valproate（Depakine）負荷', 'Valproate 40 mg/kg (max 3000 mg) IVD over 10 min',
+  '第二線的另一個選擇。',
+  { cc: 'seizure', kg: { lo: 40, hi: 40, u: 'mg', max: 3000 }, mon: 'ammonia、肝指數、血小板', ci: '併用 carbapenem 會讓濃度掉到無效',
+    adj: { hepatic: '✕ 肝病禁用', preg: '✕ 致畸胎，改 Levetiracetam' } });
+rx('phenytoin_load', 'neuro', 'Phenytoin 負荷', 'Phenytoin 20 mg/kg in N/S IVD at ≤50 mg/min with ECG and BP monitoring',
+  '第二線。只能泡 N/S（遇糖會沉澱），要用 in-line filter。',
+  { cc: 'seizure', kg: { lo: 20, hi: 20, u: 'mg', max: 1500 }, mon: '連續 ECG、血壓（低血壓、心律不整）；外滲會組織壞死', ci: '二度以上 AV block、竇性心搏過緩',
+    adj: { elderly: '滴速 ≤25 mg/min', r30: '游離濃度升高，看 free level 或校正濃度', hepatic: '減量並追濃度' } });
+rx('haloperidol', 'neuro', 'Haloperidol（Haldol）', 'Haloperidol 1 mg IM q30–60min PRN severe agitation (max 5 mg per 24 h)',
+  '譫妄合併危及自己或他人的躁動，而且非藥物處置無效。先找原因（痛、尿滯留、缺氧、感染、藥物）。',
+  { cc: 'ams', mon: 'QTc（>500 ms 不要給）、錐體外症狀', ci: 'Parkinson、Lewy body dementia、QT 延長',
+    adj: { elderly: '0.5 mg 起，一天 ≤3 mg', hepatic: '減量' }, alt: { elderly: 'Haloperidol 0.5 mg IM q30–60min PRN severe agitation (max 3 mg per 24 h)' } });
+rx('quetiapine', 'neuro', 'Quetiapine（Seroquel）', 'Quetiapine 12.5–25 mg PO HS PRN agitation',
+  '能口服的譫妄躁動；Parkinson 或 Lewy body dementia 病人的首選。',
+  { cc: 'ams', mon: '姿勢性低血壓、過度鎮靜、QTc', adj: { elderly: '12.5 mg 起', hepatic: '12.5 mg 起、慢調' } });
+rx('thiamine', 'neuro', 'Thiamine', 'Thiamine 100 mg IV QD for 3 days (suspected Wernicke: 500 mg IV q8h for 2–3 days)',
+  '酗酒、營養不良、長期嘔吐、refeeding 風險。在給葡萄糖之前或同時給。',
+  { cc: 'ams' });
+rx('lorazepam_aws', 'neuro', 'Lorazepam（酒精戒斷，症狀導向）', 'Lorazepam 2 mg PO/IV q1h PRN CIWA-Ar ≥8; reassess CIWA-Ar 1 h after each dose',
+  '最後一杯酒後 6–48 小時出現手抖、冒汗、心跳快、焦慮。肝硬化、高齡用 Lorazepam（不靠肝臟氧化代謝）。',
+  { cc: 'withdrawal', mon: 'CIWA-Ar q1h（≥8 給藥）到連續 3 次 <8，之後 q4–6h；呼吸、意識', max: '用量很大仍控制不住（>8 mg/h）→ ICU',
+    adj: { elderly: '1 mg 起', hepatic: 'BZD 首選', r30: '不需調整' }, alt: { elderly: 'Lorazepam 1 mg PO/IV q1h PRN CIWA-Ar ≥8; reassess CIWA-Ar 1 h after each dose' } });
+rx('diazepam_aws', 'neuro', 'Diazepam（酒精戒斷）', 'Diazepam 10 mg IV slow push q10–15min PRN until calm but awake (CIWA-Ar <8)',
+  '嚴重戒斷或 DT。長效、可自行 taper。',
+  { cc: 'withdrawal', mon: '呼吸、意識、SpO2', adj: { hepatic: '✕ 肝硬化會蓄積，改 Lorazepam', elderly: '✕ 蓄積、過度鎮靜，改 Lorazepam' } });
+rx('trazodone', 'neuro', 'Trazodone（Mesyrel）', 'Trazodone 25–50 mg PO HS PRN insomnia',
+  '住院失眠的藥物首選：不太會譫妄、跌倒風險較 BZD 低。先做非藥物處置。',
+  { cc: 'insomnia', mon: '姿勢性低血壓', adj: { elderly: '25 mg 起', hepatic: '25 mg 起' } });
+rx('zolpidem', 'neuro', 'Zolpidem（Stilnox）', 'Zolpidem 5 mg PO HS PRN insomnia',
+  '平常就在吃的病人可以續用。',
+  { cc: 'insomnia', ci: '夢遊、譫妄病史', adj: { elderly: '✕ 新開避免（譫妄、跌倒）；已長期使用者續用 5 mg', hepatic: '5 mg 為上限；嚴重肝病避免' } });
+rx('mannitol', 'neuro', 'Mannitol', 'Mannitol 20% 0.5 g/kg (2.5 mL/kg) IVD over 20 min once',
+  '腦疝徵象（瞳孔不等大、Cushing triad）等待處置時。先通知學長姊與神經外科。',
+  { cc: 'headache', kg: { lo: 2.5, hi: 2.5, u: 'mL', t: '20% Mannitol' }, mon: 'Na、osmolality（>320 停）、尿量、血壓',
+    adj: { r30: '排不掉會 overload，改 3% NaCl', hd: '✕ 改 3% NaCl', hf: '先擴容再利尿，肺水腫風險' } });
+
+/* ───────── 鎮靜・插管 ───────── */
+rx('sed_etomidate', 'sed', 'Etomidate（程序鎮靜）', 'Etomidate 0.1 mg/kg IV slow push over 30–60 s; may repeat 0.05 mg/kg q3–5min',
+  '同步整流的首選之一：對血壓影響最小，1 分鐘內起效、維持 5–10 分鐘。會有肌躍動（不是抽搐）。',
+  { kg: { lo: 0.1, hi: 0.15, u: 'mg' }, mon: 'SpO2、ETCO2、血壓；備好 BVM 與抽吸', adj: { elderly: '用下限劑量', hepatic: '作用時間拉長' } });
+rx('sed_midazolam', 'sed', 'Midazolam（Dormicum）（程序鎮靜）', 'Midazolam 1–2 mg IV slow push q2–3min, titrate to effect (usual total ≤5 mg)',
+  '最容易拿到。2–3 分鐘才到高峰，不要推太快又補太急。常搭配 Fentanyl（兩者併用呼吸抑制會加成）。',
+  { kg: { lo: 0.02, hi: 0.05, u: 'mg', t: '總量' }, mon: 'SpO2、呼吸、血壓；備 Flumazenil',
+    adj: { elderly: '每次 0.5–1 mg，總量減半', r30: '活性代謝物蓄積，鎮靜時間拉長', hd: '活性代謝物蓄積，鎮靜時間拉長', hepatic: '減量 50%' },
+    alt: { elderly: 'Midazolam 0.5–1 mg IV slow push q2–3min, titrate to effect (usual total ≤2.5 mg)' } });
+rx('sed_propofol', 'sed', 'Propofol（程序鎮靜）', 'Propofol 0.5 mg/kg IV slow push, then 0.25 mg/kg q1–3min PRN',
+  '起效與恢復都最快。會掉血壓、抑制呼吸：已經低血壓的不穩定病人不要用。',
+  { kg: { lo: 0.5, hi: 1, u: 'mg' }, mon: 'SpO2、ETCO2、血壓', ci: '低血壓、嚴重左心功能不全', adj: { elderly: '劑量減半、推慢', hf: '✕ 血壓不穩時避免，改 Etomidate' } });
+rx('sed_ketamine', 'sed', 'Ketamine（程序鎮靜）', 'Ketamine 0.5–1 mg/kg IV slow push over 1 min',
+  '保留呼吸與氣道反射、兼有止痛，適合經皮節律器（TCP）。會讓心跳和血壓上升：心搏過速、缺血性胸痛的病人不是首選。',
+  { kg: { lo: 0.5, hi: 1, u: 'mg' }, mon: 'SpO2、血壓、甦醒期躁動（可給 Midazolam 1 mg）', ci: '缺血性心臟病發作中、嚴重高血壓', adj: { elderly: '用下限劑量' } });
+rx('sed_fentanyl', 'sed', 'Fentanyl（止痛）', 'Fentanyl 0.5–1 mcg/kg (25–50 mcg) IV slow push; may repeat q5min',
+  '整流和 TCP 會痛：鎮靜藥大多不止痛，加一劑短效鴉片類。對血壓影響小。',
+  { kg: { lo: 0.5, hi: 1, u: 'mcg' }, mon: '呼吸（與 BZD 併用加成）；備 Naloxone', adj: { elderly: '25 mcg 起', r30: '不需調整，腎差的鴉片類首選', hepatic: '重複給會蓄積' } });
+rx('rsi_etomidate', 'sed', 'Etomidate（RSI 誘導）', 'Etomidate 0.3 mg/kg IV push',
+  '血行動力學不穩時的誘導首選。單次使用的腎上腺抑制臨床意義不大。',
+  { kg: { lo: 0.3, hi: 0.3, u: 'mg' } });
+rx('rsi_ketamine', 'sed', 'Ketamine（RSI 誘導）', 'Ketamine 1.5 mg/kg IV push',
+  '低血壓、氣喘重積狀態的誘導選擇。兒茶酚胺耗盡的休克病人仍可能掉血壓。',
+  { kg: { lo: 1, hi: 2, u: 'mg' }, ci: '高血壓急症、缺血性心臟病發作中' });
+rx('rsi_propofol', 'sed', 'Propofol（RSI 誘導）', 'Propofol 1.5 mg/kg IV push',
+  '血壓穩定或偏高（如癲癇重積、高血壓）時。會掉血壓。',
+  { kg: { lo: 1.5, hi: 2, u: 'mg' }, ci: '低血壓、休克', adj: { elderly: '1 mg/kg', hf: '✕ 改 Etomidate' } });
+rx('rsi_rocuronium', 'sed', 'Rocuronium（RSI 肌鬆）', 'Rocuronium 1 mg/kg IV push',
+  '60 秒起效，作用 45–70 分鐘（這段時間看不到抽搐、評估不了神經學）。可用 Sugammadex 16 mg/kg 逆轉。',
+  { kg: { lo: 1, hi: 1.2, u: 'mg' }, adj: { hepatic: '作用時間拉長' } });
+rx('rsi_succinylcholine', 'sed', 'Succinylcholine（RSI 肌鬆）', 'Succinylcholine 1.5 mg/kg IV push',
+  '45 秒起效、作用 6–10 分鐘。',
+  { kg: { lo: 1, hi: 1.5, u: 'mg' }, ci: '高血鉀、燒傷或壓砸傷 >48 小時、去神經病變（中風偏癱、脊髓損傷、長期臥床）、惡性高熱病史',
+    adj: { r30: '✕ 血鉀偏高或不明時避免，改 Rocuronium', hd: '✕ 血鉀偏高或不明時避免，改 Rocuronium' } });
+rx('inf_propofol', 'sed', 'Propofol 持續滴注（插管後）', 'Propofol 1% (10 mg/mL) IVD, start 5 mcg/kg/min, titrate by 5–10 mcg/kg/min q5min to RASS −2 to 0 (usual 5–50 mcg/kg/min)',
+  '好調、停了很快醒，方便做神經學評估。先給夠止痛（Fentanyl），再加鎮靜。',
+  { kg: { lo: 0.03, hi: 0.3, u: 'mL/h', t: '5–50 mcg/kg/min 的速率（10 mg/mL）' }, mon: '血壓、TG（>48 小時）、propofol infusion syndrome（>4 mg/kg/h 超過 48 小時）', ci: '低血壓未矯正',
+    adj: { hf: '掉血壓，低劑量起或改 Midazolam', elderly: '低劑量起' } });
+rx('inf_midazolam', 'sed', 'Midazolam 持續滴注（插管後）', 'Midazolam 50 mg in N/S 50 mL (1 mg/mL) IVD, start 0.02 mg/kg/h, titrate to RASS −2 to 0 (usual 0.02–0.1 mg/kg/h)',
+  '血壓不穩用不了 Propofol 時。會蓄積、譫妄較多，醒得慢。',
+  { kg: { lo: 0.02, hi: 0.1, u: 'mL/h', t: '速率（1 mg/mL）' }, mon: 'RASS q2–4h、每日中斷鎮靜評估',
+    adj: { r30: '蓄積，盡量短期、低劑量', hd: '蓄積，盡量短期、低劑量', hepatic: '減量 50%', elderly: '減量、譫妄風險高' } });
+rx('inf_fentanyl', 'sed', 'Fentanyl 持續滴注（插管後止痛）', 'Fentanyl 500 mcg in N/S 50 mL (10 mcg/mL) IVD, start 25 mcg/h (2.5 mL/h), titrate to 25–100 mcg/h',
+  '插管後先止痛再鎮靜（analgesia-first）。腎功能差也能用。',
+  { mon: '疼痛評估（CPOT）、腸蠕動、血壓', adj: { hepatic: '長時間滴注會蓄積', elderly: '低劑量起' } });
+rx('inf_dexmed', 'sed', 'Dexmedetomidine（Precedex）', 'Dexmedetomidine 200 mcg in N/S 50 mL (4 mcg/mL) IVD at 0.2–0.7 mcg/kg/h without loading dose',
+  '淺鎮靜、可叫醒、不抑制呼吸，譫妄少；適合準備拔管或躁動的病人。深鎮靜做不到。',
+  { kg: { lo: 0.05, hi: 0.175, u: 'mL/h', t: '0.2–0.7 mcg/kg/h 的速率（4 mcg/mL）' }, mon: '心跳、血壓', ci: '心搏過緩、二度以上 AV block、低血壓',
+    adj: { hepatic: '減量', elderly: '低劑量起、不給 loading' } });
+
+/* ───────── 止痛・退燒 ───────── */
+rx('apap_po', 'pain', 'Acetaminophen 口服', 'Acetaminophen 500 mg PO q6h PRN pain or BT >38.5°C (max 4 g per day)',
+  '止痛與退燒的第一線。退燒治的是體溫不是病因。',
+  { cc: 'pain', max: '一天 ≤4 g；體重 <50 kg、酗酒、營養不良 ≤2–3 g',
+    adj: { hepatic: '一天 ≤2 g', r30: '間隔拉長到 q8h', elderly: '一天 ≤3 g' },
+    alt: { hepatic: 'Acetaminophen 500 mg PO q6h PRN pain or BT >38.5°C (max 2 g per day)', r30: 'Acetaminophen 500 mg PO q8h PRN pain or BT >38.5°C (max 3 g per day)' } });
+rx('apap_iv', 'pain', 'Acetaminophen 靜脈（Acetamol）', 'Acetaminophen 1 g IVD over 15 min q6h PRN pain or fever (body weight <50 kg: 15 mg/kg)',
+  '禁食或無法口服時。',
+  { cc: 'pain', kg: { lo: 15, hi: 15, u: 'mg', max: 1000, t: '<50 kg 每劑' }, max: '一天 ≤4 g；<50 kg ≤75 mg/kg',
+    adj: { hepatic: '一天 ≤2 g', r30: '間隔拉長到 q8h' }, alt: { r30: 'Acetaminophen 1 g IVD over 15 min q8h PRN pain or fever' } });
+rx('ketorolac', 'pain', 'Ketorolac（Keto）', 'Ketorolac 30 mg IV q6h PRN pain, for no more than 5 days',
+  '腎絞痛、術後痛、骨骼肌肉痛。',
+  { cc: 'pain', max: '一天 ≤120 mg（高齡、<50 kg ≤60 mg）；≤5 天', ci: '消化道出血或潰瘍、活動性出血、使用抗凝血劑、aspirin 氣喘',
+    adj: { r: '15 mg q6h，並確認不是 AKI', r30: '✕ 禁用', hd: '✕ 還有殘餘腎功能者避免', elderly: '15 mg q6h', hf: '✕ 水鈉滯留，避免', preg: '✕ 20 週後禁用', hepatic: '肝硬化（出血、肝腎症候群風險）避免' },
+    alt: { r: 'Ketorolac 15 mg IV q6h PRN pain, for no more than 5 days', elderly: 'Ketorolac 15 mg IV q6h PRN pain, for no more than 5 days' } });
+rx('tramadol', 'pain', 'Tramadol', 'Tramadol 50 mg PO/IV q6h PRN moderate pain (max 400 mg per day)',
+  '中度疼痛。常見噁心、頭暈。',
+  { cc: 'pain', ci: '癲癇病史、併用 SSRI／MAOI／linezolid（serotonin syndrome、降低癲癇閾值）',
+    adj: { r30: 'q12h，一天 ≤200 mg', hd: 'q12h，一天 ≤200 mg', hepatic: '50 mg q12h', elderly: '>75 歲一天 ≤300 mg' },
+    alt: { r30: 'Tramadol 50 mg PO/IV q12h PRN moderate pain (max 200 mg per day)', hd: 'Tramadol 50 mg PO/IV q12h PRN moderate pain (max 200 mg per day)', hepatic: 'Tramadol 50 mg PO/IV q12h PRN moderate pain (max 100 mg per day)' } });
+rx('morphine_iv', 'pain', 'Morphine 靜脈', 'Morphine 2–4 mg IV slow push q4h PRN severe pain',
+  '中重度疼痛。同時開軟便劑；備 Naloxone。',
+  { cc: 'pain', mon: '呼吸、意識、疼痛分數（給藥後 15–30 分鐘）', ci: '呼吸抑制、腸阻塞',
+    adj: { r: '減量 25–50%、拉長間隔', r30: '✕ 活性代謝物蓄積（鎮靜、抽搐），改 Fentanyl', hd: '✕ 改 Fentanyl', elderly: '1–2 mg 起', hepatic: '減量、拉長間隔' },
+    alt: { r30: 'Fentanyl 25 mcg IV slow push q1–2h PRN severe pain', hd: 'Fentanyl 25 mcg IV slow push q1–2h PRN severe pain', elderly: 'Morphine 1–2 mg IV slow push q4h PRN severe pain' } });
+rx('fentanyl_prn', 'pain', 'Fentanyl 靜脈（PRN）', 'Fentanyl 25–50 mcg IV slow push q1–2h PRN severe pain',
+  '腎功能差、血壓偏低時的鴉片類選擇。作用短（30–60 分鐘）。',
+  { cc: 'pain', mon: '呼吸、意識', adj: { elderly: '25 mcg 起', hepatic: '重複給會蓄積' } });
+rx('sennoside_opioid', 'pain', 'Sennoside（鴉片類的軟便）', 'Sennoside 12 mg 2 tab PO HS',
+  '開了鴉片類就一起開，便秘不會產生耐受性。',
+  { cc: 'constipation', ci: '腸阻塞' });
+
+/* ───────── 腸胃 ───────── */
+rx('ondansetron', 'gi', 'Ondansetron', 'Ondansetron 4 mg IV slow push q8h PRN nausea/vomiting',
+  '化療、術後、一般噁心嘔吐。',
+  { cc: 'nv', mon: 'QTc、便秘', ci: 'QT 延長、併用其他延長 QT 的藥', adj: { hepatic: '嚴重肝病一天 ≤8 mg' } });
+rx('metoclopramide', 'gi', 'Metoclopramide（Primperan）', 'Metoclopramide 10 mg IV slow push q8h PRN nausea/vomiting',
+  '胃排空差、偏頭痛合併噁心、打嗝。',
+  { cc: 'nv', mon: '錐體外症狀（急性肌張力異常可給 Diphenhydramine 30 mg IV）', ci: '腸阻塞、腸穿孔、消化道出血、Parkinson、pheochromocytoma',
+    adj: { r: 'CrCl <40 劑量減半', r30: '5 mg', hd: '5 mg', elderly: '5 mg，EPS 與譫妄風險高' },
+    alt: { r30: 'Metoclopramide 5 mg IV slow push q8h PRN nausea/vomiting', hd: 'Metoclopramide 5 mg IV slow push q8h PRN nausea/vomiting', elderly: 'Metoclopramide 5 mg IV slow push q8h PRN nausea/vomiting' } });
+rx('prochlorperazine', 'gi', 'Prochlorperazine（Novamin）', 'Prochlorperazine 5 mg IM q8h PRN nausea/vomiting',
+  '眩暈合併嘔吐、其他止吐藥無效。',
+  { cc: 'nv', mon: '錐體外症狀、低血壓、鎮靜', ci: 'Parkinson、QT 延長', adj: { elderly: '避免或減量（鎮靜、EPS）' } });
+rx('ppi_bolus', 'gi', 'Pantoprazole（Pantoloc）高劑量', 'Pantoprazole 80 mg IV bolus over 30 min, then 8 mg/h IVD for 72 h',
+  '疑上消化道出血，內視鏡前就開始。內視鏡後若為低風險病灶改 40 mg IV QD–BID。',
+  { cc: 'gib', adj: { hepatic: '嚴重肝病一天 ≤20–40 mg', r30: '不需調整' } });
+rx('ppi_iv', 'gi', 'Pantoprazole（Pantoloc）一般劑量', 'Pantoprazole 40 mg IV QD',
+  '禁食病人的潰瘍預防或治療、胃食道逆流。能口服就改口服。',
+  { cc: 'gib', adj: { r30: '不需調整' } });
+rx('terlipressin', 'gi', 'Terlipressin（Glypressin）', 'Terlipressin 2 mg IV push q4h until bleeding is controlled, then 1 mg q4h; total 2–5 days',
+  '疑食道或胃靜脈瘤出血：內視鏡前就給，同時開預防性抗生素。',
+  { cc: 'gib', mon: 'Na（低血鈉）、ECG、腹痛、四肢末梢', ci: '缺血性心臟病、周邊動脈疾病、心律不整；懷孕',
+    adj: { preg: '✕ 禁用', elderly: '缺血風險高，改 Octreotide 或 Somatostatin', hf: '缺血與容積負荷，考慮 Octreotide' } });
+rx('octreotide', 'gi', 'Octreotide（Sandostatin）', 'Octreotide 50 mcg IV bolus, then 50 mcg/h IVD for 2–5 days',
+  '靜脈瘤出血，Terlipressin 有禁忌時。',
+  { cc: 'gib', mon: '血糖、心跳' });
+rx('ceftriaxone_sbp', 'gi', 'Ceftriaxone（肝硬化出血預防感染）', 'Ceftriaxone 1 g IV q24h for 7 days',
+  '肝硬化合併消化道出血：預防性抗生素可降低死亡率。',
+  { cc: 'gib', adj: { r30: '不需調整', hd: '不需調整' } });
+rx('sennoside', 'gi', 'Sennoside', 'Sennoside 12 mg 2 tab PO HS',
+  '刺激性瀉劑，6–12 小時起效。',
+  { cc: 'constipation', ci: '腸阻塞、不明原因腹痛' });
+rx('mgo_lax', 'gi', 'MgO（軟便）', 'Magnesium oxide 250 mg 2 tab PO TID',
+  '滲透性軟便劑，溫和。',
+  { cc: 'constipation', adj: { r: '減量並追 Mg', r30: '✕ 高血鎂，改 Lactulose 或 Sennoside', hd: '✕ 高血鎂，改 Lactulose 或 Sennoside' } });
+rx('lactulose', 'gi', 'Lactulose', 'Lactulose 20 mL PO BID, titrate to 2–3 soft stools per day',
+  '腎功能差的病人首選的滲透性瀉劑；肝性腦病變 30 mL q6–8h。',
+  { cc: 'constipation', mon: '脹氣、腹瀉、K', adj: { r30: '首選', hepatic: '首選；腦病變 30 mL q6–8h' } });
+rx('bisacodyl_supp', 'gi', 'Bisacodyl 塞劑（Dulcolax）', 'Bisacodyl 10 mg suppository PR once',
+  '糞便卡在直腸、口服藥來不及。15–60 分鐘起效。',
+  { cc: 'constipation', ci: '腸阻塞、嗜中性球低下或血小板極低（避免肛門給藥）' });
+rx('glycerin_enema', 'gi', 'Glycerin 灌腸', 'Glycerin enema 1 pc PR once',
+  '先肛診確認不是糞石嵌塞需要挖便。',
+  { cc: 'constipation', ci: '嗜中性球低下、血小板極低、近期直腸手術' });
+rx('loperamide', 'gi', 'Loperamide（Imodium）', 'Loperamide 4 mg PO once, then 2 mg after each loose stool (max 16 mg per day)',
+  '確定不是感染性腹瀉（發燒、血便、近期抗生素要先排除 C. difficile）才用。',
+  { cc: 'diarrhea', ci: '血便、高燒、疑 C. difficile 或毒性巨結腸', adj: { hepatic: '減量', elderly: '注意腸阻塞' } });
+rx('smecta', 'gi', 'Dioctahedral smectite（Smecta）', 'Dioctahedral smectite 3 g PO TID',
+  '吸附性止瀉，安全。與其他口服藥間隔 2 小時。',
+  { cc: 'diarrhea' });
+rx('vanco_po', 'gi', 'Vancomycin 口服（C. difficile）', 'Vancomycin 125 mg PO QID for 10 days',
+  'C. difficile 感染的初次發作。猛爆性（低血壓、ileus、巨結腸）：500 mg PO QID＋Metronidazole 500 mg IV q8h。',
+  { cc: 'diarrhea', mon: '排便次數、腹脹、WBC、Cr', adj: { r30: '口服幾乎不吸收，不需調整' } });
+rx('buscopan', 'gi', 'Hyoscine butylbromide（Buscopan）', 'Hyoscine butylbromide 20 mg IV/IM q8h PRN colicky abdominal pain',
+  '腸絞痛、膽絞痛、腎絞痛。先排除外科急腹症再止痛。',
+  { cc: 'abdpain', ci: '青光眼、攝護腺肥大尿滯留、腸阻塞、心搏過速、重症肌無力', adj: { elderly: '尿滯留、譫妄、心跳快，盡量避免' } });
+rx('baclofen_hiccup', 'gi', 'Baclofen（頑固性打嗝）', 'Baclofen 5 mg PO TID',
+  '打嗝超過 48 小時、Metoclopramide 無效時。',
+  { cc: 'hiccup', mon: '嗜睡、無力', adj: { r: '5 mg BID', r30: '✕ 蓄積會意識不清，避免', hd: '✕ 禁用（腦病變）', elderly: '5 mg BID，跌倒風險' },
+    alt: { r: 'Baclofen 5 mg PO BID' } });
+rx('chlorpromazine_hiccup', 'gi', 'Chlorpromazine（Wintermin）', 'Chlorpromazine 25 mg PO TID PRN hiccups',
+  '唯一有打嗝適應症的藥。會低血壓、鎮靜。',
+  { cc: 'hiccup', mon: '血壓、QTc', adj: { elderly: '12.5 mg 起，注意姿勢性低血壓與譫妄', hepatic: '減量' } });
+
+/* ───────── 血糖 ───────── */
+rx('d50', 'endo', '50% Glucose', '50% glucose 40 mL (20 g) IV push; recheck finger sugar in 15 min, repeat if <70 mg/dL',
+  '低血糖合併意識不清或不能口服。50% glucose 20 mL/支，給 2 支。',
+  { cc: 'hypoglycemia', mon: '15 分鐘後血糖，之後 q1h 到穩定；注射部位（高張、外滲會壞死）' });
+rx('glucose_po', 'endo', '口服葡萄糖', 'Glucose 15–20 g PO (e.g. 150 mL juice or 3–4 glucose tablets); recheck finger sugar in 15 min, repeat if <70 mg/dL',
+  '清醒、能吞的低血糖。15 分鐘原則：吃 15 g、等 15 分鐘、再驗。回到 >70 後吃一份正餐或點心。',
+  { cc: 'hypoglycemia' });
+rx('glucagon', 'endo', 'Glucagon', 'Glucagon 1 mg IM/SC once',
+  '沒有 IV、不能口服時。10–15 分鐘起效；肝醣耗盡（酗酒、肝硬化、長期禁食）會無效。',
+  { cc: 'hypoglycemia', mon: '醒來後常會吐，側躺', adj: { hepatic: '可能無效，盡快建立 IV 給糖' } });
+rx('d10_drip', 'endo', 'D10W 持續滴注', 'D10W IVD at 80 mL/h; finger sugar q1h until stable >100 mg/dL, then q4h',
+  '反覆低血糖、磺醯尿素類或長效胰島素造成（作用可長達 24–72 小時）。',
+  { cc: 'hypoglycemia', mon: '血糖 q1h、Na', adj: { hf: '改 D20W 40 mL/h 走中央靜脈，減少水量', r30: '磺醯尿素類蓄積，低血糖會拖很久，至少觀察 24–48 小時', hd: '同左，並限制輸液量' } });
+rx('ri_sc_corr', 'endo', 'Regular insulin 校正劑量', 'Regular insulin SC with each finger sugar check (QID AC and HS, or q6h if NPO) per sliding scale: 200–249: 2 U, 250–299: 4 U, 300–349: 6 U, 350–399: 8 U, ≥400: 10 U and notify',
+  '沒有急症的高血糖。睡前劑量減半。單靠 sliding scale 不夠，隔天要調 basal。',
+  { cc: 'hyperglycemia', mon: '2–4 小時後複驗血糖',
+    adj: { r: '每一階減 2 U', r30: '每一階減半（胰島素清除變慢）', hd: '每一階減半', elderly: '每一階減 2 U，寧高勿低' },
+    alt: { r30: 'Regular insulin SC with each finger sugar check (QID AC and HS, or q6h if NPO) per reduced sliding scale: 250–299: 2 U, 300–349: 3 U, 350–399: 4 U, ≥400: 5 U and notify', hd: 'Regular insulin SC with each finger sugar check (QID AC and HS, or q6h if NPO) per reduced sliding scale: 250–299: 2 U, 300–349: 3 U, 350–399: 4 U, ≥400: 5 U and notify' } });
+rx('ri_drip_dka', 'endo', 'Regular insulin 滴注（DKA／HHS）', 'Regular insulin 50 U in N/S 50 mL (1 U/mL), 0.1 U/kg/h IVD; finger sugar q1h; when glucose <250 mg/dL, add D5W and reduce to 0.02–0.05 U/kg/h',
+  '先確認 K ≥3.3 才開始胰島素（<3.3 先補鉀）。目標每小時降 50–70 mg/dL。',
+  { cc: 'hyperglycemia', kg: { lo: 0.1, hi: 0.1, u: 'U/h' }, mon: '血糖 q1h；K、HCO3、anion gap q2–4h', adj: { r30: '速率減半起（0.05 U/kg/h）', hd: '速率減半起；輸液量要保守' } });
+rx('ns_dka', 'endo', 'N/S 補液（DKA／HHS）', 'N/S 1000 mL IVD over the first hour, then 250–500 mL/h according to hemodynamics and corrected Na',
+  'DKA／HHS 第一步是補水。校正鈉正常或偏高後改 0.45% NaCl。K <5.3 且有尿就在每升輸液加 KCl 20–30 mEq。',
+  { cc: 'hyperglycemia', mon: 'I/O、K q2–4h、肺部聽診', adj: { hf: '250–500 mL 分次給、頻繁評估', r30: '速率減半、頻繁評估', hd: '無尿者只需少量輸液，以胰島素為主' },
+    alt: { hf: 'N/S 500 mL IVD over the first hour, then reassess volume status before further fluids', hd: 'N/S 250 mL IVD over the first hour, then reassess volume status before further fluids' } });
+
+/* ───────── 過敏・輸血反應 ───────── */
+rx('diphenhydramine', 'allergy', 'Diphenhydramine（Vena）', 'Diphenhydramine 30 mg IV/IM once',
+  '蕁麻疹、搔癢、輕度過敏或輸血反應。只治皮膚症狀，不能取代 Epinephrine。',
+  { cc: 'allergy', mon: '鎮靜、尿滯留', adj: { elderly: '譫妄、尿滯留、跌倒，改第二代抗組織胺', hepatic: '減量' } });
+rx('levocetirizine', 'allergy', 'Levocetirizine（Xyzal）', 'Levocetirizine 5 mg PO HS',
+  '搔癢、蕁麻疹、藥物疹的口服首選，不太嗜睡。',
+  { cc: 'allergy', adj: { r: '5 mg QOD', r30: '5 mg 每 3 天一次', hd: '✕ 禁用，改 Fexofenadine 或 Loratadine' }, alt: { r: 'Levocetirizine 5 mg PO QOD HS', r30: 'Levocetirizine 5 mg PO every 3 days HS' } });
+rx('methylpred_allergy', 'allergy', 'Methylprednisolone', 'Methylprednisolone 40 mg IV once',
+  '嚴重過敏的輔助治療（起效要數小時，不是第一線），或廣泛性藥物疹。',
+  { cc: 'allergy', mon: '血糖' });
+rx('famotidine_iv', 'allergy', 'Famotidine IV', 'Famotidine 20 mg IV once',
+  '過敏性休克的輔助（H2 blocker）。',
+  { cc: 'allergy', adj: { r30: '10 mg', hd: '10 mg', elderly: '注意譫妄' }, alt: { r30: 'Famotidine 10 mg IV once', hd: 'Famotidine 10 mg IV once' } });
+rx('furosemide_taco', 'allergy', 'Furosemide（輸血造成的容積過多）', 'Furosemide 20–40 mg IV push once',
+  'TACO：輸血中或輸完 6 小時內喘、血壓高、頸靜脈怒張。先停輸血、坐起、給氧。',
+  { cc: 'txrxn', mon: '尿量、SpO2', adj: { r30: '40–80 mg', hd: '無尿者安排透析 UF' } });
+
+/* ───────── 出血・輸血・抗凝 ───────── */
+rx('prbc', 'heme', 'pRBC 輸血', 'Leukoreduced pRBC 2 U IV transfusion, each unit over 2–3 h; recheck Hb 1 h after transfusion',
+  'Hb <7 g/dL（心血管疾病、骨科術後 <8；ACS <8–10）。沒有在出血的病人一次輸 1 U 再評估。一單位約升 1 g/dL。',
+  { cc: 'anemia', mon: '輸血前、開始 15 分鐘、結束時量 vital signs', max: '每單位 4 小時內輸完',
+    adj: { hf: '一次 1 U、每單位 3–4 小時，兩袋之間給 Furosemide 20 mg IV', r30: '一次 1 U，注意 overload 與高血鉀', hd: '盡量安排在透析中輸；注意高血鉀', elderly: '一次 1 U、慢輸' },
+    alt: { hf: 'Leukoreduced pRBC 1 U IV transfusion over 3–4 h, furosemide 20 mg IV after the unit; recheck Hb 1 h after transfusion', r30: 'Leukoreduced pRBC 1 U IV transfusion over 3 h; recheck Hb and K after transfusion', hd: 'Leukoreduced pRBC 1 U IV transfusion over 3 h (during dialysis if possible); recheck Hb and K after transfusion' } });
+rx('plt', 'heme', '血小板輸注', 'Apheresis platelets 1 U (= 12 U random-donor) IV transfusion over 30–60 min; recheck platelet count 1 h after transfusion',
+  '門檻：<10k 預防性；<20k 合併發燒或感染；<50k 活動性出血或要做侵入性處置；<100k 神經外科或眼科手術。',
+  { cc: 'coag', ci: 'TTP、HIT 原則上不輸（會惡化血栓），除非危及生命的出血' });
+rx('ffp', 'heme', 'FFP', 'FFP 10–15 mL/kg (about 4 U) IVD, each unit over 30–60 min; recheck PT/INR after transfusion',
+  'INR >1.5 合併活動性出血或要做侵入性處置。只為了矯正數字不用輸。',
+  { cc: 'coag', kg: { lo: 10, hi: 15, u: 'mL' }, mon: '容積過多（TACO）、過敏', adj: { hf: '容積大（約 800–1000 mL），慢輸並給利尿劑；Warfarin 相關出血改 PCC' } });
+rx('vitk_iv', 'heme', 'Vitamin K1 靜脈', 'Vitamin K1 10 mg in N/S 50 mL IVD over 30 min once',
+  'Warfarin 相關的嚴重出血（同時給 PCC 或 FFP）。6–12 小時才開始有效。',
+  { cc: 'coag', mon: 'INR 6–12 小時後', ci: '快速推注可能過敏性休克，要慢滴' });
+rx('vitk_po', 'heme', 'Vitamin K1 口服', 'Vitamin K1 2.5 mg PO once; recheck INR in 24 h',
+  'INR >10 沒有出血。INR 4.5–10 沒有出血：停 1–2 劑 Warfarin 即可，不需要 vitamin K。',
+  { cc: 'coag' });
+rx('txa_bleed', 'heme', 'Tranexamic acid（出血）', 'Tranexamic acid 1 g in N/S 100 mL IVD over 10 min once',
+  '創傷、術後、黏膜出血的輔助。消化道出血沒有好處（HALT-IT），不建議常規使用。',
+  { cc: 'wound', ci: '活動性血栓、肉眼血尿、蜘蛛膜下腔出血', adj: { r: '後續劑量減半', r30: '只給一劑，蓄積會抽搐', hd: '只給一劑' } });
+rx('protamine', 'heme', 'Protamine', 'Protamine 1 mg per 100 U heparin given in the last 2–3 h (max 50 mg) IV slow push over 10 min',
+  'Heparin 相關的嚴重出血。Enoxaparin 8 小時內：每 1 mg 給 1 mg（只能逆轉約 60%）。',
+  { cc: 'coag', mon: '血壓、過敏（魚類過敏、用過 NPH insulin 者風險高）' });
+
+/* ───────── 抗生素 ───────── */
+rx('ceftriaxone', 'abx', 'Ceftriaxone（Rocephin）', 'Ceftriaxone 2 g IV q24h',
+  '社區型肺炎、泌尿道感染、腹內感染（加 Metronidazole）。腦膜炎 2 g q12h。',
+  { cc: 'fever', ci: '不可與含鈣輸液同一條線', adj: { r30: '不需調整', hd: '不需調整', hepatic: '合併嚴重肝腎功能不全時一天 ≤2 g' } });
+rx('cefepime', 'abx', 'Cefepime（Maxipime）', 'Cefepime 2 g IV q8h',
+  '院內感染、febrile neutropenia、要蓋 Pseudomonas 時。',
+  { cc: 'fever', mon: '意識（腎差時的神經毒性：譫妄、肌躍動、非抽搐性癲癇）',
+    adj: { r: 'CrCl 30–60：2 g q12h', r30: 'CrCl 11–29：2 g q24h；<11：1 g q24h', hd: '1 g q24h，透析日透析後給', elderly: '用 CrCl 算，不要只看 Cr' },
+    alt: { r: 'Cefepime 2 g IV q12h', r30: 'Cefepime 2 g IV q24h', hd: 'Cefepime 1 g IV q24h (after dialysis on dialysis days)' } });
+rx('piptazo', 'abx', 'Piperacillin-tazobactam（Tazocin）', 'Piperacillin-tazobactam 4.5 g IV q6h',
+  '院內肺炎、腹內感染、要蓋 Pseudomonas 與厭氧菌。',
+  { cc: 'fever', mon: 'Cr、K、血小板',
+    adj: { r: 'CrCl 20–40：3.375 g q6h', r30: 'CrCl <20：2.25 g q6h', hd: '2.25 g q8h，透析後補 0.75 g' },
+    alt: { r: 'Piperacillin-tazobactam 3.375 g IV q6h', r30: 'Piperacillin-tazobactam 2.25 g IV q6h', hd: 'Piperacillin-tazobactam 2.25 g IV q8h (supplement 0.75 g after dialysis)' } });
+rx('meropenem', 'abx', 'Meropenem（Mepem）', 'Meropenem 1 g IV q8h',
+  'ESBL、嚴重院內感染。會讓 Valproate 濃度掉到無效。',
+  { cc: 'fever', mon: '抽搐（腎差、中樞病變）',
+    adj: { r: 'CrCl 26–50：1 g q12h', r30: 'CrCl 10–25：0.5 g q12h；<10：0.5 g q24h', hd: '0.5 g q24h，透析日透析後給' },
+    alt: { r: 'Meropenem 1 g IV q12h', r30: 'Meropenem 0.5 g IV q12h', hd: 'Meropenem 0.5 g IV q24h (after dialysis on dialysis days)' } });
+rx('vancomycin', 'abx', 'Vancomycin', 'Vancomycin 25 mg/kg IV loading dose (max 3 g, infuse ≤1 g/h), then 15 mg/kg IV q12h; check level before the 4th dose',
+  'MRSA、CRBSI、嚴重皮膚軟組織感染。負荷劑量不因腎功能減少。',
+  { cc: 'fever', kg: { lo: 25, hi: 25, u: 'mg', max: 3000, t: '負荷劑量' }, mon: 'Cr 每 2–3 天、trough 或 AUC；滴太快會 red man syndrome',
+    adj: { r: '負荷照給；維持 15 mg/kg q24h，看濃度', r30: '負荷照給；之後看濃度（<15–20 mcg/mL）再給下一劑', hd: '負荷照給；之後透析前濃度 <20 才補 500–1000 mg（透析後給）', elderly: '維持劑量間隔拉長' },
+    alt: { r: 'Vancomycin 25 mg/kg IV loading dose (max 3 g, infuse ≤1 g/h), then 15 mg/kg IV q24h; check level before the 3rd dose', r30: 'Vancomycin 25 mg/kg IV loading dose (max 3 g, infuse ≤1 g/h) once; redose by level', hd: 'Vancomycin 25 mg/kg IV loading dose (max 3 g, infuse ≤1 g/h) once; redose after dialysis by pre-dialysis level' } });
+rx('levofloxacin', 'abx', 'Levofloxacin（Cravit）', 'Levofloxacin 750 mg IV/PO QD',
+  '肺炎（含非典型）、複雜性泌尿道感染。結核還沒排除前小心使用（會掩蓋並造成抗藥）。',
+  { cc: 'fever', mon: 'QTc、血糖、肌腱痛、譫妄', ci: 'QT 延長、重症肌無力、主動脈瘤',
+    adj: { r: 'CrCl 20–49：750 mg q48h', r30: 'CrCl <20：750 mg 一次，之後 500 mg q48h', hd: '750 mg 一次，之後 500 mg q48h', elderly: '譫妄、肌腱斷裂、低血糖風險', preg: '✕ 避免' },
+    alt: { r: 'Levofloxacin 750 mg IV/PO q48h', r30: 'Levofloxacin 750 mg IV/PO once, then 500 mg q48h', hd: 'Levofloxacin 750 mg IV/PO once, then 500 mg q48h' } });
+rx('augmentin_iv', 'abx', 'Amoxicillin-clavulanate（Augmentin）IV', 'Amoxicillin-clavulanate 1.2 g IV q8h',
+  '吸入性肺炎、社區型腹內或皮膚軟組織感染。',
+  { cc: 'fever', mon: '肝指數、腹瀉',
+    adj: { r30: 'CrCl 10–30：首劑 1.2 g，之後 600 mg q12h；<10：600 mg q24h', hd: '首劑 1.2 g，之後 600 mg q24h，透析後加 600 mg' },
+    alt: { r30: 'Amoxicillin-clavulanate 1.2 g IV once, then 600 mg IV q12h', hd: 'Amoxicillin-clavulanate 1.2 g IV once, then 600 mg IV q24h (extra 600 mg after dialysis)' } });
+rx('unasyn', 'abx', 'Ampicillin-sulbactam（Unasyn）', 'Ampicillin-sulbactam 3 g IV q6h',
+  '吸入性肺炎、頭頸部感染、糖尿病足。',
+  { cc: 'fever', adj: { r: 'CrCl 15–29：3 g q12h', r30: 'CrCl 15–29：3 g q12h；<15：3 g q24h', hd: '3 g q24h，透析日透析後給' },
+    alt: { r30: 'Ampicillin-sulbactam 3 g IV q12h', hd: 'Ampicillin-sulbactam 3 g IV q24h (after dialysis on dialysis days)' } });
+rx('cefazolin', 'abx', 'Cefazolin', 'Cefazolin 2 g IV q8h',
+  'MSSA 菌血症、蜂窩性組織炎。',
+  { cc: 'fever', adj: { r: 'CrCl 35–54：2 g q8h 不變', r30: 'CrCl 11–34：1 g q12h；≤10：1 g q24h', hd: '透析後 2 g（每週三次）或 1 g q24h' },
+    alt: { r30: 'Cefazolin 1 g IV q12h', hd: 'Cefazolin 2 g IV after each dialysis session' } });
+rx('metronidazole', 'abx', 'Metronidazole', 'Metronidazole 500 mg IV q8h',
+  '厭氧菌（腹內感染搭配 Ceftriaxone）、猛爆性 C. difficile 的輔助。',
+  { cc: 'fever', ci: '與酒精併用（disulfiram 反應）；Warfarin 會 INR 上升', adj: { hepatic: 'Child-Pugh C：500 mg q12h', r30: '不需調整', hd: '透析日透析後給' }, alt: { hepatic: 'Metronidazole 500 mg IV q12h' } });
+rx('oseltamivir', 'abx', 'Oseltamivir（Tamiflu）', 'Oseltamivir 75 mg PO BID for 5 days',
+  '流感：住院病人不論發病幾天都給。',
+  { cc: 'fever', adj: { r: 'CrCl 30–60：30 mg BID', r30: 'CrCl 10–30：30 mg QD', hd: '每次透析後 30 mg' },
+    alt: { r: 'Oseltamivir 30 mg PO BID for 5 days', r30: 'Oseltamivir 30 mg PO QD for 5 days', hd: 'Oseltamivir 30 mg PO after each dialysis session' } });
+
+/* ───────── 依病人條件算出這張醫囑 ─────────
+   st: { rn: '' | 'r' | 'r30' | 'hd', hepatic, hf, elderly, preg, wt }
+   回傳 { o 醫囑文字, changed 是否換成調整後的醫囑, x 禁用且沒有替代醫囑, notes [[狀態 key, 文字, 是否禁用]], kg 體重換算文字 } */
+const RX_RENAL = { r: ['r'], r30: ['r30', 'r'], hd: ['hd', 'r30', 'r'] };
+function rxStates(st) {
+  const a = [];
+  if (st && RX_RENAL[st.rn]) a.push(st.rn);
+  ['preg', 'hepatic', 'hf', 'elderly'].forEach(k => { if (st && st[k]) a.push(k); });
+  return a;
+}
+function rxNum(v) { return v >= 100 ? String(Math.round(v / 5) * 5) : v >= 10 ? String(Math.round(v)) : String(Math.round(v * 10) / 10); }
+function rxKg(x, wt) {
+  const w = parseFloat(wt), k = x.kg;
+  if (!k || !isFinite(w) || w < 20 || w > 250) return '';
+  const cap = v => k.max ? Math.min(v, k.max) : v;
+  const lo = cap(k.lo * w), hi = cap(k.hi * w);
+  return `${w} kg → ${k.t ? k.t + ' ' : ''}${lo === hi ? rxNum(lo) : rxNum(lo) + '–' + rxNum(hi)} ${k.u}${k.max && hi >= k.max ? '（已達上限）' : ''}`;
+}
+function rxEval(id, st) {
+  const x = RX[id]; if (!x) return null;
+  const adj = x.adj || {}, alt = x.alt || {}, notes = [];
+  let o = x.o, changed = false, bad = false;
+  rxStates(st).forEach(k => {
+    const lv = (RX_RENAL[k] || [k]).find(l => adj[l] || alt[l]);
+    if (!lv) return;
+    const isX = !!adj[lv] && adj[lv].startsWith('✕');
+    if (adj[lv]) notes.push([k, adj[lv].replace(/^✕\s*/, ''), isX]);
+    if (isX) bad = true;
+    if (alt[lv] && !changed) { o = alt[lv]; changed = true; }
+  });
+  return { o, changed, x: bad && !changed, notes, kg: rxKg(x, st && st.wt) };
+}
+/*hub-rx:end*/</script>
 <script>
 /* ===== 主訴內容庫 =====
    hx: ['!問題（! = 高價值）', 'English for note', '為什麼問']
@@ -911,8 +1525,13 @@ const PROTOS_RAW = [
   ['lab','U/A＋urine culture','U/A, urine culture'],
   ['img','CXR','CXR'],
   ['lab','Sputum Gram stain＋culture','Sputum Gram stain and culture'],
-  ['med','Acetaminophen 500 mg PO q6h PRN BT>38.5℃（每日 ≤4 g；肝病 ≤2 g）','Acetaminophen 500 mg PO q6h PRN for BT > 38.5°C'],
+  ['rx','apap_po','BT >38.5℃ 或不舒服'],
   ['med','Empirical antibiotics（依感染源與院內指引，先與學長姊確認）','Empirical antibiotics per suspected source'],
+  ['rx','sepsis_fluid','低血壓或 lactate ≥4'],
+  ['rx','ceftriaxone','社區型感染源（肺、泌尿道、腹內）'],
+  ['rx','piptazo','院內感染、要蓋 Pseudomonas 與厭氧菌'],
+  ['rx','cefepime','Febrile neutropenia'],
+  ['rx','vancomycin','疑 MRSA、CRBSI'],
   ['nurse','Vital signs q4h、記錄 I/O','Vital signs q4h, record I/O']],
  pearl:[
   '退燒藥治的是體溫，不是病因：先抽 culture、找感染源。',
@@ -961,7 +1580,10 @@ const PROTOS_RAW = [
   ['c','Measurement artifact','artifact 誤差 cuff 袖帶 量錯','病人看起來很好','手動複測、換袖帶']],
  ord:[
   ['nurse','手動複測 BP；vitals q15–30min 直到穩定','Recheck BP manually; vital signs q15-30min until stable'],
-  ['med','NS 或 LR 500 mL IV bolus（約 15 分鐘）後再評估；心衰／洗腎改 250 mL','N/S 500 mL IV bolus, then reassess'],
+  ['rx','ns_bolus','疑低血容'],
+  ['rx','norepi','輸液後 MAP 仍 <65（與學長姊確認）'],
+  ['rx','epi_im','疑過敏性休克'],
+  ['rx','hydrocort_shock','長期類固醇或升壓劑反應差'],
   ['med','暫停降壓藥與鎮靜劑','Hold antihypertensives and sedatives'],
   ['lab','CBC、BUN/Cr、Na/K、glucose','CBC, BUN/Cr, Na/K, glucose'],
   ['lab','Lactate、ABG／VBG','Lactate, ABG'],
@@ -1013,6 +1635,10 @@ const PROTOS_RAW = [
  ord:[
   ['nurse','休息 15–30 分鐘後複測 BP','Recheck BP after 15-30 min rest'],
   ['med','補給漏掉的常規降壓藥','Give scheduled antihypertensive if missed'],
+  ['rx','captopril','無器官損傷、可口服'],
+  ['rx','amlodipine','ACEI 有禁忌'],
+  ['rx','labetalol_iv','高血壓急症或禁食'],
+  ['rx','nicardipine_iv','高血壓急症、需持續滴注'],
   ['nurse','止痛（依原處方）、bladder scan，必要時導尿','Treat pain; bladder scan, catheterize if retention'],
   ['lab','有症狀才抽：BUN/Cr、U/A、troponin','BUN/Cr, U/A, troponin'],
   ['img','12-lead ECG（有胸痛或喘）','12-lead ECG'],
@@ -1066,13 +1692,15 @@ const PROTOS_RAW = [
   ['c','TACO / TRALI','taco trali 輸血 transfusion','輸血中或輸血後 6 小時內','停止輸血、CXR'],
   ['c','Metabolic acidosis compensation / anxiety','acidosis 酸中毒 dka anxiety 焦慮','Kussmaul 呼吸、SpO2 正常','ABG、anion gap']],
  ord:[
-  ['med','O2，titrate SpO2 92–96%（COPD 88–92%）','O2 supplement, titrate SpO2 to 92-96%'],
+  ['rx','o2','SpO2 <92%'],
   ['lab','ABG','ABG'],
   ['img','Portable CXR','Portable CXR'],
   ['img','12-lead ECG','12-lead ECG'],
   ['lab','CBC、BUN/Cr、Na/K、troponin、NT-proBNP','CBC, BUN/Cr, Na/K, troponin, NT-proBNP'],
-  ['med','Furosemide 20–40 mg IV（疑 fluid overload；長期使用者用原劑量以上）','Furosemide 20 mg IV stat for fluid overload'],
-  ['med','Salbutamol（Ventolin）nebulizer（有 wheeze）','Salbutamol nebulization for wheezing'],
+  ['rx','furosemide_iv','疑 fluid overload'],
+  ['rx','neb_saba','有 wheezing'],
+  ['rx','steroid_ae','氣喘／COPD 急性發作'],
+  ['rx','enoxaparin_tx','高度懷疑 PE、無禁忌（與學長姊確認）'],
   ['nurse','抽痰、半坐臥、持續監測 SpO2','Suction PRN, semi-Fowler position, continuous SpO2 monitoring'],
   ['img','CTPA（疑 PE，先與學長姊討論）','CTPA if pulmonary embolism suspected']],
  pearl:[
@@ -1124,8 +1752,10 @@ const PROTOS_RAW = [
   ['lab','Troponin 0 h 與 1–3 h（依院內流程）','Troponin at 0 h and 1-3 h'],
   ['lab','CBC、BUN/Cr、Na/K、PT/aPTT','CBC, BUN/Cr, Na/K, PT/aPTT'],
   ['img','CXR','CXR'],
-  ['med','Aspirin 162–325 mg 嚼服（疑 ACS；先排除剝離與出血）','Aspirin 300 mg chewed if ACS suspected and no contraindication'],
-  ['med','NTG 0.4–0.6 mg SL q5min ×3（SBP>90、無 PDE5i、非右心室梗塞）','NTG SL q5min x3 PRN chest pain if SBP > 90'],
+  ['rx','aspirin_load','疑 ACS，先排除剝離與出血'],
+  ['rx','ntg_sl','缺血性胸痛、SBP >90'],
+  ['rx','ntg_iv','持續胸痛或合併高血壓、肺水腫'],
+  ['rx','morphine_iv','NTG 後仍劇痛'],
   ['nurse','心電監視、臥床休息','Cardiac monitor, bed rest'],
   ['img','CT angiography（疑剝離或 PE，先與學長姊討論）','CT angiography if dissection or PE suspected']],
  pearl:[
@@ -1181,10 +1811,13 @@ const PROTOS_RAW = [
   ['lab','CBC、Na/K/Ca、BUN/Cr、GOT/GPT、NH3（肝病）','CBC, Na/K/Ca, BUN/Cr, GOT/GPT, NH3'],
   ['img','Brain CT without contrast（局部缺損、外傷、抗凝）','Brain CT without contrast'],
   ['lab','Blood culture、U/A（疑感染）','Blood culture x2 sets, U/A'],
-  ['med','Thiamine 100 mg IV（酗酒或營養不良；不要延誤給糖）','Thiamine 100 mg IV'],
-  ['med','Naloxone 0.04 mg IV 起，分次調整（疑 opioid）','Naloxone 0.04 mg IV, titrate to respiration'],
+  ['rx','thiamine','酗酒或營養不良（不要延誤給糖）'],
+  ['rx','d50','血糖 <70'],
+  ['rx','naloxone','疑鴉片類'],
+  ['rx','flumazenil','醫療給藥造成的 BZD 過度鎮靜'],
   ['nurse','Neuro check q1h、床欄、防跌、防吸入','Neuro check q1h, fall and aspiration precautions'],
-  ['med','Haloperidol 0.5–1 mg IV/IM PRN 嚴重躁動（老人低劑量；Parkinson、DLB 避免）','Haloperidol 0.5 mg IV PRN for severe agitation']],
+  ['rx','haloperidol','嚴重躁動、非藥物處置無效'],
+  ['rx','quetiapine','可口服；Parkinson、DLB 首選']],
  pearl:[
   '意識改變第一個動作：測血糖。第二個：看瞳孔與肢體。',
   '譫妄是急性腦衰竭：找誘因（藥物、感染、電解質、尿滯留、便秘、疼痛），不只是給安眠藥。',
@@ -1221,10 +1854,11 @@ const PROTOS_RAW = [
   ['c','Worsening renal function','renal 腎 aki ckd','Cr 上升','BUN/Cr'],
   ['c','Liver failure, alcohol, adrenal insufficiency','liver 肝 alcohol 酒 adrenal 腎上腺','病史','LFT、cortisol']],
  ord:[
-  ['med','50% Glucose 40 mL IV push（意識不清或 NPO）','50% glucose 40 mL IV push'],
-  ['med','口服葡萄糖 15–20 g（清醒可吞）','Oral glucose 15-20 g'],
+  ['rx','d50','意識不清或 NPO'],
+  ['rx','glucose_po','清醒、可吞'],
+  ['rx','glucagon','沒有 IV 也不能口服'],
   ['lab','15 分鐘後複測，之後 q1h ×4（SU 或長效胰島素再延長）','Recheck finger sugar in 15 min, then q1h x4'],
-  ['med','D10W 持續滴注，依血糖調速（反覆低血糖或 SU）','D10W continuous infusion, rate adjusted to sugar'],
+  ['rx','d10_drip','反覆低血糖、磺醯尿素類或長效胰島素'],
   ['med','暫停或調降下一劑胰島素／口服藥（與學長姊討論）','Hold or reduce next dose of insulin/oral hypoglycemic'],
   ['lab','BUN/Cr、GOT/GPT','BUN/Cr, GOT/GPT']],
  pearl:[
@@ -1265,8 +1899,9 @@ const PROTOS_RAW = [
   ['lab','重測 finger sugar 或靜脈血糖','Recheck blood sugar (venous)'],
   ['lab','Na/K、BUN/Cr、VBG、blood/urine ketone（>250 且有症狀）','Na/K, BUN/Cr, VBG, blood ketone'],
   ['lab','Serum osmolality（疑 HHS）','Serum osmolality'],
-  ['med','RI SC 依 sliding scale','Regular insulin SC per sliding scale'],
-  ['med','NS 補充（脫水）','N/S hydration'],
+  ['rx','ri_sc_corr','沒有 DKA／HHS'],
+  ['rx','ns_dka','疑 DKA／HHS：先補水'],
+  ['rx','ri_drip_dka','DKA／HHS：K ≥3.3 後開始'],
   ['nurse','血糖 AC＋HS（或 q4h）','Finger sugar AC and HS']],
  pearl:[
   '單次高血糖先問「有沒有症狀、有沒有 ketone」，比數字本身重要。',
@@ -1311,10 +1946,14 @@ const PROTOS_RAW = [
   ['nurse','心電監視','Cardiac monitor'],
   ['lab','CBC、Na/K、Mg、BUN/Cr、troponin','CBC, Na/K, Mg, BUN/Cr, troponin'],
   ['lab','TSH、free T4','TSH, free T4'],
-  ['med','Adenosine 6 mg rapid IV push＋20 mL NS flush（規則窄 QRS；無效再 12 mg）','Adenosine 6 mg rapid IV push for SVT'],
-  ['med','AF RVR 速率控制：diltiazem 或 β-blocker（低血壓、HFrEF 避免；與學長姊討論）','Rate control for AF with RVR'],
-  ['med','補 K（目標 ≥4）與 Mg（目標 ≥2）','Correct K >= 4 and Mg >= 2'],
-  ['med','輸液（若低容積）','IV fluid if hypovolemic']],
+  ['rx','adenosine','規則窄 QRS（SVT）'],
+  ['rx','diltiazem_iv','AF RVR、血壓穩、EF 正常'],
+  ['rx','amiodarone_iv','AF RVR 合併心衰竭，或穩定寬 QRS'],
+  ['rx','digoxin_iv','AF RVR 合併心衰竭或血壓偏低'],
+  ['rx','bisoprolol','血壓穩定後的口服控速'],
+  ['rx','kcl_po','K <4.0'],
+  ['rx','mgso4_iv','Mg <2.0'],
+  ['rx','ns_bolus','低容積']],
  pearl:[
   '竇性心搏過速是症狀不是診斷：找發燒、疼痛、低容積、出血、低血氧、PE。',
   '不穩定的心搏過速 → 電擊，不要先推藥。',
@@ -1357,7 +1996,8 @@ const PROTOS_RAW = [
   ['nurse','Bladder scan；Foley 沖洗或更換','Bladder scan; flush or change Foley'],
   ['lab','BUN/Cr、Na/K、VBG','BUN/Cr, Na/K, VBG'],
   ['lab','U/A＋urine Na、Cr（計算 FENa）','U/A, urine Na and Cr for FENa'],
-  ['med','Fluid challenge NS 250–500 mL（無 overload 時）後評估尿量','N/S 500 mL fluid challenge, then reassess urine output'],
+  ['rx','ns_bolus','沒有 overload：fluid challenge 後看尿量'],
+  ['rx','furosemide_iv','volume overload'],
   ['med','暫停腎毒性藥物、ACEi/ARB、NSAID','Hold nephrotoxic drugs, ACEi/ARB and NSAIDs'],
   ['img','Renal echo','Renal sonography'],
   ['nurse','嚴格 I/O、每日體重','Strict I/O, daily body weight']],
@@ -1406,11 +2046,14 @@ const PROTOS_RAW = [
   ['lab','CBC，之後 q6–8h 追蹤','CBC, follow up q6-8h'],
   ['lab','PT/INR、aPTT、BUN/Cr、Na/K、GOT/GPT','PT/INR, aPTT, BUN/Cr, Na/K, GOT/GPT'],
   ['lab','Type & cross match','Type and crossmatch'],
-  ['med','Pantoprazole 80 mg IV stat（之後依指示）','Pantoprazole 80 mg IV stat'],
-  ['med','pRBC 輸血門檻 Hb <7 g/dL（心血管疾病 <8）','Transfuse pRBC if Hb < 7 g/dL'],
+  ['rx','ppi_bolus','疑上消化道出血'],
+  ['rx','prbc','Hb <7（心血管疾病 <8）；大量出血不等數字'],
   ['nurse','NPO、vitals q15min–1h','NPO, vital signs q1h'],
   ['med','暫停抗凝、抗血小板、NSAID（與學長姊討論）','Hold anticoagulants, antiplatelets and NSAIDs'],
-  ['med','疑靜脈瘤：terlipressin 或 octreotide＋ceftriaxone 1 g IV q24h','Vasoactive agent and ceftriaxone 1 g IV q24h for suspected variceal bleeding'],
+  ['rx','terlipressin','疑靜脈瘤出血'],
+  ['rx','octreotide','疑靜脈瘤出血、Terlipressin 有禁忌'],
+  ['rx','ceftriaxone_sbp','肝硬化合併出血'],
+  ['rx','vitk_iv','使用 Warfarin 且 INR 高（同時給 PCC／FFP）'],
   ['consult','會診腸胃科安排內視鏡','Consult GI for endoscopy']],
  pearl:[
   'BUN/Cr >30 傾向上消化道出血（血液被吸收）。',
@@ -1496,11 +2139,14 @@ const PROTOS_RAW = [
  ord:[
   ['img','12-lead ECG stat＋心電監視','12-lead ECG stat, cardiac monitor'],
   ['lab','重抽 K（避免溶血）、BUN/Cr、VBG、glucose','Repeat K (non-hemolyzed), BUN/Cr, VBG, glucose'],
-  ['med','10% Calcium gluconate 10 mL IV 緩推 2–3 分鐘（ECG 有變化）','10% calcium gluconate 10 mL IV over 3 min'],
-  ['med','RI 10 U IV＋50% glucose 50 mL（腎衰竭可用 RI 5 U）；之後血糖 q1h','Regular insulin 10 U IV with 50% glucose 50 mL; finger sugar q1h'],
-  ['med','Salbutamol nebulizer 10–20 mg','Salbutamol 10-20 mg nebulization'],
+  ['rx','ca_hyperk','ECG 有變化或 K ≥6.5'],
+  ['rx','ri_hyperk','K ≥6.0 或 ECG 有變化'],
+  ['rx','salb_hyperk','與胰島素併用'],
   ['med','ECG 仍異常：10% Calcium gluconate 再給一劑（心跳慢先補鈣，atropine 常無效）','Repeat 10% calcium gluconate if ECG changes persist'],
-  ['med','Kalimate 15 g PO TID（非急救藥；意識差勿 PO）（或 Lokelma 10 g PO TID，最多 48 小時）','Calcium polystyrene sulfonate 15 g PO TID'],
+  ['rx','kalimate','把鉀排出體外（非急救）'],
+  ['rx','lokelma','把鉀排出體外，比 Kalimate 快'],
+  ['rx','bicarb','合併代謝性酸中毒 pH <7.2'],
+  ['rx','furosemide_iv','還有尿、沒有脫水'],
   ['med','停 K 補充、ACEi/ARB、MRA','Hold potassium supplements, ACEi/ARB and MRA'],
   ['consult','會診腎臟科（考慮緊急透析）','Consult nephrology for possible dialysis']],
  pearl:[
@@ -1562,6 +2208,8 @@ const PROTOS_RAW = [
   ['img','Abdominal echo 或 CT（依懷疑診斷）','Abdominal sonography or CT'],
   ['nurse','NPO（疑急腹症）','NPO'],
   ['med','止痛（acetaminophen，或適量 opioid）','Analgesia as needed'],
+  ['rx','apap_iv','止痛（不會掩蓋腹部徵象）'],
+  ['rx','buscopan','絞痛、已排除外科急腹症'],
   ['consult','會診一般外科（腹膜炎徵象或阻塞）','Consult general surgery']],
  pearl:[
   '給止痛不會掩蓋急腹症，反而讓理學檢查更準。',
@@ -1618,8 +2266,9 @@ PROTOS_RAW.push(
   ['lab','CBC、PT/INR、aPTT、BUN/Cr、Na、glucose','CBC, PT/INR, aPTT, BUN/Cr, Na, glucose'],
   ['lab','ESR、CRP（>50 歲疑 GCA）','ESR, CRP'],
   ['lab','Blood culture ×2（疑腦膜炎，抗生素前）','Blood culture x2 sets'],
-  ['med','Acetaminophen 500–1000 mg PO q6h PRN（每日 ≤4 g；肝病 ≤2 g）','Acetaminophen 500 mg PO q6h PRN for headache'],
-  ['med','Metoclopramide 10 mg IV（偏頭痛合併噁心；注意錐體外症狀）','Metoclopramide 10 mg IV for migraine with nausea'],
+  ['rx','apap_po','一般頭痛'],
+  ['rx','metoclopramide','偏頭痛合併噁心'],
+  ['rx','mannitol','腦疝徵象（先通知學長姊）'],
   ['med','疑腦膜炎：不要等 LP，抽完 culture 就給 empirical antibiotics＋dexamethasone（與學長姊確認）','Empirical antibiotics and dexamethasone if meningitis suspected'],
   ['nurse','Neuro check q1–2h、血壓監測','Neuro check q2h, BP monitoring'],
   ['note','避免常規給 opioid 治頭痛','Avoid routine opioids for headache']],
@@ -1733,8 +2382,9 @@ PROTOS_RAW.push(
   ['lab','Urine hCG（育齡女性）','Urine hCG'],
   ['img','12-lead ECG（糖尿病、老人、心血管危險因子）','12-lead ECG'],
   ['img','KUB（疑阻塞）','KUB'],
-  ['med','Ondansetron 4 mg IV q8h PRN（注意 QTc）','Ondansetron 4 mg IV q8h PRN'],
-  ['med','Metoclopramide 10 mg IV q8h PRN（疑腸阻塞、Parkinson 禁用）','Metoclopramide 10 mg IV q8h PRN'],
+  ['rx','ondansetron','第一線'],
+  ['rx','metoclopramide','胃排空差；疑腸阻塞不要給'],
+  ['rx','prochlorperazine','眩暈合併嘔吐或其他藥無效'],
   ['med','補液與補 K（依電解質）','IV hydration and potassium replacement as indicated']],
  pearl:[
   '止吐之前先問：會不會是阻塞、心肌梗塞、DKA、顱內病灶？',
@@ -1785,6 +2435,10 @@ PROTOS_RAW.push(
   ['lab','Lactate（腹痛明顯或血便）','Lactate'],
   ['med','停軟便劑、檢視造成腹瀉的藥','Hold laxatives; review diarrhea-causing medications'],
   ['med','補液與補 K','IV hydration and potassium replacement'],
+  ['rx','smecta','症狀治療'],
+  ['rx','loperamide','已排除感染性腹瀉與 C. difficile'],
+  ['rx','vanco_po','C. difficile 陽性'],
+  ['rx','kcl_po','K <3.5'],
   ['nurse','管灌改慢或換配方（與營養師討論）','Adjust enteral feeding rate or formula'],
   ['img','KUB（腹脹、疑嵌塞或巨結腸）','KUB'],
   ['note','C. diff 未排除前不要用 loperamide','Avoid antimotility agents until C. difficile excluded']],
@@ -1841,7 +2495,8 @@ PROTOS_RAW.push(
   ['lab','NT-proBNP（疑心衰竭）','NT-proBNP'],
   ['img','CXR（喘或疑心衰竭）','CXR'],
   ['nurse','抬高下肢、每日體重、嚴格 I/O','Leg elevation, daily body weight, strict I/O'],
-  ['med','Furosemide 20–40 mg IV（確定 volume overload 後）','Furosemide 20 mg IV for volume overload'],
+  ['rx','furosemide_iv','確定 volume overload'],
+  ['rx','enoxaparin_tx','DVT 確診或高度懷疑、無禁忌（與學長姊確認）'],
   ['consult','疑腔室症候群：立即會診骨科','Urgent orthopedic consultation if compartment syndrome suspected']],
  pearl:[
   '先分單側或雙側：單側是局部問題（DVT、感染），雙側是全身問題（心、腎、肝、藥）。',
@@ -1997,8 +2652,13 @@ PROTOS_RAW.push(
   ['c','Seizure mimic (convulsive syncope, PNES)','syncope 暈厥 convulsive pnes 心因性 mimic','暈前前驅症狀、抽動短暫、很快清醒','ECG、病史；疑 PNES 需 EEG']],
  ord:[
   ['lab','Finger sugar stat','Finger sugar stat'],
-  ['med','≥5 分鐘：Lorazepam 4 mg IV（約 0.1 mg/kg），5 分鐘後可重複一次；沒有 IV 可用 midazolam 10 mg IM','Lorazepam 4 mg IV for seizure ≥ 5 min, may repeat once'],
-  ['med','第二線（benzodiazepine 後仍抽）：Levetiracetam 60 mg/kg IV（上限 4500 mg）等，與學長姊確認','Levetiracetam 60 mg/kg IV (max 4500 mg) as second-line'],
+  ['rx','lorazepam_sz','抽搐 ≥5 分鐘'],
+  ['rx','midazolam_im','沒有 IV'],
+  ['rx','d50','血糖 <70'],
+  ['rx','thiamine','酗酒或營養不良'],
+  ['rx','levetiracetam_load','第二線：BZD 後仍抽（與學長姊確認）'],
+  ['rx','valproate_load','第二線的另一選擇'],
+  ['rx','phenytoin_load','第二線的另一選擇'],
   ['nurse','給氧、抽吸、側躺、監視器','O2, suction, lateral position, monitor'],
   ['lab','Na、Ca、Mg、BUN/Cr、CBC、ABG／VBG','Na, Ca, Mg, BUN/Cr, CBC, ABG'],
   ['lab','抗癲癇藥濃度（有在吃）','Antiseizure drug level'],
@@ -2051,6 +2711,8 @@ PROTOS_RAW.push(
   ['med','處理造成失眠的症狀：止痛、止咳、調整利尿劑到早上','Treat symptoms; move diuretics to morning'],
   ['med','類固醇改早上給（與學長姊討論）','Give steroids in the morning'],
   ['med','真的需要藥物：先與學長姊討論；老人避免 benzodiazepine 與 diphenhydramine','Discuss hypnotic with senior; avoid benzodiazepines and diphenhydramine in elderly'],
+  ['rx','trazodone','非藥物處置無效'],
+  ['rx','zolpidem','平常就在吃的病人'],
   ['med','疑戒斷：依 CIWA-Ar 流程（與學長姊確認）','CIWA-Ar guided management if withdrawal suspected'],
   ['nurse','防跌（使用安眠藥後）','Fall precautions after hypnotics'],
   ['note','記錄睡眠情形與用藥反應','Document sleep pattern and response']],
@@ -2101,11 +2763,15 @@ PROTOS_RAW.push(
   ['c','Opioid-induced hyperalgesia','hyperalgesia 痛覺過敏 oih','opioid 越加越痛、範圍擴大','臨床診斷'],
   ['c','Anxiety, delirium or distress','anxiety 焦慮 delirium 譫妄 distress','混亂、焦慮、失眠','CAM、會談']],
  ord:[
-  ['med','Acetaminophen 1 g PO/IV q6h 定時（每日 ≤4 g；肝病、酗酒、體重 <50 kg ≤2–3 g）','Acetaminophen 1 g q6h scheduled'],
+  ['rx','apap_po','第一階：可口服'],
+  ['rx','apap_iv','第一階：禁食'],
   ['med','NSAID（無腎衰、出血、消化道潰瘍、抗凝時），例：ibuprofen 400 mg PO q8h','NSAID if no contraindication'],
-  ['med','Morphine 2–4 mg IV q3–4h PRN 中重度疼痛（腎衰竭改用其他 opioid，與學長姊確認）','Morphine 2 mg IV q4h PRN for severe pain'],
-  ['med','使用 opioid 時加軟便劑（如 sennoside）','Add bowel regimen with opioids'],
-  ['med','Naloxone 0.04 mg IV PRN（呼吸抑制）','Naloxone 0.04 mg IV PRN for respiratory depression'],
+  ['rx','ketorolac','第一階加強：無腎衰、出血、潰瘍'],
+  ['rx','tramadol','第二階：中度疼痛'],
+  ['rx','morphine_iv','第三階：中重度疼痛'],
+  ['rx','fentanyl_prn','第三階：腎功能差或血壓偏低'],
+  ['rx','sennoside_opioid','開了鴉片類就一起開'],
+  ['rx','naloxone','呼吸抑制'],
   ['nurse','給藥後 30–60 分鐘再評估疼痛與鎮靜程度','Reassess pain and sedation 30-60 min after dosing'],
   ['nurse','非藥物：擺位、冰敷或熱敷、固定傷口','Non-pharmacologic measures'],
   ['consult','疼痛難控制：會診疼痛科或安寧團隊','Consult pain service']],
@@ -2208,8 +2874,9 @@ PROTOS_RAW.push(
  ord:[
   ['img','12-lead ECG stat','12-lead ECG stat'],
   ['nurse','心電監視；備好經皮心律調節','Cardiac monitor; transcutaneous pacing pads on standby'],
-  ['med','有症狀：Atropine 1 mg IV q3–5min（總量 ≤3 mg）','Atropine 1 mg IV q3-5min, max 3 mg'],
-  ['med','Atropine 無效：dopamine 5–20 mcg/kg/min 或 epinephrine 2–10 mcg/min，並經皮心律調節','Dopamine or epinephrine infusion and transcutaneous pacing if refractory'],
+  ['rx','atropine','有症狀'],
+  ['rx','dopamine','Atropine 無效，同時準備經皮節律器'],
+  ['rx','epi_drip','Atropine 無效，同時準備經皮節律器'],
   ['lab','Na/K、Mg、Ca、BUN/Cr、troponin','Na/K, Mg, Ca, BUN/Cr, troponin'],
   ['lab','Digoxin level（有在用）、TSH','Digoxin level, TSH'],
   ['med','暫停 β-blocker、CCB、digoxin 等減慢心跳的藥','Hold rate-slowing medications'],
@@ -2261,7 +2928,8 @@ PROTOS_RAW.push(
   ['lab','重抽 Na、glucose、serum osm','Repeat Na, glucose, serum osmolality'],
   ['lab','Urine osm、urine Na、urine K（給 NS 前送）','Urine osm, urine Na, urine K'],
   ['lab','BUN/Cr、K、uric acid、TSH、random cortisol','BUN/Cr, K, uric acid, TSH, random cortisol'],
-  ['med','嚴重症狀：3% saline 100–150 mL IV 10–20 分鐘，可重複 2–3 次，目標先升 4–6 mEq/L（與學長姊確認）','3% saline 100-150 mL IV bolus for severe symptoms'],
+  ['rx','nacl3','抽搐、昏迷等嚴重症狀（與學長姊確認）'],
+  ['rx','ddavp_rescue','矯正過快（與學長姊確認）'],
   ['lab','治療中 Na q2–4h 追蹤','Na q2-4h during correction'],
   ['note','24 小時上升不超過 8–10 mEq/L（高風險病人 ≤8）','Limit correction to ≤ 8-10 mEq/L per 24 h'],
   ['med','停 thiazide 與可疑藥物、停低張輸液','Hold thiazides, offending drugs and hypotonic fluids'],
@@ -2272,6 +2940,1200 @@ PROTOS_RAW.push(
   '嚴重症狀先用 3% saline 快速升 4–6 mEq/L，症狀改善後就放慢。',
   '矯正太快會造成滲透壓性去髓鞘（ODS）；酗酒、營養不良、低血鉀、肝病者風險更高。',
   'SIADH 病人給 NS 可能讓 Na 更低；尿液滲透壓比血漿高時要特別小心。']}
+);
+
+/* ===== v1.5：檢驗異常、事件與其他值班常見主訴（沒有貝氏資料的主訴，鑑別診斷步驟用清單呈現） ===== */
+PROTOS_RAW.push(
+{id:'hypok', zh:'低血鉀', en:'Hypokalemia', alias:'hypokalemia 低血鉀 低鉀 k low 鉀低 potassium 補鉀 鉀離子',
+ call:[
+  'K <2.5 mEq/L，或任何數值合併心律不整、肌肉無力、呼吸費力',
+  'ECG 有變化：U wave、ST 下降、QT（QU）延長、頻發 PVC',
+  '使用 digoxin、近期心肌梗塞、QT 延長的病人 K <3.5',
+  '補了兩輪以上血鉀仍上不來'],
+ now:[
+  '確認檢體：溶血不會造成低血鉀，但白血球極高（>100k）放太久會假性偏低',
+  '12-lead ECG；K <3.0 或有心臟病史上 monitor',
+  '同時加驗 Mg：低血鎂沒補，鉀怎麼補都補不上來',
+  '看現在的醫囑：利尿劑、胰島素、支氣管擴張劑、含糖輸液、瀉劑',
+  '確認尿量與腎功能再決定補多少'],
+ hx:[
+  ['!肌肉無力、抽筋、麻痺','muscle weakness or cramps','嚴重低血鉀；由下肢往上'],
+  ['!心悸、胸悶','palpitations','心律不整'],
+  ['!嘔吐、腹瀉、NG 引流量','vomiting, diarrhea, NG drainage','腸胃道流失（嘔吐其實是經腎流失）'],
+  ['!利尿劑、類固醇、瀉劑、amphotericin','diuretics, steroids, laxatives','最常見的原因是藥物'],
+  ['進食量、是否 NPO 只打點滴','poor intake or NPO','攝取不足加上輸液稀釋'],
+  ['剛開始胰島素、TPN 或恢復進食','insulin, TPN or refeeding','往細胞內移；refeeding syndrome'],
+  ['便秘、腹脹','constipation, abdominal distension','低血鉀造成 ileus'],
+  ['多尿、夜尿','polyuria','腎性流失、低血鉀腎病變']],
+ pe:[
+  ['!肌力（下肢近端）','Muscle power','muscle power 5/5 in all limbs'],
+  ['!心律','Heart rhythm','regular heart beat'],
+  ['呼吸型態（呼吸肌無力）','Respiratory effort','no shallow breathing'],
+  ['!腹部（腸音、脹氣）','Abdomen','soft, normoactive bowel sounds'],
+  ['體液狀態','Volume status','euvolemic'],
+  ['深部肌腱反射','Deep tendon reflexes','DTR 2+ symmetric']],
+ ddx:[
+  ['m','Hypokalemia with arrhythmia or paralysis','arrhythmia 心律不整 paralysis 麻痺 嚴重 severe','K <2.5、ECG 變化、肌無力','12-lead ECG、monitor'],
+  ['m','Concurrent hypomagnesemia','magnesium 鎂 hypomagnesemia mg','補鉀無效、QT 延長、酗酒、利尿劑','Mg'],
+  ['c','GI loss (vomiting, diarrhea, NG drainage)','gi 腸胃 腹瀉 嘔吐 diarrhea vomiting ng','嘔吐、腹瀉、引流量大','病史、urine K <20 mEq/day'],
+  ['c','Renal loss (diuretics, steroid, hyperaldosteronism)','renal 腎 利尿 diuretic steroid aldosterone','利尿劑、高血壓合併低血鉀','spot urine K/Cr >13 mEq/g、TTKG'],
+  ['c','Transcellular shift (insulin, β-agonist, alkalosis, refeeding)','shift 轉移 insulin 胰島素 refeeding alkalosis 鹼','剛給胰島素、支氣管擴張劑、恢復進食','血糖、ABG、P、Mg'],
+  ['c','Poor intake with IV fluid dilution','intake 攝取 npo 稀釋','NPO、只打不含鉀的輸液','回顧輸液與飲食']],
+ ord:[
+  ['lab','複驗 K，加驗 Mg、Cr、血糖','Repeat K; check Mg, Cr and glucose'],
+  ['img','12-lead ECG','12-lead ECG'],
+  ['lab','Spot urine K、Cr（原因不明時）','Spot urine K and creatinine'],
+  ['lab','ABG 或 VBG（疑酸鹼異常）','Blood gas'],
+  ['rx','kcl_po','K 3.0–3.4、可進食'],
+  ['rx','kcl_iv','K <3.0、有症狀或無法口服'],
+  ['rx','kcl_cvc','K <2.5 或心律不整（與學長姊確認）'],
+  ['rx','mgso4_iv','Mg <1.8 或補鉀補不上來'],
+  ['med','檢視並暫停造成低血鉀的藥（利尿劑、瀉劑）；維持輸液加 KCl 20 mEq/L','Review potassium-wasting drugs; add KCl 20 mEq/L to maintenance fluid'],
+  ['nurse','K <3.0：ECG monitor；記錄 I/O','ECG monitoring if K < 3.0; record I/O']],
+ pearl:[
+  '血鉀每降 0.3 mEq/L，全身大約缺 100 mEq；補一次 20 mEq 不會馬上正常，要排追蹤。',
+  '先補鎂再補鉀：低血鎂會讓腎臟一直漏鉀。',
+  '不要把 KCl 加在含糖輸液裡，胰島素分泌會讓血鉀再往下掉。',
+  '腎功能差或尿少的病人，補鉀每一劑都要先看上一次的數字。',
+  'DKA 的病人血鉀正常其實是缺鉀：K <3.3 先補鉀再給胰島素。']},
+
+{id:'hyperna', zh:'高血鈉', en:'Hypernatremia', alias:'hypernatremia 高血鈉 鈉高 na high 高鈉 脫水 dehydration',
+ call:[
+  'Na ≥160 mEq/L，或合併意識改變、抽搐',
+  '尿量很大（>250 mL/h）且尿很稀 → 疑尿崩症',
+  '合併低血壓、休克',
+  '48 小時內快速上升的急性高血鈉'],
+ now:[
+  '看意識與生命徵象；低血壓先用 N/S 補容積，再處理鈉',
+  '回顧 I/O：沒喝水、管灌沒加水、腹瀉、發燒、利尿劑、高滲輸液',
+  '算自由水缺乏量：0.6（女性、老人 0.5）× 體重 ×（Na/140 − 1）',
+  '確認病人能不能自己喝水、口渴感還在不在'],
+ hx:[
+  ['!喝水量、管灌有沒有加水','water intake, free water with tube feeding','最常見：喝不到水的老人'],
+  ['!多尿、夜尿、口渴','polyuria, thirst','尿崩症、滲透性利尿'],
+  ['!腹瀉、嘔吐、發燒、流汗','diarrhea, vomiting, fever','低張液流失'],
+  ['利尿劑、mannitol、lithium','diuretics, mannitol, lithium','藥物造成的失水'],
+  ['高血糖、高蛋白管灌','hyperglycemia, high-protein feeding','滲透性利尿'],
+  ['是否給過 3% NaCl、bicarbonate、大量 N/S','hypertonic saline or bicarbonate given','醫源性鈉負荷'],
+  ['意識變化從什麼時候開始','onset of mental change','判斷急性或慢性'],
+  ['腦部手術、頭部外傷、腦腫瘤','neurosurgery or head trauma','中樞性尿崩症']],
+ pe:[
+  ['!意識狀態','Mental status','alert and oriented'],
+  ['!體液狀態（黏膜、皮膚、姿勢性血壓）','Volume status','moist mucosa, normal skin turgor'],
+  ['體重變化','Body weight change','no significant weight change'],
+  ['!尿量與尿色','Urine output','adequate urine output'],
+  ['神經學（抽搐、肌張力）','Neurologic','no focal deficit, no seizure']],
+ ddx:[
+  ['m','Diabetes insipidus (central or nephrogenic)','di insipidus 尿崩 lithium','多尿、尿稀（Uosm <300）、腦部病變或 lithium','Urine osm、對 desmopressin 的反應'],
+  ['m','Hypovolemic shock with hypernatremia','shock 休克 hypovolemic 低血容','低血壓、心跳快、尿少','先補容積'],
+  ['c','Inadequate free water intake','intake 攝取 喝水 dehydration 脫水 dementia','老人、失智、管灌、口渴感差','Uosm >600、尿少'],
+  ['c','GI or insensible loss','gi 腹瀉 fever 發燒 insensible','腹瀉、發燒、呼吸快','病史、Uosm 高'],
+  ['c','Osmotic diuresis (hyperglycemia, mannitol, urea)','osmotic 滲透 hyperglycemia 高血糖 mannitol','高血糖、高蛋白管灌、尿量大','血糖、Uosm 300–600'],
+  ['c','Iatrogenic sodium load','iatrogenic 醫源 hypertonic bicarbonate','給過高張鹽水或 bicarbonate','回顧輸液']],
+ ord:[
+  ['lab','複驗 Na、K、BUN/Cr、血糖、serum osmolality','Repeat Na, K, BUN/Cr, glucose, serum osmolality'],
+  ['lab','Urine osmolality、urine Na','Urine osmolality and urine Na'],
+  ['rx','water_ng','腸道可用'],
+  ['rx','d5w_hyperna','不能用腸道，或缺水量大'],
+  ['rx','ns_bolus','低血壓：先補容積'],
+  ['med','停掉造成失水或鈉負荷的藥與輸液','Hold offending drugs and hypertonic or sodium-rich fluids'],
+  ['lab','Na q4–6h 追蹤','Na q4-6h'],
+  ['nurse','嚴格記錄 I/O、每日體重','Strict I/O and daily body weight'],
+  ['consult','疑尿崩症：通知學長姊，討論 desmopressin','Discuss desmopressin if diabetes insipidus suspected']],
+ pearl:[
+  '住院中的高血鈉幾乎都是「水給得不夠」，不是鹽太多：先看 I/O。',
+  '慢性高血鈉降太快會腦水腫：一天降 ≤10–12 mEq/L。',
+  '補水量要加上還在流失的量（尿、腹瀉、發燒），只補缺水量會越補越高。',
+  'D5W 滴太快會高血糖，血糖高又造成滲透性利尿：追血糖。']},
+
+{id:'hypoca', zh:'低血鈣', en:'Hypocalcemia', alias:'hypocalcemia 低血鈣 鈣低 ca low 低鈣 抽筋 tetany',
+ call:[
+  '抽搐、喉痙攣（喘鳴）、tetany',
+  'QT 延長或心律不整',
+  '校正鈣 <7.5 mg/dL 或 ionized Ca <0.9 mmol/L',
+  '甲狀腺或副甲狀腺手術後出現嘴麻、手麻'],
+ now:[
+  '先用 albumin 校正：校正鈣 = 測得 Ca + 0.8 ×（4 − albumin）；可以的話直接驗 ionized Ca',
+  '12-lead ECG 看 QTc',
+  '問嘴唇周圍、手腳麻不麻；做 Chvostek、Trousseau',
+  '加驗 Mg、P、Cr：低血鎂會讓副甲狀腺素分泌不出來'],
+ hx:[
+  ['!嘴唇周圍、手腳麻','perioral or acral numbness','最早出現的症狀'],
+  ['!手腳抽筋、僵硬','muscle cramps or carpopedal spasm','神經肌肉興奮'],
+  ['!頸部手術（甲狀腺、副甲狀腺）','neck surgery','副甲狀腺功能低下、hungry bone'],
+  ['慢性腎臟病、洗腎','CKD or dialysis','高血磷、活性維生素 D 不足'],
+  ['大量輸血','massive transfusion','citrate 結合鈣'],
+  ['!胰臟炎、敗血症、橫紋肌溶解','pancreatitis, sepsis, rhabdomyolysis','鈣沉積或重症'],
+  ['bisphosphonate、denosumab、foscarnet、cinacalcet','bisphosphonate or denosumab','藥物造成'],
+  ['酗酒、營養不良、吸收不良','alcohol use, malnutrition','低血鎂、維生素 D 缺乏']],
+ pe:[
+  ['!Chvostek sign（敲顏面神經）','Chvostek sign','negative'],
+  ['!Trousseau sign（袖帶充氣 3 分鐘）','Trousseau sign','negative'],
+  ['呼吸道（喘鳴）','Airway','no stridor'],
+  ['!心律','Heart rhythm','regular heart beat'],
+  ['頸部傷口','Neck wound','clean, no hematoma'],
+  ['意識與抽搐','Mental status','alert, no seizure']],
+ ddx:[
+  ['m','Symptomatic hypocalcemia (tetany, laryngospasm, seizure, long QT)','tetany 抽搐 laryngospasm 喉痙攣 qt symptomatic','麻、抽筋、QT 延長','ionized Ca、ECG'],
+  ['m','Post-surgical hypoparathyroidism / hungry bone syndrome','parathyroid 副甲狀腺 thyroidectomy hungry bone 術後','頸部手術後 1–3 天','iPTH、P、Mg'],
+  ['c','Hypoalbuminemia (pseudo-hypocalcemia)','albumin 白蛋白 pseudo 假性','albumin 低、沒有症狀','校正鈣或 ionized Ca'],
+  ['c','Hypomagnesemia','magnesium 鎂 mg','酗酒、利尿劑、PPI、腹瀉','Mg'],
+  ['c','CKD with hyperphosphatemia / vitamin D deficiency','ckd 腎 phosphate 磷 vitamin d','腎功能差、P 高','Cr、P、iPTH、25-OH vitamin D'],
+  ['c','Critical illness, pancreatitis, massive transfusion, drugs','pancreatitis 胰臟炎 sepsis transfusion 輸血 denosumab','重症、輸血、近期用藥','病史、lipase']],
+ ord:[
+  ['lab','Ionized Ca（或 Ca＋albumin）、Mg、P、Cr','Ionized Ca (or Ca with albumin), Mg, P, Cr'],
+  ['img','12-lead ECG（QTc）','12-lead ECG'],
+  ['lab','iPTH、25-OH vitamin D（原因不明時）','Intact PTH and 25-OH vitamin D'],
+  ['rx','ca_hypoca','有症狀、QT 延長或校正鈣 <7.5'],
+  ['rx','ca_drip','一劑後又掉回去、術後 hungry bone'],
+  ['rx','caco3_po','輕度、無症狀'],
+  ['rx','mgso4_iv','Mg <1.8（先補鎂，鈣才補得上來）'],
+  ['nurse','有症狀者 ECG monitor；注射部位每小時看一次（外滲）','ECG monitoring if symptomatic; check infusion site hourly'],
+  ['lab','給藥後 4–6 小時複驗 Ca','Repeat Ca 4-6 h after replacement']],
+ pearl:[
+  'albumin 每低 1 g/dL，總鈣約低 0.8 mg/dL：沒校正就補鈣是常見的錯。',
+  '一支 calcium gluconate 只能撐 2–3 小時，有症狀的病人要接滴注或口服。',
+  '高血磷的病人靜脈補鈣會鈣磷沉積，只在有症狀時補。',
+  'Calcium chloride 的元素鈣是 gluconate 的三倍，只能走中央靜脈。']},
+
+{id:'hyperca', zh:'高血鈣', en:'Hypercalcemia', alias:'hypercalcemia 高血鈣 鈣高 ca high 高鈣',
+ call:[
+  '校正鈣 >14 mg/dL，或 >12 合併意識改變',
+  '心律不整、QT 縮短、心搏過緩',
+  '少尿、Cr 上升',
+  '已知惡性腫瘤的病人新出現高血鈣'],
+ now:[
+  '用 albumin 校正或驗 ionized Ca',
+  '看意識、脫水程度、尿量',
+  '12-lead ECG',
+  '停掉會升血鈣的藥：thiazide、鈣片、維生素 D、lithium',
+  '開始補水'],
+ hx:[
+  ['!多尿、口渴、脫水','polyuria, polydipsia','高血鈣造成腎性尿崩'],
+  ['!噁心、嘔吐、便秘、腹痛','nausea, constipation, abdominal pain','腸胃症狀'],
+  ['!嗜睡、混亂、無力','lethargy, confusion, weakness','嚴重度指標'],
+  ['!惡性腫瘤病史（肺、乳、骨髓瘤、頭頸）','history of malignancy','住院高血鈣最常見原因'],
+  ['骨頭痛','bone pain','骨轉移、骨髓瘤'],
+  ['鈣片、維生素 D、thiazide、lithium','calcium, vitamin D, thiazide, lithium','藥物造成'],
+  ['腎結石病史','nephrolithiasis','原發性副甲狀腺機能亢進'],
+  ['長期臥床','immobilization','骨質流失']],
+ pe:[
+  ['!意識狀態','Mental status','alert and oriented'],
+  ['!體液狀態','Volume status','no dehydration'],
+  ['!心律','Heart rhythm','regular heart beat'],
+  ['腹部','Abdomen','soft, non-tender'],
+  ['肌力、反射','Muscle power and reflexes','muscle power 5/5, DTR 2+'],
+  ['淋巴結、乳房、骨頭壓痛','Lymph nodes, breast, bone tenderness','no lymphadenopathy or bone tenderness']],
+ ddx:[
+  ['m','Hypercalcemic crisis','crisis 危象 severe 嚴重','Ca >14、意識改變、脫水、AKI','校正鈣、Cr、ECG'],
+  ['m','Hypercalcemia of malignancy (PTHrP, bone metastasis, myeloma)','malignancy 惡性 腫瘤 pthrp myeloma 骨髓瘤 metastasis 轉移','腫瘤病史、上升快、PTH 低','iPTH（低）、PTHrP、SPEP'],
+  ['c','Primary hyperparathyroidism','hyperparathyroidism 副甲狀腺 pth','慢性、輕度、腎結石、PTH 高或正常偏高','iPTH、P（低）'],
+  ['c','Drug-induced (thiazide, calcium, vitamin D, lithium)','thiazide vitamin d 維生素 lithium 鈣片 milk-alkali','用藥史','回顧用藥、25-OH vitamin D'],
+  ['c','Granulomatous disease, immobilization, thyrotoxicosis, adrenal insufficiency','granuloma sarcoid tb 結核 immobilization 臥床 thyroid 甲狀腺','結核、類肉瘤、臥床','1,25-(OH)2 vitamin D、TSH']],
+ ord:[
+  ['lab','Ca＋albumin 或 ionized Ca、P、Mg、Cr、K','Ca with albumin or ionized Ca, P, Mg, Cr, K'],
+  ['lab','iPTH（之後依結果加驗 PTHrP、vitamin D、SPEP）','Intact PTH'],
+  ['img','12-lead ECG','12-lead ECG'],
+  ['rx','ns_hyperca','第一步：補水'],
+  ['rx','calcitonin','Ca >14 或有症狀：最快'],
+  ['rx','zoledronate','惡性腫瘤相關、水補起來之後'],
+  ['rx','furosemide_iv','水補夠之後出現 fluid overload 才給'],
+  ['med','停 thiazide、鈣片、維生素 D、lithium','Hold thiazide, calcium, vitamin D and lithium'],
+  ['nurse','記錄 I/O，尿量目標 100–150 mL/h','Record I/O, target urine output 100-150 mL/h'],
+  ['consult','Ca >18、意識不清或腎衰竭：討論透析','Consider hemodialysis for severe hypercalcemia with renal failure']],
+ pearl:[
+  '住院病人的高血鈣先想腫瘤，門診病人先想副甲狀腺：驗 PTH 就分得開。',
+  '高血鈣的病人都缺水，利尿劑要等水補夠了再說。',
+  'Calcitonin 快但只有 48 小時，bisphosphonate 慢但持久，兩個一起開。',
+  '給完 bisphosphonate 或 denosumab 要追低血鈣，尤其缺維生素 D 的病人。']},
+
+{id:'hypomgp', zh:'低血鎂・低血磷', en:'Hypomagnesemia / hypophosphatemia', alias:'hypomagnesemia 低血鎂 鎂低 mg low hypophosphatemia 低血磷 磷低 phosphate refeeding 再餵食',
+ call:[
+  'Torsades de pointes 或 QT 明顯延長',
+  '抽搐、tetany、嚴重肌無力',
+  'P <1.0 mg/dL，或合併呼吸費力、脫離呼吸器困難',
+  '營養不良的病人恢復進食後 P、K、Mg 同時掉 → refeeding syndrome'],
+ now:[
+  '12-lead ECG 看 QTc',
+  '同時看 K、Ca：低血鎂常帶著低血鉀、低血鈣一起來',
+  '看腎功能再決定劑量（鎂與磷都靠腎臟排）',
+  '找原因：酗酒、腹瀉、利尿劑、PPI、胰島素、剛開始營養支持'],
+ hx:[
+  ['!酗酒、營養不良、長期進食差','alcohol use, malnutrition','兩者共同的最大原因'],
+  ['!最近開始管灌、TPN 或恢復進食','recent refeeding','refeeding syndrome（3–5 天內）'],
+  ['!腹瀉、瘻管、引流量大','diarrhea or GI drainage','腸道流失'],
+  ['利尿劑、PPI、aminoglycoside、cisplatin、amphotericin','diuretics, PPI, nephrotoxic drugs','腎性流失'],
+  ['DKA 治療中、使用胰島素','DKA on insulin','往細胞內移'],
+  ['!肌肉無力、抽筋、手抖','weakness, cramps, tremor','症狀'],
+  ['心悸','palpitations','心律不整'],
+  ['制酸劑、磷結合劑','antacids or phosphate binders','低血磷']],
+ pe:[
+  ['!肌力與呼吸型態','Muscle power and respiratory effort','muscle power 5/5, no respiratory distress'],
+  ['!心律','Heart rhythm','regular heart beat'],
+  ['!手抖、反射亢進、Chvostek／Trousseau','Tremor, reflexes, Chvostek/Trousseau','no tremor, DTR 2+, negative signs'],
+  ['意識狀態','Mental status','alert and oriented'],
+  ['營養狀態','Nutritional status','well nourished']],
+ ddx:[
+  ['m','Torsades de pointes / QT prolongation','torsades tdp qt','QT 延長、多形性 VT','ECG、monitor'],
+  ['m','Refeeding syndrome','refeeding 再餵食 tpn 營養','恢復進食後 P、K、Mg 下降、水腫、心衰竭','P、K、Mg 每日追、thiamine'],
+  ['c','Alcohol use / malnutrition','alcohol 酒 malnutrition 營養不良','酗酒、進食差','病史'],
+  ['c','GI loss','gi 腹瀉 diarrhea 瘻管','腹瀉、引流','病史'],
+  ['c','Renal loss (diuretics, PPI, nephrotoxic drugs)','renal 腎 diuretic 利尿 ppi cisplatin','用藥史','FEMg >2%'],
+  ['c','Transcellular shift (insulin, respiratory alkalosis, hungry bone)','shift insulin 胰島素 alkalosis','DKA 治療、換氣過度','血糖、ABG']],
+ ord:[
+  ['lab','Mg、P、K、Ca、Cr','Mg, P, K, Ca, Cr'],
+  ['img','12-lead ECG（QTc）','12-lead ECG'],
+  ['rx','mgso4_iv','Mg <1.5、有症狀或合併低血鉀／低血鈣'],
+  ['rx','mgso4_tdp','Torsades de pointes'],
+  ['rx','mgo_po','Mg 1.5–1.8、無症狀'],
+  ['rx','kphos_iv','P <1.0，或 <2.0 合併肌無力'],
+  ['rx','phos_po','P 1.0–2.0、無症狀'],
+  ['rx','kcl_po','K <3.5'],
+  ['rx','thiamine','酗酒、營養不良、refeeding 風險'],
+  ['med','Refeeding 風險：熱量從 10–15 kcal/kg/day 起，4–7 天慢慢加（會診營養師）','Start nutrition at 10-15 kcal/kg/day and advance slowly if refeeding risk'],
+  ['lab','隔天晨血追 Mg、P、K','Follow Mg, P, K next morning']],
+ pearl:[
+  '血鎂只反映 1% 的體內存量，數字正常也可能缺：低血鉀補不上來就補鎂。',
+  '鎂補太快，腎臟會直接排掉一半：慢慢滴比較留得住。',
+  'Refeeding syndrome 的殺手是低血磷：高風險病人開始營養前先驗、先補 thiamine。',
+  '口服鎂和口服磷都會腹瀉，腹瀉又讓它們流失更多。']},
+
+{id:'anemia', zh:'Hb 低／要不要輸血', en:'Anemia / low hemoglobin', alias:'anemia 貧血 hb 低 血色素 hemoglobin 輸血 transfusion prbc 掉 hb',
+ call:[
+  'Hb <7 g/dL，或短時間內掉 ≥2 g/dL',
+  '合併低血壓、心跳快、胸痛、喘、意識改變',
+  '看得到的活動性出血：吐血、黑便、血便、引流管出血、傷口滲血',
+  '術後、侵入性處置後、使用抗凝血劑的病人 Hb 下降'],
+ now:[
+  '親自看病人：生命徵象、有沒有在出血',
+  '確認不是稀釋或抽錯：大量輸液後、從輸液同側抽血',
+  '跟前一次 Hb 比，算下降速度',
+  '確認有兩條通暢的 IV、有效的備血（type & screen）',
+  '看用藥：抗凝血劑、抗血小板、NSAID'],
+ hx:[
+  ['!黑便、血便、吐血','melena, hematochezia, hematemesis','消化道出血'],
+  ['!頭暈、心悸、喘、胸痛','dizziness, palpitations, dyspnea, chest pain','貧血症狀，決定輸血門檻'],
+  ['!最近手術、穿刺、導管處置','recent surgery or procedure','術後出血、後腹腔出血'],
+  ['!抗凝血劑、抗血小板、NSAID','anticoagulants, antiplatelets, NSAIDs','出血風險'],
+  ['腰痛、腹痛、大腿腫','flank, abdominal or thigh pain','後腹腔、肌肉內血腫'],
+  ['血尿、陰道出血、流鼻血','hematuria, vaginal bleeding, epistaxis','其他出血來源'],
+  ['茶色尿、黃疸、剛輸過血','dark urine, jaundice, recent transfusion','溶血'],
+  ['慢性病、腎臟病、化療','chronic disease, CKD, chemotherapy','慢性貧血、骨髓抑制']],
+ pe:[
+  ['!結膜、皮膚（蒼白、黃疸）','Conjunctiva and skin','no pallor, no icterus'],
+  ['!姿勢性血壓與心跳','Orthostatic vital signs','no orthostatic change'],
+  ['!腹部（壓痛、脹、腰側瘀青）','Abdomen and flank','soft, non-tender, no flank ecchymosis'],
+  ['!肛門指診','Digital rectal exam','brown stool, no melena'],
+  ['傷口、引流管、穿刺部位','Wound, drains and puncture sites','no bleeding or hematoma'],
+  ['皮膚瘀斑、出血點','Petechiae or ecchymosis','no petechiae or ecchymosis']],
+ ddx:[
+  ['m','Acute GI bleeding','gi 消化道 gib melena 黑便 吐血','黑便、血便、BUN/Cr 上升','肛診、NG、內視鏡'],
+  ['m','Post-procedural or retroperitoneal bleeding','retroperitoneal 後腹腔 術後 procedure hematoma 血腫','術後、穿刺後、腰痛、使用抗凝','CT（with contrast）'],
+  ['m','Hemolysis (transfusion reaction, drug, TMA)','hemolysis 溶血 tma ttp','黃疸、茶色尿、LDH↑、haptoglobin↓','LDH、bilirubin、haptoglobin、blood smear、DAT'],
+  ['c','Hemodilution or sampling error','dilution 稀釋 sampling 抽錯','大量輸液後、三系一起掉、沒有症狀','複驗'],
+  ['c','Anemia of chronic disease / CKD','chronic 慢性 ckd 腎','慢慢掉、MCV 正常','ferritin、TSAT、reticulocyte'],
+  ['c','Iron, B12 or folate deficiency','iron 缺鐵 b12 folate 葉酸','MCV 低或高','ferritin、B12、folate'],
+  ['c','Bone marrow suppression (chemotherapy, infection, drugs)','marrow 骨髓 chemo 化療 suppression','化療後、三系都低','CBC/DC、reticulocyte']],
+ ord:[
+  ['lab','複驗 CBC/DC；出血中 q4–6h','Repeat CBC/DC; q4-6h if bleeding'],
+  ['lab','Type & screen、備血','Type and screen, crossmatch'],
+  ['lab','PT/INR、aPTT、BUN/Cr','PT/INR, aPTT, BUN/Cr'],
+  ['lab','Reticulocyte、LDH、bilirubin、haptoglobin（疑溶血）','Reticulocyte, LDH, bilirubin, haptoglobin'],
+  ['lab','Ferritin、iron/TIBC、B12、folate（輸血前抽）','Ferritin, iron/TIBC, B12, folate before transfusion'],
+  ['rx','prbc','Hb <7（心血管疾病 <8）或出血不穩定'],
+  ['rx','ns_bolus','出血合併低血壓，等血的時候'],
+  ['rx','ppi_bolus','疑上消化道出血'],
+  ['med','暫停抗凝血劑、抗血小板、NSAID（與學長姊討論）','Hold anticoagulants, antiplatelets and NSAIDs'],
+  ['nurse','輸血同意書；輸血前、15 分鐘、結束時量 vital signs','Transfusion consent; vital signs before, at 15 min and after transfusion']],
+ pearl:[
+  '急性出血剛開始 Hb 不會掉，要看生命徵象；補完輸液才掉下來。',
+  '穩定、沒在出血的病人：一次輸 1 U 再評估。',
+  '找不到出血點的 Hb 下降，加上腰痛或大腿痛：想後腹腔出血，尤其在用抗凝血劑的病人。',
+  '缺鐵、B12、葉酸的檢驗要在輸血前抽。']},
+
+{id:'txrxn', zh:'輸血反應', en:'Transfusion reaction', alias:'transfusion reaction 輸血反應 輸血發燒 輸血過敏 輸血 起疹 taco trali',
+ call:[
+  '低血壓、喘、SpO2 下降、喘鳴或臉腫',
+  '腰背痛、胸痛、茶色尿、注射部位痛 → 疑急性溶血',
+  '體溫上升 ≥2℃ 或 >39℃、寒顫厲害 → 疑血品細菌汙染',
+  '任何讓你不放心的生命徵象變化'],
+ now:[
+  '立刻停止輸血，換新的輸液管路接 N/S 維持靜脈通路',
+  '量完整生命徵象、SpO2',
+  '床邊核對：病人手圈、血袋標籤、血型',
+  '血袋與管路保留，連同輸血反應單送回血庫',
+  '只有輕微蕁麻疹、其他都正常：給抗組織胺，症狀退了可以慢速續輸'],
+ hx:[
+  ['!症狀在開始輸血後多久出現','onset after starting transfusion','15 分鐘內想溶血、過敏；6 小時內想 TACO、TRALI'],
+  ['!喘、胸悶','dyspnea, chest tightness','TACO、TRALI、過敏性休克'],
+  ['!腰背痛、胸痛、注射部位痛','flank, back or infusion-site pain','急性溶血'],
+  ['!皮膚癢、紅疹、臉或嘴唇腫','pruritus, urticaria, angioedema','過敏'],
+  ['寒顫、發燒','chills, fever','FNHTR、溶血、細菌汙染'],
+  ['尿的顏色','urine color','血紅素尿'],
+  ['以前輸血有沒有反應、IgA 缺乏','previous transfusion reaction','過敏體質'],
+  ['心衰竭、腎衰竭、輸的速度與總量','heart or renal failure, transfusion rate','TACO 風險']],
+ pe:[
+  ['!生命徵象與 SpO2','Vital signs and SpO2','stable, SpO2 > 94%'],
+  ['!呼吸音（喘鳴、囉音）','Breath sounds','clear, no wheezing or crackles'],
+  ['!皮膚（蕁麻疹、潮紅、血管性水腫）','Skin','no urticaria or angioedema'],
+  ['頸靜脈、下肢水腫','JVP and edema','no JVD or edema'],
+  ['!尿色','Urine color','clear yellow'],
+  ['注射部位','Infusion site','no pain or swelling']],
+ ddx:[
+  ['m','Acute hemolytic transfusion reaction','hemolytic 溶血 abo','發燒、腰痛、低血壓、血紅素尿、滲血','DAT、複查血型、LDH、bilirubin、haptoglobin、尿液'],
+  ['m','Anaphylaxis','anaphylaxis 過敏性休克 angioedema','低血壓、喘鳴、血管性水腫，幾分鐘內發生','臨床診斷，先打 epinephrine'],
+  ['m','TRALI','trali 肺損傷','6 小時內缺氧、雙側浸潤、沒有容積過多','CXR、BNP 不高'],
+  ['m','Septic transfusion reaction','septic 細菌 汙染 contamination','高燒、寒顫、低血壓（血小板最常見）','病人與血袋的 culture'],
+  ['c','TACO','taco overload 容積 過多','喘、血壓高、JVD、囉音；老人、心腎功能差','CXR、BNP、對利尿劑有反應'],
+  ['c','Febrile non-hemolytic transfusion reaction','febrile fnhtr 發燒','體溫上升 1–2℃、寒顫、其他都穩定','排除溶血與感染後的診斷'],
+  ['c','Mild allergic (urticarial) reaction','allergic urticaria 蕁麻疹 過敏 癢','只有皮膚癢、紅疹','臨床診斷']],
+ ord:[
+  ['nurse','停止輸血，換管路 N/S keep vein open；血袋送回血庫','Stop transfusion; keep vein open with N/S via new tubing; return blood bag to blood bank'],
+  ['lab','輸血反應檢查：DAT、複查血型與交叉試驗','Transfusion reaction workup: DAT, repeat type and crossmatch'],
+  ['lab','CBC、LDH、bilirubin、haptoglobin、U/A（血紅素尿）','CBC, LDH, bilirubin, haptoglobin, U/A'],
+  ['lab','PT/aPTT、fibrinogen、BUN/Cr、K（疑溶血）','PT/aPTT, fibrinogen, BUN/Cr, K'],
+  ['lab','Blood culture（病人）＋血袋 culture（高燒、寒顫、低血壓）','Blood culture from patient and blood bag'],
+  ['img','CXR（喘或缺氧）','CXR'],
+  ['rx','epi_im','低血壓、喘鳴或血管性水腫'],
+  ['rx','diphenhydramine','蕁麻疹、皮膚癢'],
+  ['rx','apap_po','只有發燒、已排除溶血與感染'],
+  ['rx','furosemide_taco','TACO'],
+  ['rx','ns_bolus','疑溶血：維持尿量 >1 mL/kg/h'],
+  ['rx','o2','SpO2 <92%']],
+ pearl:[
+  '任何輸血反應的第一步都一樣：停、換管路、核對。',
+  '發燒不能直接當成 FNHTR：它是排除溶血和細菌汙染之後的診斷。',
+  'TACO 和 TRALI 都是輸血後喘：血壓高、JVD、利尿有效是 TACO；血壓低、沒有容積過多是 TRALI。',
+  '只有蕁麻疹是唯一可以處理後續輸的反應。']},
+
+{id:'allergy', zh:'過敏／藥物疹', en:'Allergic reaction / drug rash', alias:'allergy allergic 過敏 藥物疹 起疹子 紅疹 蕁麻疹 urticaria rash 皮膚癢 pruritus anaphylaxis 過敏性休克 嘴唇腫',
+ call:[
+  '低血壓、喘鳴、聲音沙啞、舌頭或嘴唇腫、SpO2 下降 → 過敏性休克：立即 Epinephrine 0.5 mg IM',
+  '皮膚以外有第二個系統的症狀（喘、嘔吐腹痛、頭暈）',
+  '黏膜破皮（口腔、眼睛、生殖器）、水泡、皮膚一碰就痛或脫皮 → 疑 SJS／TEN',
+  '紅疹合併發燒、臉腫、淋巴結腫、肝指數上升 → 疑 DRESS'],
+ now:[
+  '停掉正在滴的可疑藥物、顯影劑或輸血',
+  '看氣道、呼吸、血壓、SpO2',
+  '看全身皮膚，包括口腔、眼睛、生殖器黏膜',
+  '列出兩週內新加的藥（DRESS 要回溯 2–8 週）',
+  '過敏性休克：Epinephrine IM、平躺抬腿、氧氣、大量輸液'],
+ hx:[
+  ['!從接觸到發作的時間','time from exposure to onset','幾分鐘到 1 小時：IgE；幾天到幾週：延遲型'],
+  ['!呼吸困難、喉嚨緊、聲音改變','dyspnea, throat tightness, voice change','上呼吸道水腫'],
+  ['!頭暈、快昏倒','dizziness, presyncope','低血壓'],
+  ['腹痛、嘔吐、腹瀉','abdominal pain, vomiting','過敏性休克的腸胃表現'],
+  ['!新的藥、顯影劑、輸血、食物','new drug, contrast, transfusion, food','找過敏原'],
+  ['!口腔或眼睛痛、吞嚥痛','oral or eye pain','SJS／TEN 的黏膜侵犯'],
+  ['發燒、疲倦','fever, malaise','SJS、DRESS、感染'],
+  ['過去過敏史','previous allergy','交叉過敏']],
+ pe:[
+  ['!氣道（喘鳴、聲音、舌頭與懸壅垂）','Airway','no stridor, no tongue or uvular swelling'],
+  ['!呼吸音','Breath sounds','clear, no wheezing'],
+  ['!血壓與周邊灌流','Blood pressure and perfusion','normotensive, warm extremities'],
+  ['!皮膚（分布、型態、水泡、Nikolsky sign）','Skin','no rash, no blister, Nikolsky negative'],
+  ['!黏膜（口腔、結膜、生殖器）','Mucosa','no mucosal erosion'],
+  ['臉腫、淋巴結','Facial edema and lymph nodes','no facial edema or lymphadenopathy']],
+ ddx:[
+  ['m','Anaphylaxis','anaphylaxis 過敏性休克 shock','皮膚加上呼吸道或低血壓，幾分鐘內發生','臨床診斷；tryptase（發作 1–3 小時內）'],
+  ['m','Angioedema with airway compromise','angioedema 血管性水腫 acei','嘴唇、舌頭、喉頭腫；ACEI 引起的不會癢','臨床；停 ACEI'],
+  ['m','SJS / TEN','sjs ten stevens 史蒂芬 toxic epidermal','黏膜破皮、靶形病灶、水泡、皮膚痛；用藥後 1–3 週','皮膚科急會診、切片'],
+  ['m','DRESS','dress eosinophilia 嗜酸性','用藥後 2–8 週、發燒、臉腫、嗜酸性球高、肝腎受損','CBC/DC、GOT/GPT、Cr'],
+  ['c','Urticaria','urticaria 蕁麻疹 hives','膨疹、很癢、24 小時內會移動消退','臨床診斷'],
+  ['c','Morbilliform drug eruption','morbilliform 藥物疹 maculopapular eruption','用藥後 4–14 天、軀幹對稱性紅色丘疹、黏膜正常','臨床診斷；追肝腎功能'],
+  ['c','Non-allergic: red man syndrome, contact dermatitis, viral exanthem, heat rash','red man vancomycin contact 接觸 viral 病毒','Vancomycin 滴太快、貼布部位','回顧給藥速度與部位']],
+ ord:[
+  ['rx','epi_im','過敏性休克'],
+  ['rx','ns_bolus','過敏性休克合併低血壓（可給到 1–2 L）'],
+  ['rx','o2','SpO2 <92% 或喘'],
+  ['rx','neb_saba','Epinephrine 後仍有 wheezing'],
+  ['rx','diphenhydramine','蕁麻疹、癢（急性期）'],
+  ['rx','levocetirizine','蕁麻疹、藥物疹的口服維持'],
+  ['rx','methylpred_allergy','嚴重過敏的輔助，或廣泛性藥物疹'],
+  ['rx','famotidine_iv','過敏性休克的輔助'],
+  ['med','停可疑藥物，病歷與醫囑系統註記過敏','Discontinue suspected drug and document allergy'],
+  ['lab','CBC/DC（eosinophil）、GOT/GPT、Cr（藥物疹）','CBC/DC, GOT/GPT, Cr'],
+  ['nurse','過敏性休克後觀察至少 4–6 小時（雙相反應）','Observe at least 4-6 h after anaphylaxis'],
+  ['consult','黏膜侵犯、水泡、脫皮：皮膚科急會診','Urgent dermatology consult for mucosal involvement or blistering']],
+ pearl:[
+  '過敏性休克死亡的原因是太晚打 Epinephrine；抗組織胺和類固醇救不了命。',
+  '看疹子一定要看嘴巴和眼睛：黏膜破了就不是單純藥物疹。',
+  'ACEI 的血管性水腫可以在吃了好幾年後才發生，Epinephrine 和抗組織胺效果差。',
+  'Vancomycin 的 red man syndrome 不是過敏：放慢滴速（≤1 g/h）加抗組織胺就可以繼續用。']},
+
+{id:'constipation', zh:'便秘／腹脹', en:'Constipation / abdominal distension', alias:'constipation 便秘 沒大便 解不出 腹脹 脹氣 distension bloating 排便',
+ call:[
+  '腹脹合併嘔吐、沒有排氣 → 疑腸阻塞',
+  '腹部壓痛明顯、反彈痛、發燒',
+  '嗜中性球低下的病人（不要肛診、不要塞劑灌腸）',
+  '新發生的便秘合併下肢無力、尿不出來、鞍區麻 → 疑脊髓壓迫'],
+ now:[
+  '問最後一次排便、排氣是什麼時候',
+  '看腹部：脹不脹、腸音、壓痛',
+  '肛診：有沒有糞石卡在直腸',
+  '看用藥：鴉片類、抗膽鹼藥、鈣片、鐵劑、CCB、ondansetron',
+  '看電解質：低血鉀、高血鈣'],
+ hx:[
+  ['!最後一次排便與排氣','last bowel movement and flatus','沒有排氣要想阻塞'],
+  ['!噁心、嘔吐','nausea, vomiting','腸阻塞'],
+  ['!腹痛（絞痛或持續）','abdominal pain','阻塞、缺血、穿孔'],
+  ['!鴉片類、抗膽鹼藥、鐵劑、鈣片','opioids, anticholinergics, iron, calcium','藥物是住院便秘最常見原因'],
+  ['平常的排便習慣與軟便藥','baseline bowel habit and laxative use','慢性便秘'],
+  ['水分與進食、活動量','fluid intake and mobility','臥床、脫水'],
+  ['腹部手術史','previous abdominal surgery','沾黏性腸阻塞'],
+  ['下肢無力、解尿困難','leg weakness, urinary retention','脊髓壓迫、馬尾症候群']],
+ pe:[
+  ['!腹部視診與叩診（脹、鼓音）','Abdominal inspection and percussion','no distension'],
+  ['!腸音','Bowel sounds','normoactive'],
+  ['!壓痛、反彈痛','Tenderness and rebound','soft, non-tender'],
+  ['!肛門指診（糞石、張力）','Digital rectal exam','no fecal impaction, normal tone'],
+  ['疝氣','Hernia','no hernia'],
+  ['下肢肌力與感覺','Lower limb neurology','intact']],
+ ddx:[
+  ['m','Bowel obstruction','obstruction 阻塞 sbo ileus','嘔吐、沒有排氣、腹脹、手術史','KUB（立位）、CT'],
+  ['m','Colonic pseudo-obstruction / toxic megacolon','ogilvie pseudo megacolon 巨結腸','老人、重症、術後、鴉片類；大腸很脹','KUB（盲腸 >9–12 cm 危險）'],
+  ['m','Spinal cord compression / cauda equina','cord 脊髓 cauda 馬尾','下肢無力、尿滯留、鞍區麻','緊急 MRI'],
+  ['c','Drug-induced constipation','drug 藥物 opioid 鴉片','鴉片類、抗膽鹼藥、鐵劑','回顧用藥'],
+  ['c','Fecal impaction','impaction 糞石 嵌塞','老人、臥床、溢流性腹瀉','肛診'],
+  ['c','Immobility, dehydration, low-fiber diet','immobility 臥床 dehydration','住院、活動少','病史'],
+  ['c','Metabolic: hypokalemia, hypercalcemia, hypothyroidism','hypokalemia 低血鉀 hypercalcemia 高血鈣 thyroid','電解質異常','K、Ca、TSH']],
+ ord:[
+  ['img','KUB（腹脹、嘔吐或沒有排氣）','KUB'],
+  ['lab','K、Ca、Cr（最近沒驗過）','K, Ca, Cr'],
+  ['rx','sennoside','第一線'],
+  ['rx','mgo_lax','第一線，可與 Sennoside 併用'],
+  ['rx','lactulose','腎功能差或前兩者無效'],
+  ['rx','bisacodyl_supp','糞便在直腸、口服來不及'],
+  ['rx','glycerin_enema','塞劑無效'],
+  ['med','檢視造成便秘的藥；鴉片類病人排定時軟便藥','Review constipating drugs; scheduled bowel regimen with opioids'],
+  ['nurse','鼓勵水分與下床；記錄排便','Encourage fluid and ambulation; record bowel movements'],
+  ['consult','疑腸阻塞：NPO、NG decompression，通知學長姊','NPO and NG decompression if obstruction suspected']],
+ pearl:[
+  '給瀉劑之前先排除腸阻塞：有嘔吐、沒排氣、肚子很脹就先照 KUB。',
+  '老人突然「腹瀉」又便秘很久：可能是糞石旁邊漏出來的溢流性腹瀉，做肛診。',
+  '腎功能差不要用含鎂、含磷的瀉劑（MgO、Fleet enema）。',
+  '開鴉片類的同一張醫囑就把軟便藥開上去。']},
+
+{id:'retention', zh:'尿滯留／解不出尿', en:'Urinary retention', alias:'urinary retention 尿滯留 尿不出來 解不出尿 膀胱脹 尿脹 aur 拔尿管 foley 解尿困難',
+ call:[
+  '合併下肢無力、鞍區麻、大便失禁 → 疑馬尾症候群、脊髓壓迫',
+  '發燒、寒顫、腰痛 → 阻塞合併感染',
+  '導尿後大量血尿或血壓下降',
+  '放不進尿管（不要硬放，會診泌尿科）'],
+ now:[
+  '膀胱掃描（bladder scan）量餘尿',
+  '下腹觸診、叩診',
+  '已經有 Foley 的病人：先確認是不是管子塞住、折到',
+  '看用藥：抗膽鹼藥、鴉片類、抗組織胺、α-agonist',
+  '問最後一次解尿、大便'],
+ hx:[
+  ['!最後一次解尿、量多少','last void and amount','判斷急性或慢性'],
+  ['!下腹脹痛','suprapubic pain','急性尿滯留會痛；慢性的不痛'],
+  ['!平常的解尿症狀（尿柱細、夜尿、滴尿）','baseline lower urinary tract symptoms','BPH'],
+  ['!新加的藥：抗膽鹼、鴉片類、抗組織胺、感冒藥','new anticholinergic, opioid, antihistamine','藥物是住院最常見誘因'],
+  ['便秘','constipation','糞石壓迫'],
+  ['!下肢無力、麻、背痛','leg weakness, numbness, back pain','神經性'],
+  ['血尿、血塊','hematuria with clots','血塊阻塞'],
+  ['剛手術、麻醉、拔尿管','recent surgery, anesthesia or catheter removal','術後尿滯留'],
+  ['發燒、解尿痛','fever, dysuria','UTI、前列腺炎']],
+ pe:[
+  ['!下腹（膀胱脹）','Suprapubic area','no palpable bladder'],
+  ['!肛門指診（前列腺、糞石、肛門張力）','Digital rectal exam','normal prostate, no impaction, normal tone'],
+  ['!下肢肌力、感覺、鞍區感覺','Lower limb and perineal neurology','intact'],
+  ['外生殖器、尿道口','External genitalia','no phimosis or meatal stenosis'],
+  ['腰部叩擊痛','CVA tenderness','no CVA knocking pain']],
+ ddx:[
+  ['m','Cauda equina syndrome / spinal cord compression','cauda 馬尾 cord 脊髓 壓迫','背痛、下肢無力、鞍區麻、肛門張力差','緊急 MRI'],
+  ['m','Obstructive uropathy with infection or AKI','obstructive 阻塞 aki 腎','發燒、腰痛、Cr 上升','U/A、Cr、腎臟超音波'],
+  ['c','BPH','bph 攝護腺 前列腺 prostate','老年男性、平常就有症狀','肛診'],
+  ['c','Drug-induced','drug 藥物 anticholinergic 抗膽鹼 opioid','新加抗膽鹼藥、鴉片類','回顧用藥'],
+  ['c','Post-operative / post-catheter removal','postoperative 術後 麻醉 拔尿管','術後、脊椎麻醉、剛拔 Foley','病史'],
+  ['c','Constipation / fecal impaction','constipation 便秘 糞石','多日未解便','肛診'],
+  ['c','Clot retention / catheter blockage','clot 血塊 blockage 阻塞','血尿、已有 Foley 但沒尿','沖洗'],
+  ['c','UTI / prostatitis','uti prostatitis 前列腺炎','解尿痛、發燒、前列腺壓痛','U/A、urine culture']],
+ ord:[
+  ['nurse','Bladder scan 量餘尿','Bladder scan for post-void residual'],
+  ['nurse','餘尿 >400 mL 或脹痛：單次導尿，記錄引流量','Intermittent catheterization if residual > 400 mL or symptomatic; record volume'],
+  ['nurse','反覆尿滯留或引流 >1000 mL：留置 Foley','Insert indwelling Foley catheter for recurrent retention or volume > 1000 mL'],
+  ['lab','U/A、urine culture','U/A and urine culture'],
+  ['lab','BUN/Cr、K','BUN/Cr, K'],
+  ['med','Tamsulosin 0.4 mg PO HS（男性，放尿管當天就開始，增加拔管成功率）','Tamsulosin 0.4 mg PO HS'],
+  ['med','停或換掉抗膽鹼藥、鴉片類、第一代抗組織胺','Hold anticholinergics, opioids and first-generation antihistamines'],
+  ['rx','sennoside','合併便秘'],
+  ['nurse','導尿後記錄每小時尿量（>200 mL/h 持續 2 小時通知）','Record hourly urine output after decompression'],
+  ['consult','放不進尿管、血塊阻塞、神經學異常：通知學長姊／泌尿科','Urology consult for difficult catheterization or clot retention']],
+ pearl:[
+  '沒尿先分清楚：是腎臟沒做尿（oliguria）還是膀胱出不來（retention），bladder scan 一下就知道。',
+  '可以一次放完，不需要分段夾管；注意放完後的多尿與血壓。',
+  '尿滯留加上便秘或下肢無力：先想脊髓，不是攝護腺。',
+  '導尿前先抽的 PSA 會假性升高，不要在這時候驗。']},
+
+{id:'hemoptysis', zh:'咳血', en:'Hemoptysis', alias:'hemoptysis 咳血 咯血 痰中帶血 血痰 吐血痰',
+ call:[
+  '大量咳血：一次 >100 mL 或 24 小時 >500 mL，或任何量合併缺氧、血壓不穩',
+  '呼吸窘迫、SpO2 下降、咳不出來',
+  '使用抗凝血劑、血小板很低或凝血異常',
+  '氣切病人的鮮血（疑 tracheo-innominate fistula）'],
+ now:[
+  '看氣道與 SpO2：大量咳血的死因是窒息，不是失血',
+  '確認是咳出來的（鮮紅、帶泡沫、鹼性），不是吐血或鼻咽流下來的',
+  '知道哪一側出血的話，讓出血側朝下側躺',
+  '大量咳血：氧氣、兩條大口徑 IV、備血，通知學長姊準備插管與支氣管鏡',
+  '留下咳出來的東西估量'],
+ hx:[
+  ['!量與次數（茶匙、杯）','amount and frequency','決定嚴重度'],
+  ['!是咳出來還是吐出來、有沒有鼻血','coughed vs vomited, epistaxis','區分咳血、吐血、鼻咽出血'],
+  ['!喘、胸痛','dyspnea, chest pain','PE、肺炎、大量出血'],
+  ['!抗凝血劑、抗血小板','anticoagulant or antiplatelet use','出血傾向'],
+  ['發燒、膿痰','fever, purulent sputum','肺炎、肺膿瘍、支氣管擴張'],
+  ['體重減輕、夜間盜汗、結核病史或接觸史','weight loss, night sweats, TB history','結核、肺癌'],
+  ['抽菸、肺癌病史','smoking, lung cancer','腫瘤'],
+  ['單側小腿腫、近期手術臥床','calf swelling, immobilization','肺栓塞'],
+  ['最近做過支氣管鏡、肺切片、放 Swan-Ganz','recent bronchoscopy or lung biopsy','醫源性']],
+ pe:[
+  ['!呼吸型態與 SpO2','Respiratory pattern and SpO2','no distress, SpO2 > 94%'],
+  ['!鼻腔與口咽','Nose and oropharynx','no active bleeding'],
+  ['!肺部聽診','Chest auscultation','clear breath sounds bilaterally'],
+  ['心臟（雜音、心衰竭）','Heart','regular, no murmur'],
+  ['下肢（單側腫）','Extremities','no asymmetric swelling'],
+  ['皮膚瘀斑、出血點','Skin','no petechiae or ecchymosis']],
+ ddx:[
+  ['m','Massive hemoptysis (bronchial artery bleeding)','massive 大量 bronchial artery','量大、缺氧','氣道處置、CTA、支氣管動脈栓塞'],
+  ['m','Pulmonary embolism with infarction','pe embolism 栓塞','喘、胸膜痛、DVT 危險因子','CTPA'],
+  ['m','Tuberculosis','tb tuberculosis 結核','慢性咳嗽、體重減輕、上肺葉病灶','Sputum AFB ×3、TB PCR；先戴 N95、隔離'],
+  ['m','Lung cancer','cancer 肺癌 tumor 腫瘤','抽菸、體重減輕','CT、支氣管鏡'],
+  ['c','Bronchitis / pneumonia','bronchitis 支氣管炎 pneumonia 肺炎','咳嗽、發燒、痰中帶血絲','CXR'],
+  ['c','Bronchiectasis','bronchiectasis 支氣管擴張','長期大量膿痰、反覆感染','HRCT'],
+  ['c','Pulmonary edema / mitral stenosis','edema 肺水腫 heart failure mitral','粉紅色泡沫痰、喘','CXR、心臟超音波'],
+  ['c','Coagulopathy / anticoagulation','coagulopathy 凝血 anticoagulant 抗凝','用藥史、其他部位出血','PT/INR、aPTT、platelet'],
+  ['c','Pseudo-hemoptysis (epistaxis, hematemesis)','pseudo epistaxis 鼻血 hematemesis 吐血','鼻血倒流、嘔吐物、酸性','鼻咽檢查']],
+ ord:[
+  ['img','CXR','CXR'],
+  ['lab','CBC、PT/INR、aPTT','CBC, PT/INR, aPTT'],
+  ['lab','Type & screen（量多時備血）','Type and screen'],
+  ['lab','BUN/Cr','BUN/Cr'],
+  ['lab','Sputum AFB ×3、TB PCR、sputum culture','Sputum AFB x3, TB PCR, sputum culture'],
+  ['img','Chest CT with contrast（CXR 找不到原因或量多）','Chest CT with contrast'],
+  ['rx','o2','SpO2 <92%'],
+  ['rx','txa_iv','非大量咳血的輔助止血'],
+  ['rx','txa_neb','非大量咳血、腎功能差'],
+  ['rx','codeine_cough','劇烈咳嗽讓出血停不下來（大量咳血不要完全壓咳）'],
+  ['med','暫停抗凝血劑、抗血小板（與學長姊討論）','Hold anticoagulants and antiplatelets'],
+  ['nurse','出血側朝下臥位、備抽吸、記錄咳血量；疑結核先戴 N95、負壓隔離','Bleeding side down, suction at bedside, record amount; airborne isolation if TB suspected'],
+  ['consult','大量咳血：胸腔科（支氣管鏡）、放射科（栓塞）','Pulmonology and interventional radiology consult for massive hemoptysis']],
+ pearl:[
+  '大量咳血會淹死人，不是失血死：先顧氣道，出血側朝下保護好的那一邊。',
+  '咳血先想結核：還沒排除之前戴 N95，也不要急著用 fluoroquinolone。',
+  'CXR 正常不能排除肺癌或肺栓塞，有危險因子就做 CT。',
+  '氣切病人咳出鮮血，即使量少也可能是大出血的前兆（sentinel bleed）。']},
+
+{id:'stroke', zh:'疑似中風', en:'Suspected stroke / acute focal weakness', alias:'stroke 中風 腦中風 肢體無力 手腳無力 半邊無力 嘴歪 口齒不清 構音 失語 weakness slurred speech facial palsy cva tia',
+ call:[
+  '任何突發的局部神經學缺損 → 立即通知學長姊，啟動院內腦中風流程（時間就是腦）',
+  '意識變差、嘔吐、劇烈頭痛 → 疑腦出血',
+  '瞳孔不等大、血壓高加心跳慢 → 腦疝',
+  '使用抗凝血劑的病人'],
+ now:[
+  '問清楚「最後一次看到病人正常是幾點」，寫下來',
+  '驗 finger sugar：低血糖會裝成中風',
+  '做 FAST 與 NIHSS；量雙手血壓',
+  '安排立即 brain CT（無顯影）；途中帶 monitor',
+  'NPO、床頭抬高 30 度；在確定不是出血之前不給抗血小板、抗凝血劑',
+  '血壓先不要降，除非 >220/120（要打血栓溶解劑則 >185/110）'],
+ hx:[
+  ['!最後正常時間（last known well）','last known well time','決定能不能做血栓溶解或取栓'],
+  ['!發作方式（突然或漸進）','onset pattern','突然：血管性；漸進：腫瘤、感染、代謝'],
+  ['!頭痛、嘔吐、意識變差','headache, vomiting, decreased consciousness','腦出血、後循環中風'],
+  ['!抗凝血劑與最後一劑的時間','anticoagulant use and last dose','溶栓禁忌、出血風險'],
+  ['抽搐','seizure at onset','Todd paralysis'],
+  ['心房顫動、近期心肌梗塞、心臟手術','atrial fibrillation, recent MI or cardiac surgery','心因性栓塞'],
+  ['近期手術、出血、頭部外傷','recent surgery, bleeding or head trauma','溶栓禁忌'],
+  ['糖尿病用藥、最近進食','diabetic medications, recent meal','低血糖'],
+  ['頸部痛或頸部扭傷','neck pain or trauma','動脈剝離']],
+ pe:[
+  ['!意識（GCS）','Consciousness','E4V5M6'],
+  ['!顏面對稱','Facial symmetry','symmetric'],
+  ['!四肢肌力（arm drift、leg drift）','Limb power','no drift, muscle power 5/5'],
+  ['!語言（命名、複誦、構音）','Speech','fluent, no dysarthria or aphasia'],
+  ['!瞳孔、眼球偏向、視野','Pupils, gaze and visual fields','isocoric, no gaze deviation, full visual fields'],
+  ['感覺與忽略','Sensation and neglect','intact, no neglect'],
+  ['小腦（finger-nose、步態）','Cerebellar signs','no dysmetria'],
+  ['心律、頸動脈雜音','Heart rhythm and carotid bruit','regular, no bruit']],
+ ddx:[
+  ['m','Acute ischemic stroke','ischemic 缺血 梗塞 infarct stroke 中風','突發局部缺損','Brain CT（排除出血）、CTA、MRI DWI'],
+  ['m','Intracranial hemorrhage','hemorrhage 出血 ich sah','頭痛、嘔吐、意識變差、血壓很高、抗凝','Brain CT'],
+  ['m','Hypoglycemia','hypoglycemia 低血糖','糖尿病用藥、冒汗','Finger sugar'],
+  ['c','TIA','tia 暫時','症狀在 1 小時內完全恢復','影像、ABCD2'],
+  ['c','Seizure with Todd paralysis','seizure 抽搐 todd','先抽搐再無力、數小時恢復','病史、EEG'],
+  ['c','Metabolic or septic encephalopathy unmasking old deficit','metabolic 代謝 sepsis 感染 old stroke 舊中風','舊中風病人在感染、電解質異常時變差','感染與電解質 survey'],
+  ['c','Peripheral cause (Bell palsy, compressive neuropathy)','bell 顏面神經 peripheral 周邊 壓迫','額頭也動不了、單一神經分布','理學檢查']],
+ ord:[
+  ['lab','Finger sugar stat','Finger sugar stat'],
+  ['img','Brain CT without contrast stat（依院內流程加 CTA）','Brain CT without contrast stat'],
+  ['lab','CBC、PT/INR、aPTT、Na/K、BUN/Cr、glucose','CBC, PT/INR, aPTT, Na/K, BUN/Cr, glucose'],
+  ['img','12-lead ECG','12-lead ECG'],
+  ['rx','d50','血糖 <70'],
+  ['rx','labetalol_iv','血壓 >220/120，或溶栓前 >185/110（與學長姊確認）'],
+  ['rx','mannitol','腦疝徵象（先通知）'],
+  ['med','確定不是出血之前：不給 aspirin、抗凝血劑；暫停原本的抗凝血劑','Hold antiplatelets and anticoagulants until hemorrhage is excluded'],
+  ['nurse','NPO 到完成吞嚥篩檢；床頭 30 度；神經學檢查與 vital signs q15min','NPO until swallowing screen; head of bed 30 degrees; neuro checks q15min'],
+  ['consult','啟動院內腦中風流程／神經內科急會診','Activate in-hospital stroke code; urgent neurology consult']],
+ pearl:[
+  '第一個要問的不是症狀，是「最後正常是幾點」。',
+  '先驗血糖：這是唯一可以在床邊一分鐘內排除的中風模仿者。',
+  '急性期血壓高是保護性的，不要看到 180 就降。',
+  '住院病人中風常被當成「比較嗜睡」「譫妄」而延誤：有局部缺損就當中風處理。']},
+
+{id:'withdrawal', zh:'酒精戒斷／手抖躁動', en:'Alcohol withdrawal', alias:'alcohol withdrawal 酒精戒斷 戒斷 手抖 tremor dt delirium tremens 震顫性譫妄 酗酒 ciwa 幻覺',
+ call:[
+  '抽搐',
+  '意識混亂、幻覺、定向感差 → delirium tremens',
+  '體溫 >38.5℃、心跳 >120、血壓很高、大量冒汗',
+  '給了足量 benzodiazepine 仍控制不住'],
+ now:[
+  '問最後一杯酒的時間與平常的量',
+  '量生命徵象、finger sugar',
+  '做 CIWA-Ar 評分',
+  '給葡萄糖之前或同時給 Thiamine',
+  '排除其他原因：感染、頭部外傷、低血糖、肝性腦病變、電解質異常'],
+ hx:[
+  ['!最後一次喝酒的時間','time of last drink','6–24 小時手抖；12–48 小時抽搐；48–96 小時 DT'],
+  ['!每天喝多少、喝了幾年','daily amount and duration','戒斷嚴重度'],
+  ['!以前有沒有戒斷抽搐或 DT','previous withdrawal seizure or DT','最強的預測因子'],
+  ['!幻覺（看到、聽到、摸到）','hallucinations','酒精性幻覺症、DT'],
+  ['噁心、嘔吐、冒汗、焦慮、失眠','nausea, sweating, anxiety, insomnia','早期戒斷症狀'],
+  ['頭部外傷、跌倒','head trauma or fall','硬腦膜下出血'],
+  ['發燒、咳嗽、腹痛、黑便','fever, cough, abdominal pain, melena','感染、胰臟炎、出血'],
+  ['同時使用鎮靜安眠藥','sedative-hypnotic use','合併 BZD 戒斷']],
+ pe:[
+  ['!意識與定向感','Orientation','alert and oriented'],
+  ['!手抖（雙手平舉）','Tremor','no tremor'],
+  ['!生命徵象（發燒、心跳、血壓）','Vital signs','afebrile, HR < 100'],
+  ['冒汗','Diaphoresis','no diaphoresis'],
+  ['頭部外傷痕跡','Signs of head trauma','no scalp hematoma'],
+  ['肝病徵象、腹水、撲翼樣震顫','Stigmata of liver disease, asterixis','no asterixis or ascites'],
+  ['眼球運動、步態（Wernicke）','Eye movements and gait','no nystagmus or ophthalmoplegia, steady gait']],
+ ddx:[
+  ['m','Delirium tremens','dt delirium tremens 震顫性譫妄','停酒 48–96 小時、混亂、幻覺、自律神經亢進','臨床診斷、CIWA-Ar'],
+  ['m','Withdrawal seizure','seizure 抽搐','停酒 12–48 小時、全身性、短暫','排除其他原因（頭部 CT）'],
+  ['m','Wernicke encephalopathy','wernicke thiamine','混亂、眼球運動異常、步態不穩（三者齊全的很少）','臨床診斷，直接給高劑量 thiamine'],
+  ['m','Intracranial hemorrhage / head injury','subdural 硬腦膜 ich 出血 head injury','跌倒、局部神經學缺損','Brain CT'],
+  ['c','Uncomplicated alcohol withdrawal','uncomplicated withdrawal 戒斷','手抖、焦慮、冒汗、意識清楚','CIWA-Ar'],
+  ['c','Hepatic encephalopathy','hepatic 肝性 encephalopathy','撲翼樣震顫、嗜睡（不是亢奮）','ammonia、誘因'],
+  ['c','Infection, hypoglycemia, electrolyte disturbance','infection 感染 hypoglycemia 低血糖 電解質','發燒、血糖低、低血鈉','感染 survey、血糖、電解質']],
+ ord:[
+  ['lab','Finger sugar stat','Finger sugar stat'],
+  ['lab','Na/K、Mg、P、Ca、BUN/Cr、GOT/GPT、bilirubin、CBC','Na/K, Mg, P, Ca, BUN/Cr, GOT/GPT, bilirubin, CBC'],
+  ['lab','Ammonia、PT/INR（肝病）','Ammonia, PT/INR'],
+  ['img','Brain CT（頭部外傷、抽搐或局部神經學缺損）','Brain CT'],
+  ['rx','thiamine','所有酗酒病人，在給糖之前'],
+  ['rx','lorazepam_aws','CIWA-Ar ≥8；肝硬化、高齡首選'],
+  ['rx','diazepam_aws','嚴重戒斷或 DT、肝功能正常'],
+  ['rx','lorazepam_sz','戒斷抽搐'],
+  ['rx','mgso4_iv','Mg <1.8'],
+  ['rx','kcl_po','K <3.5'],
+  ['nurse','CIWA-Ar q1h（≥8）或 q4h；安靜、光線充足的環境；防跌','CIWA-Ar q1h if >= 8, otherwise q4h; quiet well-lit room; fall precaution'],
+  ['consult','DT、需要大量 BZD：討論轉 ICU','Consider ICU transfer for delirium tremens']],
+ pearl:[
+  '住院第 2–4 天才開始躁動、幻覺的病人：回頭問喝酒史。',
+  '戒斷的治療是 benzodiazepine，Haloperidol 會降低癲癇閾值，不能單獨用。',
+  '酒精戒斷抽搐不需要長期抗癲癇藥，Phenytoin 無效。',
+  'Thiamine 先給再給糖，劑量不要省。']},
+
+{id:'aki', zh:'Cr 上升／AKI', en:'Acute kidney injury', alias:'aki acute kidney injury 急性腎損傷 cr 上升 creatinine 腎功能變差 肌酸酐 腎衰竭 bun',
+ call:[
+  'K ≥6.0 或 ECG 有變化',
+  '肺水腫、SpO2 下降',
+  '嚴重代謝性酸中毒（pH <7.2）、尿毒症狀（心包膜摩擦音、意識改變）',
+  '無尿（<100 mL/day）'],
+ now:[
+  '確認定義：48 小時內 Cr 上升 ≥0.3 mg/dL，或 7 天內 ≥1.5 倍，或尿量 <0.5 mL/kg/h 持續 6 小時',
+  '看尿量趨勢與 I/O、體重變化',
+  '先排除腎後性：bladder scan；有 Foley 就沖洗確認通暢',
+  '評估體液狀態：太乾還是太濕',
+  '把醫囑從頭看一遍：腎毒性藥物、顯影劑、需要調腎劑量的藥'],
+ hx:[
+  ['!尿量變化','change in urine output','少尿型預後較差'],
+  ['!進食喝水少、嘔吐、腹瀉、出血','poor intake, vomiting, diarrhea, bleeding','腎前性'],
+  ['!NSAID、ACEI/ARB、利尿劑、aminoglycoside、vancomycin','NSAID, ACEI/ARB, diuretics, nephrotoxic antibiotics','藥物是住院 AKI 的主因'],
+  ['!48–72 小時內打過顯影劑','recent contrast exposure','顯影劑腎病變'],
+  ['最近的低血壓、手術、敗血症','recent hypotension, surgery or sepsis','ATN'],
+  ['解尿困難、下腹脹','voiding difficulty, suprapubic fullness','腎後性'],
+  ['新的紅疹、發燒、關節痛','new rash, fever, arthralgia','AIN、血管炎'],
+  ['泡泡尿、血尿、水腫','foamy urine, hematuria, edema','腎絲球腎炎'],
+  ['肌肉痛、茶色尿','myalgia, dark urine','橫紋肌溶解']],
+ pe:[
+  ['!體液狀態（黏膜、JVP、水腫、姿勢性血壓）','Volume status','euvolemic'],
+  ['!肺部聽診','Chest auscultation','clear breath sounds'],
+  ['!下腹（膀胱脹）','Suprapubic area','no palpable bladder'],
+  ['皮膚（紅疹、紫斑、網狀青斑）','Skin','no rash or livedo'],
+  ['心包膜摩擦音','Pericardial rub','no rub'],
+  ['意識、撲翼樣震顫','Mental status and asterixis','alert, no asterixis']],
+ ddx:[
+  ['m','AKI with life-threatening complication (hyperkalemia, pulmonary edema, acidosis)','hyperkalemia 高血鉀 edema 肺水腫 acidosis 酸中毒','K 高、喘、pH 低','K、ECG、VBG、CXR'],
+  ['m','Obstructive uropathy','obstructive 阻塞 postrenal 腎後 hydronephrosis 水腎','尿滯留、Foley 不通、骨盆腔腫瘤','Bladder scan、腎臟超音波'],
+  ['c','Prerenal azotemia (volume depletion, heart failure, hepatorenal)','prerenal 腎前 dehydration 脫水 heart failure hepatorenal','進食差、利尿、低血壓；BUN/Cr >20','FENa <1%（用利尿劑看 FEUrea <35%）'],
+  ['c','Acute tubular necrosis (ischemic, septic, toxic)','atn tubular 腎小管 壞死','低血壓、敗血症、腎毒性藥物之後','FENa >2%、muddy brown casts'],
+  ['c','Contrast-associated AKI','contrast 顯影劑','顯影劑後 24–72 小時','時序'],
+  ['c','Acute interstitial nephritis','ain interstitial 間質','新藥（PPI、抗生素、NSAID）後、紅疹、發燒','U/A（WBC cast）、eosinophil'],
+  ['c','Glomerulonephritis / vasculitis / rhabdomyolysis','gn 腎絲球 vasculitis 血管炎 rhabdo 橫紋肌','血尿、蛋白尿、RBC cast；CK 高','U/A、UPCR、CK']],
+ ord:[
+  ['lab','複驗 BUN/Cr、Na/K、Ca、P','Repeat BUN/Cr, Na/K, Ca, P'],
+  ['lab','VBG（HCO3、pH）','Venous blood gas'],
+  ['lab','U/A＋sediment、spot urine Na、Cr、urea、protein','U/A with sediment, spot urine Na, Cr, urea, protein'],
+  ['lab','CK（疑橫紋肌溶解）','CK'],
+  ['img','12-lead ECG（K 高時）','12-lead ECG'],
+  ['img','腎臟超音波（排除水腎）','Renal ultrasound'],
+  ['nurse','Bladder scan；Foley 沖洗確認通暢','Bladder scan; flush Foley catheter'],
+  ['rx','ns_bolus','體液不足：fluid challenge 後看尿量'],
+  ['rx','furosemide_iv','volume overload'],
+  ['med','停 NSAID、ACEI/ARB、metformin；避免顯影劑；所有藥重新調腎劑量','Hold NSAIDs, ACEI/ARB and metformin; avoid contrast; renally adjust all medications'],
+  ['nurse','嚴格 I/O（每小時尿量）、每日體重','Strict I/O with hourly urine output, daily body weight'],
+  ['consult','AEIOU（Acidosis、Electrolyte、Intoxication、Overload、Uremia）任一：腎臟科討論透析','Nephrology consult for dialysis indications']],
+ pearl:[
+  'AKI 的三個問題依序是：有沒有塞住？夠不夠水？用了什麼藥？',
+  'Cr 上升比腎損傷晚 24–48 小時：尿量掉了就要開始處理。',
+  '「調腎劑量」是 AKI 處置裡最容易被忘記的一項，尤其抗生素、抗凝血劑、鴉片類。',
+  '少尿的病人不要一直灌水：給一次 fluid challenge 沒反應就停。',
+  '這張和「尿少」互補：尿少看的是床邊的當下，這張看的是抽血報告。']},
+
+{id:'coag', zh:'INR 過高／血小板低', en:'Coagulopathy / thrombocytopenia', alias:'inr 過高 inr high coagulopathy 凝血異常 pt aptt 延長 血小板低 thrombocytopenia platelet low dic hit warfarin 過量',
+ call:[
+  '任何活動性出血合併 INR 高或血小板低',
+  '頭痛、意識改變 → 顱內出血',
+  '血小板 <10k，或 <20k 合併發燒',
+  '使用 heparin 5–10 天後血小板掉 >50% → 疑 HIT',
+  '血小板低合併溶血、腎功能惡化、神經症狀 → 疑 TTP（不要輸血小板）'],
+ now:[
+  '看病人有沒有在出血：皮膚、黏膜、傷口、管路、大小便',
+  '確認檢體：aPTT 單獨延長先想 heparin 汙染；血小板低先看抹片排除 EDTA 假性低下',
+  '看趨勢：跟上次比掉多少、多快',
+  '看用藥：warfarin、DOAC、heparin、抗生素、化療',
+  '確認接下來有沒有排侵入性處置'],
+ hx:[
+  ['!出血：牙齦、鼻血、黑便、血尿、瘀青','bleeding from any site','決定要不要矯正'],
+  ['!頭痛、意識改變','headache, altered consciousness','顱內出血'],
+  ['!Warfarin 劑量、最近有沒有改；新加的抗生素、amiodarone','warfarin dose and interacting drugs','INR 升高最常見原因'],
+  ['!Heparin 或 enoxaparin 使用天數','duration of heparin exposure','HIT（第 5–10 天）'],
+  ['進食差、長期抗生素','poor intake, prolonged antibiotics','維生素 K 缺乏'],
+  ['肝病','liver disease','合成功能差'],
+  ['敗血症、惡性腫瘤、產科併發症','sepsis, malignancy','DIC'],
+  ['化療、新藥（linezolid、valproate、抗生素）','chemotherapy or new drugs','骨髓抑制、藥物引起的血小板低下'],
+  ['新的肢體腫痛、喘','new limb swelling or dyspnea','HIT 的血栓']],
+ pe:[
+  ['!皮膚（出血點、瘀斑、紫斑）','Skin','no petechiae or ecchymosis'],
+  ['!口腔黏膜、牙齦','Oral mucosa','no mucosal bleeding'],
+  ['!神經學檢查','Neurologic exam','no focal deficit'],
+  ['傷口、管路、穿刺部位','Wound and catheter sites','no oozing'],
+  ['腹部（脾腫大、腹水）','Abdomen','no splenomegaly'],
+  ['四肢（腫脹、壞死）','Extremities','no swelling or skin necrosis']],
+ ddx:[
+  ['m','Major bleeding on anticoagulation','bleeding 出血 warfarin doac anticoagulant','出血加上抗凝','依藥物逆轉（見用藥速查「抗凝血劑 Reversal」）'],
+  ['m','DIC','dic 瀰漫性','敗血症、腫瘤；PT、aPTT 都長、血小板與 fibrinogen 低、D-dimer 高','PT、aPTT、fibrinogen、D-dimer、抹片'],
+  ['m','Heparin-induced thrombocytopenia','hit heparin','Heparin 5–10 天、掉 >50%、新血栓','4T score、anti-PF4；先停所有 heparin'],
+  ['m','TTP / HUS','ttp hus tma microangiopathy','溶血、破碎紅血球、腎功能差、神經症狀','抹片（schistocyte）、LDH、ADAMTS13'],
+  ['c','Warfarin over-anticoagulation / drug interaction','warfarin overdose interaction 交互作用 過量','沒有出血、新加藥物','INR、回顧用藥'],
+  ['c','Vitamin K deficiency','vitamin k 維生素','進食差、抗生素、膽汁鬱積','給 vitamin K 後 INR 改善'],
+  ['c','Liver disease','liver 肝 cirrhosis 肝硬化','肝硬化、albumin 低','肝功能、factor V'],
+  ['c','Drug-induced or sepsis-related thrombocytopenia','drug 藥物 sepsis 敗血 linezolid chemo','新藥 1–2 週後、感染中','停藥後回升'],
+  ['c','Pseudothrombocytopenia / sample contamination','pseudo 假性 edta clumping contamination','沒有出血、抹片看到血小板凝集','改用 citrate 管重抽']],
+ ord:[
+  ['lab','複驗 CBC、PT/INR、aPTT（周邊靜脈重抽）','Repeat CBC, PT/INR, aPTT from peripheral vein'],
+  ['lab','Fibrinogen、D-dimer、blood smear','Fibrinogen, D-dimer, peripheral blood smear'],
+  ['lab','LDH、bilirubin、haptoglobin、Cr（疑 TMA）','LDH, bilirubin, haptoglobin, Cr'],
+  ['lab','Anti-PF4 antibody（4T score 中高度）','Anti-PF4 antibody'],
+  ['lab','Type & screen','Type and screen'],
+  ['rx','vitk_po','INR >10、沒有出血'],
+  ['rx','vitk_iv','Warfarin 相關的嚴重出血（同時 PCC 或 FFP）'],
+  ['rx','ffp','INR >1.5 合併出血或要做侵入性處置'],
+  ['rx','plt','依門檻；TTP、HIT 不輸'],
+  ['rx','protamine','Heparin 相關的嚴重出血'],
+  ['med','暫停 warfarin、抗血小板；疑 HIT 停所有 heparin（含 flush）並改用非 heparin 抗凝','Hold warfarin and antiplatelets; stop all heparin including flushes if HIT suspected'],
+  ['nurse','避免肌肉注射與侵入性處置；防跌；觀察出血','Avoid IM injections and invasive procedures; fall precaution; monitor for bleeding'],
+  ['consult','疑 TTP、HIT、DIC：血液科急會診','Urgent hematology consult']],
+ pearl:[
+  'INR 4.5–10 沒出血：停一兩劑 warfarin 就好，不必給 vitamin K。',
+  'TTP 和 HIT 是兩個「血小板低但不能輸血小板」的病。',
+  '肝硬化病人的 INR 高不代表容易出血，也不需要為了數字輸 FFP。',
+  'aPTT 單獨延長，先確認不是從有 heparin 的管路抽的。']},
+
+{id:'wound', zh:'傷口／術後出血、滲液', en:'Wound bleeding or drainage', alias:'wound 傷口 滲血 滲液 術後出血 引流管 出血 drain bleeding dehiscence 裂開 傷口紅腫 hematoma 血腫 穿刺部位',
+ call:[
+  '壓迫止不住的出血，或合併低血壓、心跳快',
+  '引流管突然出現大量鮮血（>100 mL/h）',
+  '頸部手術後傷口腫脹、呼吸困難 → 血腫壓迫氣道',
+  '腹部傷口裂開、看到腸子（evisceration）',
+  '傷口劇痛、皮膚發紫、水泡、捻髮音 → 壞死性筋膜炎',
+  '導管穿刺側肢體變冷、變白、摸不到脈搏'],
+ now:[
+  '戴手套，把敷料打開親自看',
+  '出血：用紗布直接加壓 10–15 分鐘，中途不要掀開看',
+  '量生命徵象；看引流管的量、顏色與趨勢',
+  '股動脈穿刺部位：摸有沒有腫塊、聽雜音、摸遠端脈搏',
+  '內臟露出：用濕的無菌 N/S 紗布蓋住，NPO，通知主刀團隊',
+  '看用藥：抗凝血劑、抗血小板最後一劑的時間'],
+ hx:[
+  ['!什麼手術或處置、術後第幾天','type and day of surgery or procedure','術後 24 小時內想止血不全；5–10 天想感染、裂開'],
+  ['!出血或滲液的量、顏色、味道','amount, color and odor of drainage','鮮血、漿液、膿、膽汁、腸液'],
+  ['!頭暈、心悸、口渴','dizziness, palpitations','失血'],
+  ['!抗凝血劑、抗血小板','anticoagulant or antiplatelet use','出血風險'],
+  ['傷口疼痛加劇','worsening wound pain','血腫、感染、壞死性筋膜炎'],
+  ['發燒、寒顫','fever, chills','傷口感染'],
+  ['咳嗽、用力、嘔吐後傷口「啪」一聲','popping sensation after coughing or straining','筋膜裂開'],
+  ['遠端肢體麻、冷、痛','distal numbness, coldness or pain','血管併發症、腔室症候群']],
+ pe:[
+  ['!傷口（出血點、裂開、紅腫範圍）','Wound','clean and dry, well approximated'],
+  ['!周圍皮膚（血腫、瘀青、捻髮音、水泡）','Surrounding skin','no hematoma, crepitus or bullae'],
+  ['!引流管（量、性質、通暢）','Drain','serous drainage, patent'],
+  ['!生命徵象','Vital signs','stable'],
+  ['遠端循環、感覺、活動','Distal circulation, sensation and movement','intact'],
+  ['腹部（脹、壓痛）','Abdomen','soft, non-tender']],
+ ddx:[
+  ['m','Surgical site hemorrhage / expanding hematoma','hemorrhage 出血 hematoma 血腫','術後 24 小時內、引流鮮血、心跳快','CBC、必要時 CT；通知主刀'],
+  ['m','Fascial dehiscence / evisceration','dehiscence 裂開 evisceration 內臟','術後 5–10 天、大量淡粉紅色漿液滲出','理學檢查；通知主刀'],
+  ['m','Necrotizing soft tissue infection','necrotizing 壞死性 筋膜炎 fasciitis','疼痛與外觀不成比例、發紫、水泡、捻髮音','外科急會診，不要等影像'],
+  ['m','Pseudoaneurysm / retroperitoneal bleed after arterial puncture','pseudoaneurysm 假性動脈瘤 retroperitoneal 後腹腔 穿刺','股動脈穿刺後腫塊、雜音、腰痛','血管超音波、CT'],
+  ['c','Superficial oozing','oozing 滲血 superficial','皮緣滲血、加壓可止','加壓'],
+  ['c','Surgical site infection / abscess','infection 感染 ssi abscess 膿瘍','紅腫熱痛、膿、發燒','傷口 culture、超音波'],
+  ['c','Seroma / lymph leak','seroma 血清腫 lymph 淋巴','清澈淡黃色液體、不痛','觀察、引流'],
+  ['c','Anastomotic leak or fistula (enteric, bile, urine)','leak 滲漏 fistula 瘻管 anastomotic','引流液變成膽汁、腸液、混濁','引流液 amylase、bilirubin、Cr；CT']],
+ ord:[
+  ['nurse','直接加壓止血 10–15 分鐘後換加壓敷料','Direct pressure for 10-15 min, then pressure dressing'],
+  ['lab','CBC stat，4–6 小時後複驗','CBC stat, repeat in 4-6 h'],
+  ['lab','PT/INR、aPTT','PT/INR, aPTT'],
+  ['lab','Type & screen','Type and screen'],
+  ['lab','傷口 culture（有膿）','Wound culture'],
+  ['rx','ns_bolus','出血合併低血壓'],
+  ['rx','prbc','Hb <7（或持續出血）'],
+  ['rx','txa_bleed','持續滲血的輔助（與學長姊確認）'],
+  ['rx','cefazolin','傷口感染（MSSA 為主；有 MRSA 風險改 Vancomycin）'],
+  ['rx','apap_iv','止痛'],
+  ['med','暫停抗凝血劑、抗血小板（與主刀團隊討論）','Hold anticoagulants and antiplatelets after discussion with surgical team'],
+  ['nurse','畫出血腫或紅腫範圍並記錄時間；引流量每小時記錄','Mark the margin of hematoma or erythema with time; record drain output hourly'],
+  ['consult','通知主刀團隊','Notify the primary surgical team']],
+ pearl:[
+  '加壓要壓在出血點上、壓夠久；每 2 分鐘掀開看一次等於沒壓。',
+  '術後 5–10 天傷口突然流出大量粉紅色水：是筋膜裂開的前兆，不是好事。',
+  '頸部手術後的血腫是氣道急症：呼吸困難時在床邊拆線減壓。',
+  '引流管沒東西不代表沒出血：可能是塞住了。',
+  '用筆把紅腫的邊界畫起來，下一個人才知道有沒有擴大。']},
+
+{id:'death', zh:'宣告死亡', en:'Death pronouncement', alias:'death 死亡 宣告死亡 expire 往生 過世 dnr 臨終 pronounce 沒有呼吸心跳',
+ call:[
+  '先確認 code status：沒有有效的 DNR → 立即 CPR、啟動急救',
+  '非預期死亡、住院 24 小時內死亡、手術或處置後死亡',
+  '可能需要司法相驗：意外、跌倒、自殺、他殺、中毒、醫療爭議、死因不明',
+  '家屬對死因有疑問或情緒激動'],
+ now:[
+  '確認 DNR 文件與病人身分（手圈）',
+  '進病房前先了解：病人診斷、住院經過、主治醫師、家屬是誰',
+  '向在場家屬自我介紹，說明要做檢查',
+  '完成死亡確認檢查（下一步），記下宣告時間',
+  '用清楚的話告知：「他已經過世了」，不要用「走了」「不行了」',
+  '通知主治醫師與學長姊'],
+ hx:[
+  ['!DNR 是否簽署、範圍','DNR status','沒有 DNR 就是急救'],
+  ['!是否為預期中的死亡','expected or unexpected death','非預期要通知主治、考慮相驗'],
+  ['!最後被看到有生命徵象的時間','time last seen alive','紀錄用'],
+  ['!是否需要司法相驗（外傷、跌倒、中毒、自殺、死因不明）','need for forensic examination','非病死或可疑為非病死：不可開一般死亡證明'],
+  ['家屬是否都到了、有沒有還在路上的','family present or on the way','安排告知與陪伴'],
+  ['器官或組織捐贈意願','organ or tissue donation wishes','眼角膜等組織在心跳停止後仍可捐'],
+  ['是否有傳染病（結核、法定傳染病）','communicable disease','遺體處理與通報'],
+  ['體內裝置（節律器、放射性植入物）','implanted devices','火化前需取出節律器']],
+ pe:[
+  ['!對聲音與疼痛刺激沒有反應','Response to verbal and painful stimuli','no response to verbal or painful stimuli'],
+  ['!頸動脈摸不到脈搏（至少 1 分鐘）','Carotid pulse','no palpable carotid pulse'],
+  ['!聽診沒有心音（至少 1 分鐘）','Heart sounds','no heart sounds on auscultation for 1 min'],
+  ['!沒有自發性呼吸、聽診沒有呼吸音（至少 1 分鐘）','Respiration','no spontaneous respiration or breath sounds for 1 min'],
+  ['!瞳孔固定、放大、對光沒有反應','Pupils','fixed and dilated, no light reflex'],
+  ['ECG 呈 asystole（有 monitor 時留一段紀錄）','ECG','asystole on monitor']],
+ ddx:[
+  ['m','Not actually dead: hypothermia, drug overdose, severe hypoglycemia','hypothermia 低體溫 overdose 藥物過量 hypoglycemia 低血糖','體溫很低、用過大量鎮靜藥；脈搏微弱難摸','延長觀察、量核心體溫、ECG'],
+  ['m','Death requiring forensic examination','forensic 相驗 司法 意外 自殺 他殺 unnatural','意外、跌倒、中毒、自殺、死因不明、醫療爭議','報請檢察機關相驗，不開一般死亡證明'],
+  ['c','Expected death from underlying disease','expected 預期 underlying 病死 自然死','病程末期、已簽 DNR','病歷'],
+  ['c','Unexpected in-hospital death','unexpected 非預期 sudden 猝死','原本穩定','通知主治、與家屬討論病理解剖']],
+ ord:[
+  ['note','死亡紀錄：檢查發現、宣告時間、在場家屬、已通知的醫師','Death note: examination findings, time of death, family present, physicians notified'],
+  ['nurse','通知主治醫師與值班學長姊','Notify attending physician and senior resident'],
+  ['nurse','移除管路與遺體護理（需相驗者：管路全部保留、不可移除）','Remove lines and provide post-mortem care (keep all lines in place if forensic examination is required)'],
+  ['note','開立死亡證明書：直接死因、先行原因、其他重要狀況（先與主治確認）','Death certificate: immediate cause, underlying cause, other significant conditions'],
+  ['consult','非病死或可疑為非病死：依院內流程報請司法相驗','Report to prosecutor for forensic examination if unnatural death is suspected'],
+  ['consult','器官、組織捐贈：通知協調師','Notify organ procurement coordinator if applicable'],
+  ['nurse','家屬支持：社工、宗教師、悲傷輔導','Bereavement support: social worker, chaplain']],
+ pearl:[
+  '走進去之前先確認 DNR；沒有 DNR 的病人沒有「宣告」，只有急救。',
+  '檢查要做足：聽心音、呼吸音各一分鐘。低體溫和藥物過量的病人會騙過你。',
+  '死亡證明的「直接死因」不能寫心跳停止、呼吸衰竭這種死亡機轉，要寫疾病。',
+  '有任何外傷、跌倒、中毒的因果關係，就不是病死：先問主治，不要自己開證明。',
+  '告知之後安靜陪一下，家屬會記得你怎麼說這句話。']},
+
+{id:'dizzy', zh:'頭暈／眩暈', en:'Dizziness / vertigo', alias:'dizziness dizzy vertigo 頭暈 眩暈 暈眩 天旋地轉 頭昏 lightheaded 站不穩',
+ call:[
+  '合併複視、構音障礙、吞嚥困難、肢體無力或麻、嚴重走不穩 → 後循環中風',
+  '突發劇烈頭痛或頸部痛',
+  '胸痛、心悸、快昏倒、低血壓',
+  '黑便、血便或 Hb 下降'],
+ now:[
+  '量生命徵象與姿勢性血壓、finger sugar',
+  '先問清楚是哪一種暈：天旋地轉、快昏倒、走不穩，還是說不清楚',
+  '持續性眩暈做 HINTS（head impulse、nystagmus、test of skew）',
+  '12-lead ECG',
+  '看新加的藥：降壓藥、利尿劑、鎮靜安眠藥、抗癲癇藥、aminoglycoside'],
+ hx:[
+  ['!是天旋地轉、快昏倒，還是走不穩','vertigo, presyncope or disequilibrium','分類決定方向'],
+  ['!持續多久、是陣發還是持續','duration, episodic or continuous','幾秒：BPPV；數天持續：前庭神經炎或中風'],
+  ['!轉頭、翻身、起床時誘發','triggered by head movement or position','BPPV、姿勢性低血壓'],
+  ['!複視、口齒不清、吞嚥困難、肢體麻或無力','diplopia, dysarthria, dysphagia, limb weakness','後循環中風的 5D'],
+  ['!頭痛、頸部痛','headache or neck pain','小腦出血、椎動脈剝離'],
+  ['耳鳴、聽力下降、耳悶','tinnitus, hearing loss','梅尼爾氏症、內耳病變；突發聽損也可能是 AICA 中風'],
+  ['胸痛、心悸、黑便','chest pain, palpitations, melena','心因性、出血'],
+  ['新的降壓藥、利尿劑、鎮靜藥','new antihypertensive, diuretic or sedative','藥物造成'],
+  ['進食與喝水量','oral intake','脫水、低血糖']],
+ pe:[
+  ['!姿勢性血壓與心跳','Orthostatic vital signs','no orthostatic hypotension'],
+  ['!眼震（方向、會不會換向、垂直）','Nystagmus','no nystagmus'],
+  ['!Head impulse test','Head impulse test','normal (no corrective saccade)'],
+  ['!Test of skew','Test of skew','no skew deviation'],
+  ['!步態、finger-nose、輪替動作','Gait and cerebellar signs','steady gait, no dysmetria'],
+  ['顱神經、肢體肌力','Cranial nerves and limb power','intact'],
+  ['Dix-Hallpike（陣發性姿勢性眩暈時）','Dix-Hallpike','negative'],
+  ['心律、心雜音','Heart','regular, no murmur']],
+ ddx:[
+  ['m','Posterior circulation stroke / cerebellar hemorrhage','stroke 中風 cerebellar 小腦 posterior 後循環','持續性眩暈、HINTS 中樞型、走不穩、血管危險因子','Brain MRI DWI（早期 CT 常正常）'],
+  ['m','Cardiac arrhythmia / presyncope','arrhythmia 心律不整 presyncope','快昏倒、心悸、與姿勢無關','ECG、monitor'],
+  ['m','GI bleeding / hypovolemia','bleeding 出血 hypovolemia 低血容','姿勢性低血壓、黑便','CBC、肛診'],
+  ['c','BPPV','bppv 耳石','轉頭誘發、每次不到 1 分鐘','Dix-Hallpike 陽性'],
+  ['c','Vestibular neuritis','vestibular neuritis 前庭神經炎','持續數天、單向水平眼震、head impulse 異常、聽力正常','HINTS 周邊型'],
+  ['c','Orthostatic hypotension / drug-induced','orthostatic 姿勢性 drug 藥物','站起來才暈、新的降壓藥或利尿劑','姿勢性血壓'],
+  ['c','Hypoglycemia, anemia, infection','hypoglycemia 低血糖 anemia 貧血','非特異性頭昏','血糖、CBC']],
+ ord:[
+  ['lab','Finger sugar','Finger sugar'],
+  ['img','12-lead ECG','12-lead ECG'],
+  ['lab','CBC、Na/K、BUN/Cr','CBC, Na/K, BUN/Cr'],
+  ['img','Brain MRI（HINTS 中樞型或有神經學缺損；CT 只能排除出血）','Brain MRI with DWI'],
+  ['med','Diphenidol 25 mg PO TID PRN 眩暈（短期使用，3 天內）','Diphenidol 25 mg PO TID PRN vertigo'],
+  ['rx','prochlorperazine','眩暈合併嘔吐、不能口服'],
+  ['rx','metoclopramide','合併噁心嘔吐'],
+  ['rx','ns_bolus','姿勢性低血壓、進食差'],
+  ['med','檢視並調整降壓藥、利尿劑、鎮靜藥','Review antihypertensives, diuretics and sedatives'],
+  ['nurse','防跌：下床要有人陪、床欄拉起','Fall precaution; assist with ambulation'],
+  ['consult','疑後循環中風：啟動院內腦中風流程','Activate stroke code if posterior circulation stroke suspected']],
+ pearl:[
+  '持續性眩暈的病人，head impulse test「正常」反而是壞消息：代表前庭神經沒事，問題在腦。',
+  '後循環中風的 CT 常常正常，不能用正常的 CT 排除。',
+  '自己走不了的眩暈病人，不管其他檢查多正常，都要當中樞性處理。',
+  '止暈藥只用幾天：長期使用會妨礙前庭代償。']},
+
+{id:'hiccup', zh:'打嗝不停', en:'Persistent hiccups', alias:'hiccup hiccups 打嗝 打嗝不停 呃逆 singultus',
+ call:[
+  '合併胸痛、喘 → 心肌梗塞、心包膜炎、肺栓塞',
+  '合併吞嚥困難、口齒不清、眩暈 → 延腦中風',
+  '合併腹脹、嘔吐、腹痛 → 腸阻塞、橫膈下膿瘍',
+  '術後病人打嗝加發燒'],
+ now:[
+  '問打了多久：<48 小時多半自己會好；>48 小時要找原因',
+  '看肚子脹不脹、最近進食與管灌量',
+  '看新加的藥：類固醇（dexamethasone）、benzodiazepine、化療',
+  '先試物理方法：憋氣、喝冰水、Valsalva'],
+ hx:[
+  ['!持續多久、會不會影響睡眠與進食','duration, effect on sleep and eating','>48 小時為持續性'],
+  ['!腹脹、噁心、嘔吐、胃酸逆流','distension, nausea, reflux','胃脹與逆流是最常見原因'],
+  ['!胸痛、喘','chest pain, dyspnea','橫膈上方的刺激'],
+  ['!吞嚥困難、聲音改變、眩暈、肢體麻','dysphagia, hoarseness, vertigo, numbness','延腦病變'],
+  ['新藥：dexamethasone、BZD、化療、鴉片類','new drugs: dexamethasone, benzodiazepine, chemotherapy','藥物造成'],
+  ['最近手術（腹部、胸部）或插管','recent abdominal or thoracic surgery','橫膈刺激'],
+  ['發燒、右上腹痛','fever, right upper quadrant pain','橫膈下膿瘍、肝膿瘍'],
+  ['腎臟病、喝酒','kidney disease, alcohol','尿毒、電解質']],
+ pe:[
+  ['!腹部（脹、壓痛、腸音）','Abdomen','soft, not distended, normoactive bowel sounds'],
+  ['!肺部與心臟聽診','Chest and heart','clear breath sounds, no rub'],
+  ['!顱神經（吞嚥、聲音、眼震）','Cranial nerves','intact, no nystagmus'],
+  ['頸部（腫塊、甲狀腺）','Neck','no mass'],
+  ['耳道（異物、毛髮碰到鼓膜）','Ear canal','clear']],
+ ddx:[
+  ['m','Myocardial infarction / pericarditis / pulmonary embolism','mi 心肌梗塞 pericarditis pe','胸痛、喘、危險因子','ECG、troponin'],
+  ['m','Brainstem lesion (lateral medullary stroke)','brainstem 腦幹 medullary 延腦 stroke','吞嚥困難、眩暈、聲音沙啞','Brain MRI'],
+  ['m','Subphrenic abscess / bowel obstruction','subphrenic 橫膈下 abscess obstruction 阻塞','發燒、術後、腹脹','CT'],
+  ['c','Gastric distension / GERD','gastric 胃脹 gerd 逆流','吃太快、管灌量大、胃酸逆流','臨床診斷'],
+  ['c','Drug-induced (dexamethasone, benzodiazepine, chemotherapy)','drug 藥物 dexamethasone steroid 類固醇','用藥後開始','時序'],
+  ['c','Metabolic: uremia, hyponatremia, hypokalemia, hypocalcemia','uremia 尿毒 hyponatremia 電解質','腎功能差','電解質、Cr'],
+  ['c','Post-operative diaphragmatic irritation','postoperative 術後 diaphragm 橫膈','腹部或胸部手術後','病史']],
+ ord:[
+  ['lab','Na/K、Ca、BUN/Cr（>48 小時）','Na/K, Ca, BUN/Cr'],
+  ['img','12-lead ECG（有胸悶或心血管危險因子）','12-lead ECG'],
+  ['img','CXR、KUB（腹脹或術後）','CXR and KUB'],
+  ['rx','metoclopramide','第一線：胃脹、逆流'],
+  ['rx','ppi_iv','合併胃食道逆流（能口服就口服）'],
+  ['rx','baclofen_hiccup','>48 小時、第一線無效'],
+  ['rx','chlorpromazine_hiccup','頑固性、其他藥無效'],
+  ['med','可疑藥物：dexamethasone 可與主治討論換成 methylprednisolone','Review offending drugs; consider switching dexamethasone'],
+  ['nurse','少量多餐、進食後坐起；管灌減速','Small frequent meals, upright after meals; slow tube feeding rate']],
+ pearl:[
+  '打嗝超過 48 小時就不是小事：照橫膈神經走過的路（腦幹、頸、胸、橫膈上下）找一遍。',
+  'Dexamethasone 是住院病人打嗝的常見元兇，化療止吐處方尤其常見。',
+  'Baclofen 在腎功能差的病人會造成意識不清，洗腎病人不要用。']},
+
+{id:'aspiration', zh:'嗆到／疑吸入', en:'Choking / aspiration', alias:'aspiration choking 嗆到 嗆咳 吸入 吸入性肺炎 噎到 異物 管灌嗆到 嘔吐吸入 foreign body',
+ call:[
+  '說不出話、咳不出聲、發紺 → 完全阻塞：立即哈姆立克，失去意識就 CPR',
+  'SpO2 <90%、呼吸窘迫、意識變差',
+  '大量嘔吐物吸入',
+  '吸入後幾小時內發燒、喘、需要的氧氣越來越多'],
+ now:[
+  '能咳、能說話：鼓勵用力咳，不要拍背；在旁邊看著',
+  '不能咳、不能說話：腹部快速按壓（哈姆立克）；失去意識開始 CPR、每次通氣前看口腔',
+  '停止進食與管灌，側躺或坐起',
+  '口咽抽吸',
+  '量 SpO2、給氧',
+  '聽兩側呼吸音'],
+ hx:[
+  ['!嗆到的東西（食物、液體、嘔吐物、管灌、藥丸）與量','what and how much was aspirated','固體會阻塞；胃酸造成化學性肺炎'],
+  ['!現在能不能說話、咳嗽','able to speak and cough','阻塞程度'],
+  ['!事件後有沒有喘、喘鳴、持續咳嗽','dyspnea, wheezing or persistent cough afterward','異物殘留、支氣管痙攣'],
+  ['!平常的吞嚥功能與飲食質地','baseline swallowing function and diet texture','反覆吸入的風險'],
+  ['意識狀態、鎮靜藥使用','level of consciousness, sedative use','保護氣道的能力'],
+  ['NG 位置、管灌速度、床頭高度、胃殘餘量','NG position, feeding rate, head elevation','管灌相關'],
+  ['中風、Parkinson、失智、頭頸部腫瘤','stroke, Parkinson disease, dementia','吞嚥障礙的原因'],
+  ['嘔吐、腸阻塞','vomiting, bowel obstruction','大量胃內容物吸入']],
+ pe:[
+  ['!氣道（說話、喘鳴、口腔異物）','Airway','speaking in full sentences, no stridor'],
+  ['!呼吸型態與 SpO2','Respiratory pattern and SpO2','no distress, SpO2 > 94%'],
+  ['!肺部聽診（單側 wheeze、囉音、呼吸音下降）','Chest auscultation','clear and symmetric breath sounds'],
+  ['意識狀態','Mental status','alert'],
+  ['NG 刻度與位置','NG tube position','in place at the documented mark'],
+  ['腹部（脹）','Abdomen','soft, not distended']],
+ ddx:[
+  ['m','Foreign body airway obstruction','foreign body 異物 obstruction 阻塞 choking','說不出話、喘鳴、單側 wheeze 或沒有呼吸音','臨床；CXR、支氣管鏡'],
+  ['m','Aspiration pneumonitis (chemical)','pneumonitis 化學性 mendelson','吸入胃內容物後 2–5 小時內缺氧、發燒、浸潤','CXR；多半 24–48 小時改善'],
+  ['m','Hypoxic respiratory failure / ARDS','ards respiratory failure 呼吸衰竭','大量吸入、氧氣需求快速增加','ABG、CXR'],
+  ['c','Aspiration pneumonia (bacterial)','pneumonia 吸入性肺炎 bacterial','吸入後 48 小時以上持續發燒、膿痰、新浸潤','CXR、sputum culture'],
+  ['c','Bronchospasm','bronchospasm 支氣管痙攣 wheeze','雙側 wheeze','對支氣管擴張劑有反應'],
+  ['c','Uncomplicated choking episode','uncomplicated 單純 嗆咳','咳完就好、SpO2 與聽診正常','觀察']],
+ ord:[
+  ['nurse','NPO、停止管灌；床頭抬高 30–45 度；口咽抽吸','NPO, hold tube feeding; head of bed 30-45 degrees; oropharyngeal suction'],
+  ['rx','o2','SpO2 <92%'],
+  ['img','CXR（現在，6–24 小時後視情況再照）','CXR now; repeat in 6-24 h if symptomatic'],
+  ['lab','ABG（缺氧或呼吸窘迫）','ABG'],
+  ['rx','neb_saba','有 wheezing'],
+  ['rx','augmentin_iv','48 小時後仍發燒且有新浸潤（細菌性吸入性肺炎）'],
+  ['rx','unasyn','同上的另一選擇'],
+  ['med','剛吸入不給預防性抗生素、不給類固醇；48 小時後仍有症狀再給','No prophylactic antibiotics or steroids immediately after aspiration; reassess at 48 h'],
+  ['nurse','SpO2 連續監測 6 小時；確認 NG 位置後再恢復管灌','Continuous SpO2 monitoring for 6 h; confirm NG position before resuming feeding'],
+  ['consult','吞嚥評估（語言治療師）後再決定飲食質地','Swallowing evaluation by speech therapist before resuming oral diet']],
+ pearl:[
+  '還能咳的病人不要拍背、不要哈姆立克：自己咳是最有效的。',
+  '剛吸入的發燒和浸潤多半是化學性的，不需要抗生素；過了 48 小時還在燒才是細菌性。',
+  '嗆到一次的病人會再嗆：沒做吞嚥評估之前不要恢復原本的飲食。',
+  '單側 wheeze 或單側呼吸音變小：想異物卡在支氣管。']},
+
+{id:'cough', zh:'咳嗽／痰多', en:'Cough / sputum', alias:'cough 咳嗽 咳不停 痰多 有痰 喉嚨痛 sputum 鼻水 感冒 uri 抽痰',
+ call:[
+  'SpO2 <92%、呼吸費力、說話斷斷續續',
+  '咳血',
+  '痰多又咳不出來、意識變差 → 痰塞',
+  '發燒合併新的膿痰與喘'],
+ now:[
+  '量 SpO2、呼吸次數、體溫',
+  '聽兩側呼吸音',
+  '看痰的顏色、量、黏稠度',
+  '評估咳嗽力氣：咳不出來的病人需要抽痰與拍痰，不是止咳藥',
+  '看用藥：ACEI、β-blocker'],
+ hx:[
+  ['!咳多久、乾咳還是有痰','duration, dry or productive','急性 <3 週；慢性 >8 週'],
+  ['!痰的顏色、量、有沒有血','sputum color, amount, blood','膿痰：感染；粉紅泡沫：肺水腫'],
+  ['!發燒、喘、胸痛','fever, dyspnea, chest pain','肺炎、肺栓塞、心衰竭'],
+  ['!吃東西或喝水時嗆咳','coughing with eating or drinking','吸入'],
+  ['躺下或夜裡比較嚴重','worse when lying down or at night','心衰竭、逆流、鼻涕倒流、氣喘'],
+  ['鼻水、喉嚨痛、接觸史','rhinorrhea, sore throat, sick contact','上呼吸道感染、流感、COVID-19'],
+  ['ACEI 使用','ACEI use','乾咳，可在用藥數月後出現'],
+  ['抽菸、COPD、氣喘','smoking, COPD, asthma','急性發作'],
+  ['體重減輕、夜間盜汗','weight loss, night sweats','結核、肺癌']],
+ pe:[
+  ['!呼吸型態與 SpO2','Respiratory pattern and SpO2','no distress, SpO2 > 94%'],
+  ['!肺部聽診（wheeze、crackles、rhonchi）','Chest auscultation','clear breath sounds bilaterally'],
+  ['!咳嗽力道','Cough strength','effective cough'],
+  ['咽喉、扁桃腺','Throat','not injected, no exudate'],
+  ['頸靜脈、下肢水腫','JVP and leg edema','no JVD or edema'],
+  ['體溫','Temperature','afebrile']],
+ ddx:[
+  ['m','Pneumonia (including aspiration)','pneumonia 肺炎 aspiration 吸入','發燒、膿痰、crackles、SpO2↓','CXR'],
+  ['m','Heart failure / pulmonary edema','heart failure 心衰竭 edema 肺水腫','端坐呼吸、泡沫痰、水腫','CXR、BNP'],
+  ['m','Tuberculosis','tb 結核','咳 >2–3 週、體重減輕、夜間盜汗','CXR、sputum AFB ×3'],
+  ['m','Sputum impaction','impaction 痰塞 mucus plug','咳嗽無力、rhonchi、SpO2 突然下降','抽痰後改善、CXR（肺塌陷）'],
+  ['c','Viral URI / influenza / COVID-19','uri 感冒 flu 流感 covid viral','鼻水、喉嚨痛、接觸史','快篩'],
+  ['c','Asthma or COPD exacerbation','asthma 氣喘 copd','wheeze、病史','理學檢查、對支氣管擴張劑的反應'],
+  ['c','ACEI-induced cough','acei','乾咳、使用 ACEI','停藥 1–4 週改善'],
+  ['c','GERD / postnasal drip','gerd 逆流 postnasal 鼻涕倒流','躺下加重、清喉嚨','臨床診斷']],
+ ord:[
+  ['img','CXR（發燒、SpO2 低、咳 >2 週或聽診異常）','CXR'],
+  ['lab','CBC/DC、CRP（發燒）','CBC/DC, CRP'],
+  ['lab','Sputum Gram stain＋culture；咳 >2 週加 AFB ×3','Sputum Gram stain and culture; AFB x3 if cough > 2 weeks'],
+  ['lab','流感／COVID-19 快篩（流行期、有接觸史）','Influenza and COVID-19 rapid test'],
+  ['rx','o2','SpO2 <92%'],
+  ['rx','acetylcysteine','痰黏咳不出來'],
+  ['rx','dextromethorphan','乾咳影響睡眠'],
+  ['rx','codeine_cough','乾咳、其他止咳藥無效'],
+  ['rx','neb_saba','有 wheezing'],
+  ['rx','oseltamivir','流感陽性或高度懷疑'],
+  ['med','ACEI 引起的乾咳：換成 ARB（與學長姊討論）','Switch ACEI to ARB if ACEI-induced cough'],
+  ['nurse','拍痰（CPT）、姿位引流、抽痰 PRN；床頭抬高','Chest physiotherapy, postural drainage, suction PRN; elevate head of bed']],
+ pearl:[
+  '有痰的咳嗽不要壓：咳不出來的病人需要的是化痰、拍痰、抽痰。',
+  '住院病人新出現的咳嗽，先想吸入和心衰竭，再想感冒。',
+  '咳超過兩三週、CXR 還沒照過的病人：照一張，順便想到結核。',
+  '第一代抗組織胺會讓痰更黏、老人更容易譫妄和尿滯留。']},
+
+{id:'extravasation', zh:'點滴外滲／靜脈炎', en:'IV infiltration / extravasation', alias:'extravasation infiltration 外滲 滲漏 點滴漏 靜脈炎 phlebitis 打針處腫 注射部位 手腫 化療外滲 iv 漏針',
+ call:[
+  '化療藥（anthracycline、vinca alkaloid）、升壓劑、高濃度鈣或鉀、顯影劑、phenytoin、高張輸液的外滲',
+  '皮膚發白、發紫、起水泡或變黑',
+  '肢體緊繃劇痛、手指麻、被動伸展會痛 → 腔室症候群',
+  '沿著靜脈紅腫合併發燒、流膿 → 化膿性靜脈炎'],
+ now:[
+  '立刻停止輸注，先不要拔針',
+  '從原針頭盡量回抽殘留的藥液，再拔針',
+  '確認外滲的是什麼藥、濃度、大約多少量',
+  '抬高患肢',
+  '用筆畫出紅腫範圍、拍照',
+  '查這個藥要冰敷還是熱敷、有沒有解毒劑'],
+ hx:[
+  ['!外滲的藥物與濃度','drug and concentration','vesicant（起水泡壞死）、irritant、一般輸液處理完全不同'],
+  ['!大約滲了多少、多久','estimated volume and duration','量越大越危險'],
+  ['!疼痛、灼熱感','pain or burning','vesicant 外滲通常會痛，但不一定'],
+  ['!手指麻、動起來會痛','numbness or pain on finger movement','腔室症候群'],
+  ['這條 IV 放了幾天','days since catheter insertion','靜脈炎'],
+  ['發燒、寒顫','fever, chills','化膿性靜脈炎、菌血症'],
+  ['是否從同一肢體抽血、量血壓','blood draw or BP cuff on the same limb','加重外滲']],
+ pe:[
+  ['!範圍（腫、紅、硬）並畫線','Extent of swelling and erythema','no swelling or erythema'],
+  ['!皮膚顏色、水泡、壞死','Skin color, blister, necrosis','intact skin, no blister'],
+  ['!遠端脈搏、微血管回填、感覺','Distal pulse, capillary refill, sensation','intact'],
+  ['!手指被動伸展疼痛、筋膜腔張力','Pain on passive stretch, compartment tension','no pain on passive stretch, soft compartment'],
+  ['沿靜脈的條索狀硬塊、膿','Venous cord or purulence','no palpable cord or pus'],
+  ['體溫','Temperature','afebrile']],
+ ddx:[
+  ['m','Vesicant extravasation','vesicant 起水泡 化療 chemo anthracycline 升壓劑 vasopressor calcium','高風險藥物、疼痛、之後起水泡壞死','確認藥物；依藥物給解毒劑'],
+  ['m','Compartment syndrome','compartment 腔室','大量外滲、劇痛、被動伸展痛、麻','外科急會診'],
+  ['m','Suppurative thrombophlebitis / catheter-related infection','suppurative 化膿 thrombophlebitis crbsi','發燒、膿、條索狀硬塊','Blood culture、超音波'],
+  ['c','Infiltration of non-vesicant fluid','infiltration 滲漏 non-vesicant','腫、涼、不太痛','觀察'],
+  ['c','Chemical or mechanical phlebitis','phlebitis 靜脈炎','沿靜脈紅、痛、可摸到條索（KCl、抗生素、amiodarone）','臨床診斷'],
+  ['c','Superficial venous thrombosis / DVT','thrombosis 血栓 dvt','整隻手臂腫','血管超音波']],
+ ord:[
+  ['nurse','停止輸注、回抽後拔針；抬高患肢 48 小時；畫出範圍並拍照','Stop infusion, aspirate then remove cannula; elevate limb for 48 h; mark and photograph the area'],
+  ['nurse','冰敷 15–20 分鐘 QID（大多數藥物、anthracycline、顯影劑）','Cold compress 15-20 min QID'],
+  ['nurse','熱敷 15–20 分鐘 QID（vinca alkaloid、升壓劑、phenytoin；靜脈炎）','Warm compress 15-20 min QID'],
+  ['med','升壓劑外滲：Phentolamine 5–10 mg 加 N/S 10 mL，在外滲處皮下分點浸潤（12 小時內）','Phentolamine 5-10 mg in N/S 10 mL, infiltrate subcutaneously into the area for vasopressor extravasation'],
+  ['med','Anthracycline 外滲：Dexrazoxane（6 小時內開始）；DMSO 外用（依院內化療外滲流程）','Dexrazoxane within 6 h for anthracycline extravasation per institutional protocol'],
+  ['med','Vinca alkaloid、顯影劑、高張液外滲：Hyaluronidase 皮下浸潤（依院內流程）','Hyaluronidase subcutaneous infiltration per institutional protocol'],
+  ['rx','apap_po','止痛'],
+  ['lab','Blood culture ×2（發燒或化膿）','Blood culture x2 if febrile or purulent'],
+  ['nurse','在另一側肢體重新建立 IV；每 2–4 小時評估患部 24 小時','Re-site IV on the other limb; reassess the area q2-4h for 24 h'],
+  ['consult','Vesicant 外滲、皮膚壞死或疑腔室症候群：整形外科；化療藥通知腫瘤科與藥師','Plastic surgery consult for vesicant extravasation; notify oncology and pharmacist']],
+ pearl:[
+  '第一個動作是停，不是拔：先從原針頭把藥抽回來。',
+  '冰敷讓藥留在原地、熱敷讓藥散開：vinca alkaloid 和升壓劑要散開，其他多半要留住。',
+  'Vesicant 的傷害會在幾天後才出現：當天看起來沒事也要每天看。',
+  '高濃度 KCl、鈣、升壓劑、高張輸液本來就應該走中央靜脈；周邊給的時候選大條、近端的靜脈。']}
 );
 
 /* ===== 貝氏資料 =====
@@ -3663,13 +5525,18 @@ const GENERIC_ORD = [
   {cat:'nurse', t:'密切監測生命徵象，惡化時立即通知', o:'Close monitoring of vital signs; notify if deterioration', g:1},
   {cat:'note', t:'已與學長姊／主治討論', o:'Discussed with senior resident / attending physician', g:1},
 ];
+/* ['rx', 醫囑庫 id, '什麼情況開'] → 藥名、劑量、途徑、頻次來自共用醫囑庫（shared/rx.js），會依病人條件換成調整後的醫囑 */
+function rxOrd(id, when){
+  const x = RX[id]; if (!x) throw new Error('醫囑庫沒有這一筆：' + id);
+  return {cat:'med', rx:id, when:when || '', t:(when ? when + '：' : '') + x.n, o:x.o};
+}
 function normBuiltin(r){
   const k = s => s.startsWith('!');
   return {id:r.id, zh:r.zh, en:r.en, alias:r.alias, call:r.call, now:r.now,
     hx: r.hx.map(a => ({t:a[0].replace(/^!/,''), key:k(a[0]), en:a[1], why:a[2]||''})),
     pe: r.pe.map(a => ({t:a[0].replace(/^!/,''), key:k(a[0]), en:a[1], n:a[2]})),
     ddx: r.ddx.map(a => ({tier:a[0], n:a[1], k:a[2], clue:a[3], check:a[4]})),
-    ord: [...r.ord.map(a => ({cat:a[0], t:a[1], o:a[2]})), ...GENERIC_ORD],
+    ord: [...r.ord.map(a => a[0] === 'rx' ? rxOrd(a[1], a[2]) : ({cat:a[0], t:a[1], o:a[2]})), ...GENERIC_ORD],
     pearl: r.pearl};
 }
 const BUILTIN = PROTOS_RAW.map(normBuiltin);
@@ -3774,6 +5641,23 @@ function renderTop(){
 }
 
 /* ===== HOME ===== */
+/* 首頁主訴分組：沒列到的（自訂主訴）放最後一組 */
+const CC_GROUPS = [
+  ['生命徵象', 'fever hypotension hypertension tachycardia brady dyspnea'],
+  ['胸腹與腸胃', 'chestpain abdpain gib nv diarrhea constipation hiccup'],
+  ['神經與精神', 'ams seizure stroke headache syncope dizzy insomnia withdrawal'],
+  ['呼吸、泌尿與其他症狀', 'cough hemoptysis aspiration oliguria retention hematuria edema pain epistaxis allergy'],
+  ['檢驗異常', 'hypoglycemia hyperglycemia hyperk hypok hypona hyperna hypoca hyperca hypomgp aki anemia coag'],
+  ['事件與處置', 'fall tube wound txrxn extravasation death'],
+];
+function ccGroupsHTML(){
+  const all = allProtos(), used = new Set();
+  const secs = CC_GROUPS.map(([t, ids]) => [t, ids.split(' ').map(id => all.find(p => p.id === id)).filter(Boolean)]);
+  secs.forEach(([, ps]) => ps.forEach(p => used.add(p.id)));
+  const rest = all.filter(p => !used.has(p.id));
+  if (rest.length) secs.push(['自訂主訴', rest]);
+  return secs.filter(([, ps]) => ps.length).map(([t, ps]) => `<section class="cc-sec"><h2>${t}</h2><div class="cc-grid">${ps.map(ccChip).join('')}</div></section>`).join('');
+}
 function ccChip(p){
   return `<button class="ccchip" data-act="start" data-id="${p.id}">
     <span class="zh">${esc(p.zh)}</span>
@@ -3792,7 +5676,7 @@ function vHome(){
       <button class="btn primary" type="submit">開始</button>
     </form>
     <div id="ccSuggest" class="cc-suggest" ${UI.ccq ? '' : 'hidden'}>${suggestHTML()}</div>
-    <div class="cc-grid">${allProtos().map(ccChip).join('')}</div>
+    ${ccGroupsHTML()}
   </section>
   <section class="home-row">
     <button class="tile" data-act="admit-new">${ICON.bed}<div><b>接新病人</b><span>電腦先查病歷、床邊照檢核表問、PI 自動成稿，必填項目一個都不漏</span></div></button>
@@ -3963,9 +5847,12 @@ function stepHTML(c, p){
   case 4: {
     const groups = {};
     p.ord.forEach((o, i) => { (groups[o.cat] = groups[o.cat] || []).push([o, i]); });
-    return `<div class="swbar"><span class="swhint">要開就按「開立」，晚點再開的按「待開」，會放進下方「待加入待辦」</span></div><div class="safetynote">開藥前確認：<b>過敏史</b>、腎／肝功能、懷孕可能、是否使用抗凝血劑。劑量為成人常用參考，請依院內藥典核對。</div>
-      ${Object.keys(CAT).filter(k => groups[k]).map(k => `<div class="ogroup"><h4>${CAT[k]}</h4><div class="items">${groups[k].map(([o, i]) => `<div class="item"><div><div class="t">${esc(o.t)}${tdTag('ord:' + i)}</div><div class="why mono">${esc(o.o)}</div></div>
-          <div class="seg" role="group" aria-label="${esc(o.t)}"><button class="good" data-act="ord" data-i="${i}" data-v="o" aria-pressed="${ordOn(c.ord[i])}">開立</button><button class="pend" data-act="ord" data-i="${i}" data-v="p" aria-pressed="${c.ord[i] === 'p'}">待開</button><button class="skip" data-act="ord" data-i="${i}" data-v="x" aria-pressed="${c.ord[i] === 'x'}">不開</button></div></div>`).join('')}</div></div>`).join('')}
+    const seg = (o, i) => `<div class="seg" role="group" aria-label="${esc(o.t)}"><button class="good" data-act="ord" data-i="${i}" data-v="o" aria-pressed="${ordOn(c.ord[i])}">開立</button><button class="pend" data-act="ord" data-i="${i}" data-v="p" aria-pressed="${c.ord[i] === 'p'}">待開</button><button class="skip" data-act="ord" data-i="${i}" data-v="x" aria-pressed="${c.ord[i] === 'x'}">不開</button></div>`;
+    const plain = (o, i) => `<div class="item"><div><div class="t">${esc(o.t)}${tdTag('ord:' + i)}</div><div class="why mono">${esc(o.o)}</div></div>${seg(o, i)}</div>`;
+    return `<div class="swbar"><span class="swhint">要開就按「開立」，晚點再開的按「待開」，會放進下方「待加入待辦」</span></div>
+      ${pxBarHTML(c, p)}
+      <div class="safetynote">開藥前確認：<b>過敏史</b>、是否使用抗凝血劑。劑量為成人常用參考，請依院內藥典核對；實習醫學生的醫囑須經住院醫師覆核。</div>
+      ${Object.keys(CAT).filter(k => groups[k]).map(k => `<div class="ogroup"><h4>${CAT[k]}</h4><div class="items">${groups[k].map(([o, i]) => o.rx ? rxItemHTML(c, o, i, seg(o, i)) : plain(o, i)).join('')}</div></div>`).join('')}
       <h3 class="sh">其他醫囑（每行一項）</h3>
       <textarea class="inp mono" id="ordExtra" data-in="ordExtra" rows="3" placeholder="例：Cefepime 2g q8h">${esc(c.ordExtra)}</textarea>
       <div class="row" style="margin-top:10px"><button class="btn" data-act="copy-orders">${ICON.copy}複製醫囑清單</button></div>`;
@@ -4006,8 +5893,40 @@ function vitalsLine(c){
 }
 // 醫囑狀態：'o' 開立（寫進 note 的 Plan）、'p' 待開（放進待加入待辦）、'x' 不開；舊草稿的 true 當作開立
 const ordOn = v => v === 'o' || v === true;
+/* ===== 病人條件 → 醫囑調整 =====
+   c.px = {rn:'' | 'r' | 'r30' | 'hd', hepatic, hf, elderly, preg, wt}；只影響來自醫囑庫（o.rx）的醫囑 */
+const PX_RN = [['', 'eGFR ≥60'], ['r', '30–59'], ['r30', '<30'], ['hd', '透析']];
+const PX_FLAG = [['hepatic', '肝功能不全'], ['hf', '心衰竭'], ['elderly', '高齡 ≥65'], ['preg', '懷孕']];
+const pxOf = c => c.px || (c.px = {rn:''});
+const ordText = (c, o) => o.rx ? rxEval(o.rx, pxOf(c)).o : o.o;
+function pxBarHTML(c, p){
+  if (!p.ord.some(o => o.rx)) return '';
+  const x = pxOf(c), n = p.ord.filter(o => o.rx && (e => e.changed || e.x)(rxEval(o.rx, x))).length;
+  return `<section class="pxbar" aria-label="病人條件">
+    <div class="pxh"><b>病人條件</b><span class="muted small">選了以後，下面的劑量、頻次會跟著換${n ? `　<span class="pxn">已調整 ${n} 項</span>` : ''}</span></div>
+    <div class="pxrow"><span class="pxl" id="pxRnL">腎功能</span><div class="seg" role="group" aria-labelledby="pxRnL">${PX_RN.map(([k, t]) => `<button data-act="px-rn" data-v="${k}" aria-pressed="${(x.rn || '') === k}">${t}</button>`).join('')}</div></div>
+    <div class="pxrow"><span class="pxl" id="pxFlL">其他</span><div class="chips" role="group" aria-labelledby="pxFlL">${PX_FLAG.map(([k, t]) => `<button class="chip ${x[k] ? 'on' : ''}" data-act="px-flag" data-k="${k}" aria-pressed="${!!x[k]}">${t}</button>`).join('')}</div>
+      <label class="pxwt">體重 <input class="inp" id="pxWt" data-in="pxWt" type="text" inputmode="decimal" autocomplete="off" value="${esc(x.wt || '')}" aria-label="體重（公斤）"> kg</label></div>
+  </section>`;
+}
+function rxItemHTML(c, o, i, segHTML){
+  const x = RX[o.rx], e = rxEval(o.rx, pxOf(c)), open = !!(UI.rxOpen && UI.rxOpen[o.rx]);
+  const row = (l, t) => t ? `<div class="rxr"><span class="l">${l}</span><span>${esc(t)}</span></div>` : '';
+  const other = Object.keys(RX_ST).filter(k => (x.adj || {})[k] && !e.notes.some(n => n[0] === k));
+  return `<div class="item rxi ${e.x ? 'rx-x' : e.changed ? 'rx-adj' : ''}">
+    <div><div class="t">${o.when ? `<span class="rxw">${esc(o.when)}</span>` : ''}${esc(x.n)}${e.x ? ' <span class="tag must">此條件下禁用</span>' : e.changed ? ' <span class="tag adj">已依條件調整</span>' : ''}${tdTag('ord:' + i)}</div>
+      <div class="why mono rxo" id="rxo_${i}">${esc(e.o)}</div>
+      <div class="rxk" data-rxk="${o.rx}">${esc(e.kg)}</div>
+      ${e.notes.map(([k, t, bad]) => `<div class="rxn ${bad ? 'bad' : ''}"><b>${RX_ST[k]}</b>${esc(t)}</div>`).join('')}
+      <details class="rxd" data-rx="${o.rx}" ${open ? 'open' : ''}><summary>用法、監測與其他調整</summary><div class="rxb">
+        ${row('用法', x.d)}${row('監測', x.mon)}${row('上限', x.max)}${row('禁忌', x.ci)}
+        ${other.map(k => row(RX_ST[k], x.adj[k].replace(/^✕\s*/, '禁用：'))).join('')}
+        ${e.changed ? row('原本', x.o) : ''}
+        <button class="mini" data-act="rx-ref" data-g="${x.g}">在用藥速查看同類藥物 →</button></div></details></div>
+    ${segHTML}</div>`;
+}
 function selectedOrders(c, p){
-  return [...p.ord.filter((o, i) => ordOn(c.ord[i])).map(o => o.o), ...c.ordExtra.split('\n').map(s => s.trim()).filter(Boolean)];
+  return [...p.ord.filter((o, i) => ordOn(c.ord[i])).map(o => ordText(c, o)), ...c.ordExtra.split('\n').map(s => s.trim()).filter(Boolean)];
 }
 function callNote(c = cur()){
   if (!c) return '';
@@ -4060,7 +5979,7 @@ function stageItem(c, p, key){
   const [k, i] = key.split(':');
   if (k === 'hx'){ const h = p.hx[+i]; return h && {tag:'問診', t:h.t}; }
   if (k === 'pe'){ const x = p.pe[+i]; return x && {tag:'PE', t:x.t}; }
-  if (k === 'ord'){ const o = p.ord[+i]; return o && {tag:IMP_TAG[o.cat] || '醫囑', t:o.o}; }
+  if (k === 'ord'){ const o = p.ord[+i]; return o && {tag:IMP_TAG[o.cat] || '醫囑', t:ordText(c, o)}; }
   return null;
 }
 function impRows(c, p){
@@ -4547,6 +6466,12 @@ function vAdmitStart(){
 const hubView = () => { try { if (parent !== window) parent.postMessage({hub:'view', view:UI.view === 'admit' ? 'admit' : 'main'}, '*'); } catch (e) {} };
 addEventListener('message', e => {
   if (e.source !== parent || !e.data || e.data.hub !== 'go') return;
+  const v = String(e.data.view || '');
+  if (v.startsWith('cc-')){   // 其他工具（用藥速查）請我們打開某個主訴：有進行中的就接著做
+    const pid = v.slice(3), open = UI.calls.find(c => !c.done && c.pid === pid);
+    if (open){ UI.cid = open.id; go('call'); } else if (getProto(pid)) startCall(pid);
+    return;
+  }
   if (e.data.view === 'admit'){ if (UI.view !== 'admit') go('admit'); }
   else if (UI.view === 'admit') go(cur() ? 'call' : 'home');
 });
@@ -4956,6 +6881,13 @@ async function copyText(t, btn){
 }
 
 /* ===== events ===== */
+/* 醫囑細節展開狀態（整頁重畫後還在） */
+document.addEventListener('toggle', e => { const t = e.target; if (t.classList && t.classList.contains('rxd')) (UI.rxOpen = UI.rxOpen || {})[t.dataset.rx] = t.open; }, true);
+/* 開另一個工具：在總站裡請總站切換，單獨開啟時直接連過去 */
+function openTool(tool, view, href){
+  if (parent !== window){ try { parent.postMessage({hub:'open', tool, view}, '*'); return; } catch (e) {} }
+  location.href = href;
+}
 document.addEventListener('mousedown', e => { if (e.target.closest('#selbar')) e.preventDefault(); });
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
@@ -4963,6 +6895,9 @@ document.addEventListener('click', e => {
   switch (a){
   case 'go': if (d.view === 'admit' && !UI.admit) newAdmit(); go(d.view); break;
   case 'start': startCall(d.id); break;
+  case 'px-rn': pxOf(c).rn = d.v; saveDraft(); rerenderCall(); break;
+  case 'px-flag': { const x = pxOf(c); x[d.k] = !x[d.k]; if (d.k === 'preg' && x.preg) x.elderly = false; if (d.k === 'elderly' && x.elderly) x.preg = false; saveDraft(); rerenderCall(); break; }
+  case 'rx-ref': openTool('meds', 'rx-' + d.g, 'meds.html#rx-' + d.g); break;
   case 'resume': UI.cid = d.id; go('call'); break;
   case 'discard': UI.calls = UI.calls.filter(x => x.id !== d.id); saveDraft(); render(); break;
   case 'close-call': UI.calls = UI.calls.filter(x => x.id !== UI.cid); UI.cid = null; saveDraft(); go('home'); break;
@@ -5018,6 +6953,7 @@ document.addEventListener('input', e => {
   case 'v': c.v[el.dataset.k] = el.value.trim(); refreshVitals(); updateNote(); break;
   case 'reason': c.reason = el.value; updateNote(); break;
   case 'hxNote': c.hxNote = el.value; updateNote(); break;
+  case 'pxWt': pxOf(c).wt = el.value.trim(); document.querySelectorAll('[data-rxk]').forEach(n => { n.textContent = rxEval(n.dataset.rxk, pxOf(c)).kg; }); saveDraft(); break;
   case 'peNote': c.peNote[el.dataset.i] = el.value; updateNote(); break;
   case 'ordExtra': c.ordExtra = el.value; updateNote(); break;
   case 'bed': c.bed = el.value; hubTodo.setBed(el.value); { const h = $('#callBed'); if (h) h.textContent = cbed(c) ? cbed(c) + ' 床' : '未填床號'; } break;
@@ -5047,6 +6983,8 @@ loadDraft();
 try { if (location.hash === '#help') UI.view = 'help'; } catch {}
 render();
 hubView();
+/* 單獨開啟時由用藥速查連過來：copilot.html#cc-<主訴 id> */
+try { const m = /^#cc-([\w-]+)$/.exec(location.hash); if (m && getProto(m[1])){ const open = UI.calls.find(c => !c.done && c.pid === m[1]); if (open){ UI.cid = open.id; go('call'); } else startCall(m[1]); history.replaceState(null, '', location.pathname); } } catch {}
 
 </script>
 
