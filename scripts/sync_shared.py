@@ -6,7 +6,7 @@
   /*hub-common:start*/ … /*hub-common:end*/   ← 這支腳本整段換掉
   後面是那個工具自己的對應層（把工具自己的變數名對到 --hub-*），腳本不動
 
-同一支腳本也把 shared/rx.js（共用醫囑庫）寫進有 <script id="hub-rx"> 的工具，標記是 /*hub-rx:start*/ … /*hub-rx:end*/。
+同一支腳本也把 shared/rx.js（共用醫囑庫）、shared/paste.js（貼上解析）寫進有對應標記的工具（見 INLINE_JS）。
 
 用法：python3 scripts/sync_shared.py          # 寫入
       python3 scripts/sync_shared.py --check  # 只檢查有沒有不同步（check.py 會呼叫）
@@ -36,33 +36,35 @@ def render(html, css):
     return LEGACY.sub(lambda m: m.group(1) + block + '\n', html, count=1)
 
 
-RX_START, RX_END = '/*hub-rx:start*/', '/*hub-rx:end*/'
-RX_BLOCK = re.compile(re.escape(RX_START) + r'.*?' + re.escape(RX_END), re.S)
+# 內嵌的共用程式：(shared/ 底下的檔名, 開始標記, 結束標記)。HTML 裡有那組標記的工具才會被寫入
+INLINE_JS = [('rx.js', '/*hub-rx:start*/', '/*hub-rx:end*/'), ('paste.js', '/*hub-paste:start*/', '/*hub-paste:end*/')]
 
 
-def render_rx(html, js):
-    """共用醫囑庫 shared/rx.js → 有 <script id="hub-rx"> 的工具（主訴處理、用藥速查、ACLS）。"""
-    if RX_START not in html:
-        return html
-    return RX_BLOCK.sub(lambda m: RX_START + '\n' + js.rstrip('\n') + '\n' + RX_END, html, count=1)
+def render_js(html, sources):
+    """共用醫囑庫 shared/rx.js、貼上解析 shared/paste.js → 有對應 <script> 標記的工具。"""
+    for name, start, end in INLINE_JS:
+        if start in html:
+            block = re.compile(re.escape(start) + r'.*?' + re.escape(end), re.S)
+            html = block.sub(lambda m: start + '\n' + sources[name].rstrip('\n') + '\n' + end, html, count=1)
+    return html
 
 
 def main():
     css = (ROOT / 'shared' / 'hub-common.css').read_text(encoding='utf8')
-    js = (ROOT / 'shared' / 'rx.js').read_text(encoding='utf8')
+    js = {name: (ROOT / 'shared' / name).read_text(encoding='utf8') for name, _, _ in INLINE_JS}
     check = '--check' in sys.argv
     stale = []
     for f in files():
         old = f.read_text(encoding='utf8')
-        new = render_rx(render(old, css), js)
+        new = render_js(render(old, css), js)
         if new != old:
             stale.append(f.relative_to(ROOT))
             if not check:
                 f.write_text(new, encoding='utf8')
     if check and stale:
-        print('✗ 共用樣式或醫囑庫沒同步（跑 python3 scripts/sync_shared.py）：' + '、'.join(map(str, stale)))
+        print('✗ 共用樣式或共用程式沒同步（跑 python3 scripts/sync_shared.py）：' + '、'.join(map(str, stale)))
         sys.exit(1)
-    print('✓ 共用樣式與醫囑庫一致' if check else f'✓ 已同步 {len(stale)} 個檔案')
+    print('✓ 共用樣式與共用程式一致' if check else f'✓ 已同步 {len(stale)} 個檔案')
 
 
 if __name__ == '__main__':

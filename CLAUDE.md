@@ -58,13 +58,17 @@
 
 ## 未發布：分支 `v1.5-orders`（2026-11-17）
 
-共用醫囑庫＋22 個新主訴＋ACLS 鎮靜分頁＋用藥速查重組，124 項測試全過，**還沒合併、還沒發布**。發布用 `release.py minor`（→ v1.5.0）；使用手冊 `docs/guide/index.html` 還沒跟著更新。臨床內容（`shared/rx.js` 的劑量、稀釋、腎劑量；`copilot.html` 的 `PROTOS_RAW.push(` 第三段）是 Claude 起草，使用者還沒審閱，根據列在 CHANGELOG。
+共用醫囑庫＋22 個新主訴（含貝氏資料）＋ACLS 鎮靜分頁＋用藥速查重組＋貼上就抓 vital sign／檢驗，152 項測試全過，**還沒合併、還沒發布**。發布用 `release.py minor`（→ v1.5.0）；使用手冊 `docs/guide/index.html` 已改文字（頁數不變，仍 15 頁），要跟工具一起發布。部分劑量已上網查證並修正（見 CHANGELOG），其餘仍待審。臨床內容（`shared/rx.js` 的劑量、稀釋、腎劑量；`copilot.html` 的 `PROTOS_RAW.push(` 第三段）是 Claude 起草，使用者還沒審閱，根據列在 CHANGELOG。
 
 - **醫囑庫正本是 `shared/rx.js`**，`python3 scripts/sync_shared.py` 會寫進 copilot／meds／acls 的 `<script id="hub-rx">`（`/*hub-rx:start*/…/*hub-rx:end*/`，不要直接改 HTML 裡這段）。一筆 = `rx(id, 分組, 名稱, o 英文醫囑, 中文用法, {mon, max, ci, adj, alt, kg, cc})`；`adj` 以「✕」開頭＝禁用；`alt` 是該狀態下整張換掉的醫囑；`rxEval(id, {rn, hepatic, hf, elderly, preg, wt})` 回傳要顯示的醫囑
 - **主訴的用藥醫囑**寫成 `['rx', 醫囑庫 id, '什麼情況開']`；其他類別照舊 `[cat, 中文, English]`。加主訴＝在 `PROTOS_RAW` 加一筆，再把 id 放進 `CC_GROUPS`（首頁分組）與 meds.html 的 `CCN`（連結用的中文名）
 - 病人條件存在每個 call 的 `c.px`；取醫囑文字一律用 `ordText(c, o)`，不要直接讀 `o.o`
 - 工具互開：工具送 `{hub:'open', tool, view}`，總站只接受自己 iframe 送來的，再用 `{hub:'go', view}` 轉給目標工具（主訴處理收 `cc-<主訴 id>`，用藥速查收主題 id，例如 `rx-lyte`）
 - `tests/test_rx.py` 會檢查每筆醫囑都有劑量單位、途徑、頻次或時間
+- **貼上解析正本是 `shared/paste.js`**（同一支 sync 腳本，寫進 copilot／consult 的 `/*hub-paste:start*/…`）。`pasteParse(text)` 回傳 `{v, labs}`；主訴處理的檢驗存在 `c.labs`。查房板有自己更完整的解析器（分血液／尿液、歷史報告），兩邊沒有合併
+- 新主訴的貝氏資料在 `BAYES.<id>`（v1.5 那一段）；`tests/test_rx.py::test_bayes_data_matches_each_protocol` 檢查題號與鑑別 id 對得上。改主訴的問診／PE 順序時，`h`／`p` 的題號要跟著改
+- 多裝置：`tests/test_devices.py`（各種寬度、觸控目標、WebKit）。conftest 的 `iphone` fixture 用 WebKit，沒裝會跳過
+- 已知不一致：DKA 血鉀門檻，醫囑庫用 3.5（ADA 2024），用藥速查 dka 主題與主訴處理高血糖的原有筆記仍是 3.3，等使用者決定
 
 ## v2 之後的做法（改之前先讀）
 

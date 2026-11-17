@@ -16,14 +16,35 @@
 - **主訴處理・醫囑步驟的「病人條件」**：選腎功能分級、肝功能不全、心衰竭、高齡、懷孕，填體重，下面的用藥醫囑即時換成調整後的劑量與頻次；複製的醫囑、Note、匯入待辦用的都是調整後那一句。每筆可展開看用法、監測、上限、禁忌。既有 27 個主訴的用藥醫囑也改接醫囑庫（例如高血鉀的胰島素在 eGFR <30 換成 5 U、低血壓的輸液在心衰竭換成 250 mL）
 - **ACLS 新分頁「鎮靜・插管」**：同步整流與經皮節律的程序鎮靜（Etomidate、Midazolam、Fentanyl、Ketamine、Propofol）、RSI 誘導與肌鬆、插管後／ROSC 後持續滴注（Fentanyl、Propofol、Midazolam、Dexmedetomidine）。填體重算劑量與滴速；高齡、腎功能差、肝功能不全、血壓不穩時標出減量或避免。心搏過速、心搏過緩、ROSC 後各有連結過去
 - **用藥速查新增「值班醫囑」12 個主題**（電解質矯正、輸液・升壓・休克、心血管、呼吸、神經・精神、鎮靜・插管用藥、止痛・退燒、腸胃、血糖、過敏・輸血反應、出血・輸血・抗凝、抗生素含腎劑量），跟著上方的病人狀態、填入的 eGFR／CrCl、體重調整
+- **貼上就抓 vital sign 與檢驗**（`shared/paste.js`，主訴處理與會診稿共用）：從 HIS、護理紀錄、LINE 貼一段文字，先列出抓到的項目，確認後帶入。認得 `BT 38.6 BP 92/58 HR 118`、`TPR 36.8/88/18`、`T:37.5 P:110 R:22`、中文（體溫、脈搏、呼吸、血壓、血氧、血糖）、GCS，以及 35 種常見檢驗（標 H／L）；尿液段落不收
+  - 主訴處理：生命徵象格子下方「貼上 vital sign／檢驗」；把整段直接貼進任何一格生命徵象也會自動拆開；「護理師說」裡寫的數值會帶進還空著的格子。檢驗顯示在生命徵象下方並寫進 Note 的 O；貼到 eGFR <60 會順便設好醫囑步驟的腎功能
+  - 會診稿：A 區「貼上 vital sign／檢驗，自動填入」。原本已有不同的 HR／BP 時，舊的移到「之前」當趨勢；GCS 寫進意識，異常檢驗接在「關鍵檢查結果」後面
+- **新主訴補上貝氏鑑別**：21 個新主訴都有驗前機率與各發現的 LR（宣告死亡除外），鑑別診斷步驟和原本的主訴一樣會算機率。數值幾乎都是專家估計，少數引用 JAMA Rational Clinical Examination 與 HINTS（Kattah 2009）
 - 主訴處理與用藥速查可以互相開啟：醫囑旁「在用藥速查看同類藥物」、用藥速查主題上方「照流程處理（主訴處理）」
 
 ### 變更
 - **用藥速查重新分組**：值班醫囑／症狀用藥／急症／慢性病長期用藥／住院常規（原本是三高控制／簡單症狀處理／急症處理）。原有 21 個主題的內容沒有刪改；跟主訴處理重疊的主題（疼痛、噁心嘔吐、便秘腹瀉、消化道出血、失眠、譫妄、AKI、DKA、高血壓…）加上連到對應主訴與值班醫囑的連結，流程看主訴處理、藥物比較看用藥速查、可直接開的劑量只寫在醫囑庫一處
 - 主訴處理首頁的主訴依類別分六組（生命徵象、胸腹與腸胃、神經與精神、呼吸泌尿與其他症狀、檢驗異常、事件與處置）
 
+### 多裝置
+- 新增的按鈕、展開列、輸入框在觸控裝置上至少 44px 高
+- 體重接受逗號小數點（有些 Android 鍵盤）
+- 貼上解析不用 regex lookbehind（舊版 Safari 會整段壞掉）
+- 測試：8 種螢幕寬度（320 到 1366，含手機橫放、折疊機、iPad）沒有橫向溢出；Android（Pixel 7 的 Chromium）與 iPhone（WebKit，Safari 的引擎）各跑一輪新功能。`tests/test_devices.py`
+
+### 上網查證後修正的劑量（2026-11-17）
+- 高血鉀的 calcium gluconate：10 mL → **30 mL 10% 推 10 分鐘**（UK Kidney Association 2023 草案；先前的 10 mL 偏低）
+- DKA 開始胰島素前的血鉀門檻：3.3 → **3.5 mEq/L**，K <5.0 開始補鉀（ADA／EASD 2024 hyperglycemic crises consensus）。**用藥速查「DKA／HHS」與主訴處理「高血糖」的原有筆記仍寫 3.3，沒有動，請使用者決定要不要一起改**
+- Zoledronate 用在高血鈣：Cr <4.5 mg/dL 不需減量（依 CrCl 減量的表是骨轉移適應症用的；Zometa 仿單）
+- 程序鎮靜的 Ketamine：0.5–1 → **1 mg/kg**，可追加 0.5 mg/kg
+- 低血鈉矯正上限：第一個 24 小時 ≤10 mEq/L（歐洲 2014），高風險 ≤8
+- Tranexamic acid 腎劑量改寫成仿單的 Cr 分級；Unasyn 的 CrCl 30–59 改為不需調整；Famotidine 補上 CrCl <50 減半
+- 高血鉀胰島素在 eGFR <30 換成 5 U 是觀察性研究支持的做法，UKKA 仍用 10 U 加強補糖：畫面上有註明
+- 查證結果與原本一致的：ESETT 第二線抗癲癇藥劑量、Piperacillin-tazobactam 與 Cefepime 腎劑量、Vancomycin 負荷劑量（ASHP／IDSA 2020：20–35 mg/kg、上限 3 g）、3% NaCl 150 mL／20 分鐘、Metoclopramide 注射劑 CrCl <40 減半、RSI 劑量
+- 查證用的是搜尋到的仿單與指引摘要，不是逐條讀完原文；**沒有查的項目（約 120 筆）仍是依記憶整理**
+
 ### 臨床內容的根據（請使用者確認）
-- ACLS 鎮靜、心律與急救藥物：AHA 2025 CPR & ECC Guidelines（成人 ACLS、心跳停止後照護）；程序鎮靜與 RSI 劑量為各藥仿單與 ACEP 2014 procedural sedation clinical policy 的常用成人範圍；插管後鎮靜止痛依 SCCM PADIS 2018（先止痛、淺鎮靜）
+- 心律與急救藥物：AHA CPR & ECC Guidelines（成人 ACLS、心跳停止後照護）。程序鎮靜與 RSI 的劑量不在 AHA 指引內，用的是各藥仿單與急診常用成人範圍（RSI 另參考 SCCM 2023 RSI guideline）；插管後鎮靜止痛依 SCCM PADIS 2018（先止痛、淺鎮靜）
 - 電解質：低血鈉依 European Clinical Practice Guideline 2014（3% NaCl 150 mL、24 小時上限）；高血鉀依 KDIGO 2020 controversies conference 與 UK Kidney Association 2023；鉀、鎂、鈣、磷的補充與高血鈣處置為各藥仿單與 Endocrine Society 2023（高血鈣）常用範圍
 - Sepsis 輸液與升壓劑：Surviving Sepsis Campaign 2021
 - 抽搐：AES 2016 status epilepticus guideline（ESETT 劑量）；酒精戒斷：ASAM 2020

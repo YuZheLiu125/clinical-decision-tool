@@ -445,7 +445,7 @@ body.editing [contenteditable=true]{outline:2px dashed rgba(255,51,0,.5);outline
   <div class="bd">
     <div class="grid2 r d1">
       <div class="card"><h3><span class="dot"></span>Code 計時器</h3><ul><li>壓胸節拍 <b>110/min</b>，可開聲音</li><li>每個處置自動記時間，<b>最新在上</b></li><li>切到別的工具，<b>計時器照樣在跑</b></li></ul></div>
-      <div class="card"><h3><span class="dot"></span>流程</h3><ul><li>心跳停止（可電擊／不可電擊）</li><li>心搏過緩、心搏過速</li><li>ROSC 後照護</li></ul></div>
+      <div class="card"><h3><span class="dot"></span>流程</h3><ul><li>心跳停止（可電擊／不可電擊）</li><li>心搏過緩、心搏過速、ROSC 後</li><li><b>鎮靜・插管</b>：填體重算劑量與滴速</li></ul></div>
       <div class="card"><h3><span class="dot"></span>H's &amp; T's</h3><ul><li>點出看到的線索</li><li>依情境與概似比，算出<b>各可逆原因的機率</b></li></ul></div>
       <div class="card"><h3><span class="dot"></span>速查與複習</h3><ul><li>藥物速查、自我測驗</li><li>「2025 改了什麼」，新內容標紫色 <b>NEW</b></li></ul></div>
     </div>
@@ -460,9 +460,9 @@ body.editing [contenteditable=true]{outline:2px dashed rgba(255,51,0,.5);outline
   <div class="hd" style="width:560px">
     <span class="no r" style="background:var(--t-pilot)">P1</span>
     <h2 class="r d1">主訴處理</h2>
-    <p class="lead r d2">在首頁輸入主訴（發燒、掉血壓、解黑便…）按 Enter，跟著六個步驟走，<b>note 同步寫好</b>。</p>
+    <p class="lead r d2">在首頁輸入或點選主訴（49 個，含低血鉀、AKI、輸血反應…），跟著六個步驟走，<b>note 同步寫好</b>。</p>
     <div class="rule r d3"></div>
-    <p class="note r d3" style="margin-top:26px">上方填「護理師說」和生命徵象：<br>橘色＝異常、紅色＝危急；qSOFA ≥ 2 會變紅。</p>
+    <p class="note r d3" style="margin-top:26px">上方填「護理師說」和生命徵象，或按<b style="color:var(--ink)">「貼上 vital sign／檢驗」</b>貼一段文字自動填：<br>橘色＝異常、紅色＝危急；qSOFA ≥ 2 會變紅。</p>
   </div>
   <div class="bd" style="left:740px">
     <div class="six r d1">
@@ -470,7 +470,7 @@ body.editing [contenteditable=true]{outline:2px dashed rgba(255,51,0,.5);outline
       <div><b>1</b><strong>問診</strong><p>點「有 +」「沒有 −」，自動寫成 (+)／(−)</p></div>
       <div><b>2</b><strong>理學檢查</strong><p>點正常或異常的細項，同時寫進 note 和機率計算</p></div>
       <div><b>3</b><strong>鑑別診斷</strong><p>貝氏驗後機率，看「為什麼較可能」和還沒問的關鍵題</p></div>
-      <div><b>4</b><strong>醫囑</strong><p>勾選加進 Plan；先看過敏、腎肝功能、懷孕、抗凝提醒</p></div>
+      <div><b>4</b><strong>醫囑</strong><p>先選病人條件（腎功能、肝、心衰竭、高齡、懷孕、體重），藥名、劑量、途徑、頻次跟著換</p></div>
       <div><b>5</b><strong>Note</strong><p>寫 Assessment 第一行，複製 note 貼回 EMR</p></div>
     </div>
     <div class="tip r d3" style="margin-top:22px">收尾：沒做完的醫囑<b>送到待辦表</b>，再按「結束這個 call」。同時好幾個 call，就回首頁開新的。</div>
@@ -516,7 +516,7 @@ body.editing [contenteditable=true]{outline:2px dashed rgba(255,51,0,.5);outline
       <div><b>I</b><strong>你是誰、打給誰</strong><p>名字、身份、單位、床號、會診科別</p></div>
       <div><b>S</b><strong>一句話講問題</strong><p>判斷放前面：你擔心的診斷，穩定或不穩定</p></div>
       <div><b>B</b><strong>相關病史</strong><p>和這次問題有關的就好</p></div>
-      <div><b>A</b><strong>生命徵象與發現</strong><p>HR、BP、RR、SpO₂、BT、意識，關鍵檢查結果</p></div>
+      <div><b>A</b><strong>生命徵象與發現</strong><p>HR、BP、RR、SpO₂、BT、意識、檢查結果；可以貼上一段文字自動填</p></div>
       <div><b>R</b><strong>你要對方做什麼</strong><p>現在下來看、評估手術、電話建議、轉 ICU、書面會診</p></div>
     </div>
     <ol class="steps tight r d3" style="margin-top:34px;border-top:0;display:grid;grid-template-columns:repeat(3,1fr);gap:0 30px">
@@ -537,9 +537,9 @@ body.editing [contenteditable=true]{outline:2px dashed rgba(255,51,0,.5);outline
       <div class="r d1">
         <div style="display:flex;align-items:center;gap:20px;margin-bottom:24px"><span class="tag" style="--c:var(--t-meds);font-size:24px;padding:10px 14px">P3</span><h2 style="font:900 64px/1.1 var(--display)">值班用藥速查</h2></div>
         <ol class="steps tight">
-          <li>先選病人狀態<small>腎功能、高齡、懷孕、兒童…可複選</small></li>
+          <li>先選病人狀態<small>腎功能、高齡、懷孕…可複選；可填 eGFR、體重</small></li>
           <li>整份工具即時標示<small><b class="red">首選／慎用／禁用</b>，並重新排序</small></li>
-          <li>看不懂的縮寫開「辭典」<small>要開的藥可以匯入待辦</small></li>
+          <li>「值班醫囑」可直接照開<small>與主訴處理同一份，兩邊可以互相跳</small></li>
         </ol>
         <div class="tip" style="margin-top:22px">劑量皆為成人劑量，<b>開立前再核對</b>院內處方集。</div>
       </div>

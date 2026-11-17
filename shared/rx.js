@@ -43,13 +43,13 @@ rx('mgso4_tdp', 'lyte', 'MgSO4（Torsades de pointes／嚴重低血鎂）', 'MgS
 rx('mgo_po', 'lyte', 'MgO 口服', 'Magnesium oxide 250 mg PO TID',
   '輕度低血鎂（1.5–1.8）且無症狀。會腹瀉，腹瀉本身又會流失鎂。',
   { cc: 'hypomgp', adj: { r30: '✕ 排不掉，會高血鎂', hd: '✕ 排不掉，會高血鎂', r: '減為 QD–BID，追 Mg' } });
-rx('ca_hyperk', 'lyte', 'Calcium gluconate（高血鉀穩定心肌）', '10% calcium gluconate 10 mL (1 g) IV slow push over 3–5 min with ECG monitoring; repeat in 5 min if ECG changes persist',
-  'K ≥6.5 或 ECG 有變化（peaked T、QRS 變寬、PR 延長）。只穩定心肌，不降血鉀；效果 30–60 分鐘。',
+rx('ca_hyperk', 'lyte', 'Calcium gluconate（高血鉀穩定心肌）', '10% calcium gluconate 30 mL (3 g) IV slow push over 10 min with ECG monitoring; repeat in 5–10 min if ECG changes persist',
+  'K ≥6.5 或 ECG 有變化（peaked T、QRS 變寬、PR 延長）。只穩定心肌，不降血鉀；效果 30–60 分鐘。10 mL/支，給 3 支；院內習慣一次 1 支的話，ECG 沒改善就接著給到 3 支。',
   { cc: 'hyperk', mon: '連續 ECG', ci: '使用 digoxin 者改成 100 mL D5W 滴 20–30 分鐘', adj: { r30: '不需調整', hd: '不需調整' } });
 rx('ri_hyperk', 'lyte', 'Regular insulin＋葡萄糖（把鉀趕進細胞）', 'Regular insulin 10 U IV push + 50% glucose 50 mL IV push; finger sugar q1h x 6 h',
-  '15 分鐘起效、維持 4–6 小時、降 0.6–1.2 mEq/L。血糖 >250 可以不給葡萄糖。',
+  '15 分鐘起效、維持 4–6 小時、降 0.6–1.2 mEq/L。血糖 >250 可以不給葡萄糖；治療前血糖 <126 mg/dL 的人，之後接 10% glucose 50 mL/h 滴 5 小時。',
   { cc: 'hyperk', mon: '血糖 q1h ×6 小時（低血糖常在 1–3 小時出現）；1–2 小時複驗 K',
-    adj: { r: '低血糖風險高，考慮 5 U', r30: '用 5 U，血糖追滿 6 小時', hd: '用 5 U，血糖追滿 6 小時', elderly: '體重輕或給藥前血糖 <140 用 5 U' },
+    adj: { r: '低血糖風險高，考慮 5 U', r30: '低血糖風險高：這裡換成 5 U（觀察性研究；UKKA 2023 仍用 10 U 並加強補糖），血糖追滿 6 小時', hd: '低血糖風險高：這裡換成 5 U（觀察性研究；UKKA 2023 仍用 10 U 並加強補糖），血糖追滿 6 小時', elderly: '體重輕或給藥前血糖 <140 用 5 U' },
     alt: { r30: 'Regular insulin 5 U IV push + 50% glucose 50 mL IV push; finger sugar q1h x 6 h', hd: 'Regular insulin 5 U IV push + 50% glucose 50 mL IV push; finger sugar q1h x 6 h' } });
 rx('salb_hyperk', 'lyte', 'Salbutamol 吸入（高血鉀）', 'Salbutamol 10 mg nebulization over 10 min',
   '30 分鐘起效、降 0.5–1 mEq/L；是氣喘劑量的 4 倍。約三成病人沒反應，不要單獨使用。',
@@ -61,12 +61,12 @@ rx('kalimate', 'lyte', 'Kalimate（calcium polystyrene sulfonate）', 'Calcium p
   '把鉀排出體外，數小時到一天才有效，不是急救藥。意識不清、腸阻塞、術後腸道未通不要給。',
   { cc: 'hyperk', mon: '排便、腹脹', ci: '腸阻塞、腸缺血、術後 ileus' });
 rx('lokelma', 'lyte', 'Lokelma（sodium zirconium cyclosilicate）', 'Sodium zirconium cyclosilicate (Lokelma) 10 g PO TID for up to 48 h, then 5 g QD',
-  '1 小時起效，比 Kalimate 快。每 5 g 含鈉 400 mg。',
+  '1 小時起效，比 Kalimate 快。每 5 g 含鈉 400 mg。仿單急性期最多 48 小時（UKKA 2023 用到 72 小時）。',
   { cc: 'hyperk', mon: '水腫、K（低血鉀）', adj: { hf: '含鈉，注意水腫' } });
 rx('nacl3', 'lyte', '3% NaCl bolus', '3% NaCl 150 mL IVD over 20 min; recheck Na immediately after; may repeat up to 2 more times until Na rises 5 mEq/L or symptoms improve',
   '低血鈉合併抽搐、昏迷、嘔吐加意識變差。目標先升 4–6 mEq/L 就停，不是矯正到正常。',
-  { cc: 'hypona', mon: '每劑後驗 Na，之後 q2–4h；尿量（突然大量排尿＝矯正過快的前兆）', max: '24 小時上升 ≤8 mEq/L（酗酒、營養不良、低血鉀、肝病者 ≤6）',
-    adj: { hf: '容積負荷：可改 100 mL，給完聽肺', hepatic: 'ODS 高風險，24 小時 ≤6 mEq/L' } });
+  { cc: 'hypona', mon: '每劑後驗 Na，之後 q2–4h；尿量（突然大量排尿＝矯正過快的前兆）', max: '第一個 24 小時上升 ≤10 mEq/L（歐洲 2014）；ODS 高風險（酗酒、營養不良、低血鉀、肝病）抓 ≤8',
+    adj: { hf: '容積負荷：可改 100 mL，給完聽肺', hepatic: 'ODS 高風險，24 小時 ≤8 mEq/L' } });
 rx('ddavp_rescue', 'lyte', 'Desmopressin（低血鈉矯正過快）', 'Desmopressin 2 mcg IV q8h + D5W 3 mL/kg IVD over 1 h; recheck Na q2h',
   '矯正超過上限或尿量突然 >100 mL/h 且尿稀時，把血鈉拉回來。先與學長姊、腎臟科確認。',
   { cc: 'hypona', mon: 'Na q2h、尿量', kg: { lo: 3, hi: 3, u: 'mL', t: 'D5W' } });
@@ -99,7 +99,7 @@ rx('calcitonin', 'lyte', 'Calcitonin', 'Calcitonin 4 IU/kg SC q12h for 48 h',
 rx('zoledronate', 'lyte', 'Zoledronic acid', 'Zoledronic acid 4 mg in N/S 100 mL IVD over 15 min once',
   '2–4 天才見效，維持數週。先把水補起來再給。',
   { cc: 'hyperca', mon: 'Cr、Ca、P、Mg', ci: '近期要做侵入性牙科處置者小心（顎骨壞死）',
-    adj: { r: '減量（CrCl 50–60：3.5 mg；40–49：3.3 mg；30–39：3 mg），滴注時間拉長', r30: '✕ CrCl <30 避免，與腎臟科討論 Denosumab 120 mg SC', hd: '✕ 與腎臟科討論 Denosumab 或透析' } });
+    adj: { r: '高血鈣這個適應症在 Cr <4.5 mg/dL 時仿單不要求減量（依 CrCl 減量的表是給骨轉移用的）；先把水補起來、給藥前後追 Cr', r30: '✕ 嚴重腎功能不全不建議，與腎臟科討論 Denosumab 120 mg SC', hd: '✕ 與腎臟科討論 Denosumab 或透析' } });
 rx('kphos_iv', 'lyte', 'Potassium phosphate 靜脈', 'Potassium phosphate 15 mmol in N/S 250 mL IVD over 4–6 h; recheck P, K, Ca after infusion',
   'P <1.0 mg/dL，或 <2.0 合併肌肉無力、呼吸肌無力、脫離呼吸器困難。每 3 mmol 磷帶 4.4 mEq 鉀；K >4 改用 sodium phosphate。',
   { cc: 'hypomgp', mon: '滴完驗 P、K、Ca（會低血鈣）', max: '≤7.5 mmol/h',
@@ -221,7 +221,7 @@ rx('flumazenil', 'resp', 'Flumazenil', 'Flumazenil 0.2 mg IV over 30 s; repeat 0
 rx('txa_iv', 'resp', 'Tranexamic acid（Transamin）IV', 'Tranexamic acid 500 mg IV slow push over 10 min q8h',
   '咳血、黏膜出血的輔助止血。',
   { cc: 'hemoptysis', mon: '出血量、抽搐', ci: '活動性血栓、肉眼血尿（會形成血塊阻塞）',
-    adj: { r: '500 mg q12h', r30: '500 mg q24h（蓄積會抽搐）', hd: '500 mg q48h 或透析後給' },
+    adj: { r: '仿單以 Cr 分級：1.36–2.83 mg/dL 每次 10 mg/kg BID（約 500 mg q12h）', r30: 'Cr 2.83–5.66 mg/dL：10 mg/kg QD（約 500 mg q24h）；蓄積會抽搐', hd: 'Cr >5.66 mg/dL：10 mg/kg q48h 或 5 mg/kg q24h' },
     alt: { r: 'Tranexamic acid 500 mg IV slow push over 10 min q12h', r30: 'Tranexamic acid 500 mg IV slow push over 10 min q24h', hd: 'Tranexamic acid 500 mg IV slow push over 10 min q48h (after dialysis)' } });
 rx('txa_neb', 'resp', 'Tranexamic acid 吸入', 'Tranexamic acid 500 mg (5 mL) nebulization TID for up to 5 days',
   '非大量咳血。全身吸收少，腎功能差也可以用。',
@@ -295,9 +295,9 @@ rx('sed_midazolam', 'sed', 'Midazolam（Dormicum）（程序鎮靜）', 'Midazol
 rx('sed_propofol', 'sed', 'Propofol（程序鎮靜）', 'Propofol 0.5 mg/kg IV slow push, then 0.25 mg/kg q1–3min PRN',
   '起效與恢復都最快。會掉血壓、抑制呼吸：已經低血壓的不穩定病人不要用。',
   { kg: { lo: 0.5, hi: 1, u: 'mg' }, mon: 'SpO2、ETCO2、血壓', ci: '低血壓、嚴重左心功能不全', adj: { elderly: '劑量減半、推慢', hf: '✕ 血壓不穩時避免，改 Etomidate' } });
-rx('sed_ketamine', 'sed', 'Ketamine（程序鎮靜）', 'Ketamine 0.5–1 mg/kg IV slow push over 1 min',
+rx('sed_ketamine', 'sed', 'Ketamine（程序鎮靜）', 'Ketamine 1 mg/kg IV slow push over 1 min; may repeat 0.5 mg/kg q5–10min PRN',
   '保留呼吸與氣道反射、兼有止痛，適合經皮節律器（TCP）。會讓心跳和血壓上升：心搏過速、缺血性胸痛的病人不是首選。',
-  { kg: { lo: 0.5, hi: 1, u: 'mg' }, mon: 'SpO2、血壓、甦醒期躁動（可給 Midazolam 1 mg）', ci: '缺血性心臟病發作中、嚴重高血壓', adj: { elderly: '用下限劑量' } });
+  { kg: { lo: 1, hi: 1, u: 'mg', t: '首劑' }, mon: 'SpO2、血壓、甦醒期躁動（可給 Midazolam 1 mg）', ci: '缺血性心臟病發作中、嚴重高血壓', adj: { elderly: '首劑 0.5 mg/kg' } });
 rx('sed_fentanyl', 'sed', 'Fentanyl（止痛）', 'Fentanyl 0.5–1 mcg/kg (25–50 mcg) IV slow push; may repeat q5min',
   '整流和 TCP 會痛：鎮靜藥大多不止痛，加一劑短效鴉片類。對血壓影響小。',
   { kg: { lo: 0.5, hi: 1, u: 'mcg' }, mon: '呼吸（與 BZD 併用加成）；備 Naloxone', adj: { elderly: '25 mcg 起', r30: '不需調整，腎差的鴉片類首選', hepatic: '重複給會蓄積' } });
@@ -447,10 +447,10 @@ rx('ri_sc_corr', 'endo', 'Regular insulin 校正劑量', 'Regular insulin SC wit
     adj: { r: '每一階減 2 U', r30: '每一階減半（胰島素清除變慢）', hd: '每一階減半', elderly: '每一階減 2 U，寧高勿低' },
     alt: { r30: 'Regular insulin SC with each finger sugar check (QID AC and HS, or q6h if NPO) per reduced sliding scale: 250–299: 2 U, 300–349: 3 U, 350–399: 4 U, ≥400: 5 U and notify', hd: 'Regular insulin SC with each finger sugar check (QID AC and HS, or q6h if NPO) per reduced sliding scale: 250–299: 2 U, 300–349: 3 U, 350–399: 4 U, ≥400: 5 U and notify' } });
 rx('ri_drip_dka', 'endo', 'Regular insulin 滴注（DKA／HHS）', 'Regular insulin 50 U in N/S 50 mL (1 U/mL), 0.1 U/kg/h IVD; finger sugar q1h; when glucose <250 mg/dL, add D5W and reduce to 0.02–0.05 U/kg/h',
-  '先確認 K ≥3.3 才開始胰島素（<3.3 先補鉀）。目標每小時降 50–70 mg/dL。',
+  '先確認 K ≥3.5 才開始胰島素（<3.5 先以 10 mEq/h 補鉀）。目標每小時降 50–70 mg/dL。HHS 從 0.05 U/kg/h 起。',
   { cc: 'hyperglycemia', kg: { lo: 0.1, hi: 0.1, u: 'U/h' }, mon: '血糖 q1h；K、HCO3、anion gap q2–4h', adj: { r30: '速率減半起（0.05 U/kg/h）', hd: '速率減半起；輸液量要保守' } });
 rx('ns_dka', 'endo', 'N/S 補液（DKA／HHS）', 'N/S 1000 mL IVD over the first hour, then 250–500 mL/h according to hemodynamics and corrected Na',
-  'DKA／HHS 第一步是補水。校正鈉正常或偏高後改 0.45% NaCl。K <5.3 且有尿就在每升輸液加 KCl 20–30 mEq。',
+  'DKA／HHS 第一步是補水。校正鈉正常或偏高後改 0.45% NaCl。K <5.0 且有尿就在每升輸液加 KCl 20–30 mEq，目標 4–5。',
   { cc: 'hyperglycemia', mon: 'I/O、K q2–4h、肺部聽診', adj: { hf: '250–500 mL 分次給、頻繁評估', r30: '速率減半、頻繁評估', hd: '無尿者只需少量輸液，以胰島素為主' },
     alt: { hf: 'N/S 500 mL IVD over the first hour, then reassess volume status before further fluids', hd: 'N/S 250 mL IVD over the first hour, then reassess volume status before further fluids' } });
 
@@ -466,7 +466,7 @@ rx('methylpred_allergy', 'allergy', 'Methylprednisolone', 'Methylprednisolone 40
   { cc: 'allergy', mon: '血糖' });
 rx('famotidine_iv', 'allergy', 'Famotidine IV', 'Famotidine 20 mg IV once',
   '過敏性休克的輔助（H2 blocker）。',
-  { cc: 'allergy', adj: { r30: '10 mg', hd: '10 mg', elderly: '注意譫妄' }, alt: { r30: 'Famotidine 10 mg IV once', hd: 'Famotidine 10 mg IV once' } });
+  { cc: 'allergy', adj: { r: 'CrCl <50 劑量減半', r30: '10 mg', hd: '10 mg', elderly: '注意譫妄' }, alt: { r30: 'Famotidine 10 mg IV once', hd: 'Famotidine 10 mg IV once' } });
 rx('furosemide_taco', 'allergy', 'Furosemide（輸血造成的容積過多）', 'Furosemide 20–40 mg IV push once',
   'TACO：輸血中或輸完 6 小時內喘、血壓高、頸靜脈怒張。先停輸血、坐起、給氧。',
   { cc: 'txrxn', mon: '尿量、SpO2', adj: { r30: '40–80 mg', hd: '無尿者安排透析 UF' } });
@@ -532,7 +532,7 @@ rx('augmentin_iv', 'abx', 'Amoxicillin-clavulanate（Augmentin）IV', 'Amoxicill
     alt: { r30: 'Amoxicillin-clavulanate 1.2 g IV once, then 600 mg IV q12h', hd: 'Amoxicillin-clavulanate 1.2 g IV once, then 600 mg IV q24h (extra 600 mg after dialysis)' } });
 rx('unasyn', 'abx', 'Ampicillin-sulbactam（Unasyn）', 'Ampicillin-sulbactam 3 g IV q6h',
   '吸入性肺炎、頭頸部感染、糖尿病足。',
-  { cc: 'fever', adj: { r: 'CrCl 15–29：3 g q12h', r30: 'CrCl 15–29：3 g q12h；<15：3 g q24h', hd: '3 g q24h，透析日透析後給' },
+  { cc: 'fever', adj: { r: 'CrCl ≥30 不需調整', r30: 'CrCl 15–29：3 g q12h；5–14：3 g q24h', hd: '3 g q24h，透析日透析後給' },
     alt: { r30: 'Ampicillin-sulbactam 3 g IV q12h', hd: 'Ampicillin-sulbactam 3 g IV q24h (after dialysis on dialysis days)' } });
 rx('cefazolin', 'abx', 'Cefazolin', 'Cefazolin 2 g IV q8h',
   'MSSA 菌血症、蜂窩性組織炎。',
@@ -558,7 +558,7 @@ function rxStates(st) {
 }
 function rxNum(v) { return v >= 100 ? String(Math.round(v / 5) * 5) : v >= 10 ? String(Math.round(v)) : String(Math.round(v * 10) / 10); }
 function rxKg(x, wt) {
-  const w = parseFloat(wt), k = x.kg;
+  const w = parseFloat(String(wt == null ? '' : wt).replace(',', '.')), k = x.kg;   // 有些 Android 鍵盤的小數點是逗號
   if (!k || !isFinite(w) || w < 20 || w > 250) return '';
   const cap = v => k.max ? Math.min(v, k.max) : v;
   const lo = cap(k.lo * w), hi = cap(k.hi * w);

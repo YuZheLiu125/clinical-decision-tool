@@ -150,3 +150,33 @@ def test_standalone_deep_links(page, base_url):
     page.goto(base_url + 'tools/copilot.html#cc-aki')
     assert page.evaluate("UI.view + ':' + cur().pid") == 'call:aki'
     assert page.evaluate("location.hash") == ''
+
+
+def test_bayes_data_matches_each_protocol(page, base_url):
+    """貝氏資料的鑑別數、驗前機率數、連到的問診／PE 題號、LR 的鑑別 id、來源代號都要對得上。"""
+    page.goto(base_url + 'tools/copilot.html')
+    bad = page.evaluate("""() => {
+      const out = [];
+      for (const p of BUILTIN){
+        const b = BAYES[p.id]; if (!b){ if (p.id !== 'death') out.push(p.id + ': 沒有貝氏資料'); continue; }
+        const ids = b.d.split(' ');
+        if (ids.length !== p.ddx.length || b.p.length !== p.ddx.length || new Set(ids).size !== ids.length) out.push(p.id + ': 鑑別數不符');
+        const seen = new Set();
+        for (const f of b.f){
+          if (seen.has(f[0])) out.push(p.id + '.' + f[0] + ': id 重複'); seen.add(f[0]);
+          if (f[3] === 'h' && !p.hx[f[4]]) out.push(p.id + '.' + f[0] + ': 問診題號');
+          if (f[3] === 'p' && !p.pe[f[4]]) out.push(p.id + '.' + f[0] + ': PE 題號');
+          if (f[3] === 'v' && !VSD[f[4]]) out.push(p.id + '.' + f[0] + ': 生命徵象代號');
+          if (!'hpvtx'.includes(f[3])) out.push(p.id + '.' + f[0] + ': 種類');
+          if (!SRC[f[6]]) out.push(p.id + '.' + f[0] + ': 來源');
+          for (const [k, v] of Object.entries(f[5])) if (!ids.includes(k) || v.length !== 2 || !(v[0] > 0 && v[1] > 0)) out.push(p.id + '.' + f[0] + ': LR ' + k);
+        }
+      }
+      return out;
+    }""")
+    assert bad == []
+    # 新主訴的鑑別步驟現在是貝氏看板，點了發現機率會動
+    page.evaluate("startCall('aki'); cur().step = 3; UI.bedAsk = false; cur().hx[5] = '+'; render()")
+    assert page.locator('.bx-list').count() == 1
+    obs = page.evaluate("(r => r.post / r.pre)(bcalc(cur(), getProto('aki')).res.find(r => r.d.id === 'obs'))")
+    assert obs > 4

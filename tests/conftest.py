@@ -40,11 +40,16 @@ def base_url():
 
 
 @pytest.fixture(scope='session')
-def browser():
+def pw():
     with sync_playwright() as p:
-        b = p.chromium.launch()
-        yield b
-        b.close()
+        yield p
+
+
+@pytest.fixture(scope='session')
+def browser(pw):
+    b = pw.chromium.launch()
+    yield b
+    b.close()
 
 
 @pytest.fixture
@@ -73,6 +78,28 @@ def android(browser):
     ctx = browser.new_context(
         viewport={'width': 412, 'height': 839}, device_scale_factor=2.625, has_touch=True, is_mobile=True,
         user_agent='Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36')
+    pg = ctx.new_page()
+    pg.errors = []
+    pg.on('pageerror', lambda e: pg.errors.append(str(e)))
+    yield pg
+    ctx.close()
+
+
+@pytest.fixture(scope='session')
+def webkit_browser(pw):
+    """Safari 的引擎（WebKit）：iPhone、iPad 上所有瀏覽器都是它。沒裝就跳過（python3 -m playwright install webkit）。"""
+    try:
+        b = pw.webkit.launch()
+    except Exception as e:   # noqa: BLE001
+        pytest.skip(f'沒有安裝 WebKit：{e}')
+    yield b
+    b.close()
+
+
+@pytest.fixture
+def iphone(webkit_browser):
+    ctx = webkit_browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=3, has_touch=True, is_mobile=True,
+        user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1')
     pg = ctx.new_page()
     pg.errors = []
     pg.on('pageerror', lambda e: pg.errors.append(str(e)))

@@ -162,6 +162,16 @@ body.ai-on .needs-ai{display:inline-flex!important}
 .vf .bp em{font-style:normal;color:var(--ink-3)}
 .vf.warn{border-color:var(--accent);background:var(--accent-soft)}
 .vf.crit{border-color:var(--crit);background:var(--crit-soft)}
+.pasterow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:8px}
+.pastebox{margin-top:8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px 12px;display:grid;gap:8px}
+.pastebox label{font-size:13px;color:var(--ink-2)}
+.pasteprev{font-size:13px;display:grid;gap:4px;overflow-wrap:anywhere}
+.pasteprev b{font-weight:600}
+.pasteprev .abn,.labc.abn b{color:var(--crit);font-weight:600}
+.labrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px}
+.labc{font-size:12.5px;font-variant-numeric:tabular-nums;border:1px solid var(--line);border-radius:6px;padding:2px 7px;background:var(--surface);white-space:nowrap}
+.labc.abn{border-color:var(--crit)}
+.labc i{font-style:normal;font-size:11px;margin-left:3px;color:var(--crit)}
 .vflags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center;min-height:28px}
 .flag{font-size:12.5px;border-radius:6px;padding:2px 8px;background:var(--accent-soft);color:var(--ink)}
 .flag.crit{background:var(--crit);color:var(--surface);font-weight:500}
@@ -269,6 +279,13 @@ textarea.inp{resize:vertical;min-height:64px}
 .rxb{display:grid;gap:4px;padding:6px 0 2px;color:var(--ink-2)}
 .rxr{display:grid;grid-template-columns:6.4em minmax(0,1fr);gap:8px}
 .rxr .l{color:var(--ink-3)}
+/* 觸控裝置：新加的控制項至少 44px 高，手指點得到 */
+@media (pointer:coarse){
+  .pxbar .seg button,.pxbar .chip,.pasterow .btn,.pastebox .btn{min-height:44px}
+  .rxd summary{min-height:44px}
+  .rxb .mini,.labrow .mini{min-height:44px;padding:0 4px}
+  .pxwt .inp{min-height:44px}
+}
 .cc-sec{margin-top:18px}
 .cc-sec h2{font-size:13px;font-weight:500;color:var(--ink-3);letter-spacing:.06em;margin:0 0 8px}
 .cc-sec .cc-grid{margin-top:0}
@@ -886,6 +903,115 @@ html:root:root{--bg:var(--hub-bg);--surface:var(--hub-surface);--line:var(--hub-
   document.addEventListener('click', e => { if (Date.now() - swiped < 400) { e.preventDefault(); e.stopPropagation(); } }, true);
 })();
 </script>
+<script id="hub-paste">/*hub-paste:start*/
+/* 臨床輔助決策工具 · 貼上解析（正本：shared/paste.js，由 scripts/sync_shared.py 寫進主訴處理、會診稿，不要直接改 HTML 裡這一段）
+   把從 HIS、護理紀錄、LINE 貼來的一段文字拆成 vital sign 和檢驗值。
+   pasteParse(text) → { v: {bt, sbp, dbp, pr, rr, spo2, sugar, gcs}, labs: [[id, 數值, 'H' | 'L' | '']] }
+   不用 regex lookbehind（舊版 Safari 會整段 script 壞掉）。查房板有自己更完整的解析器（分血液／尿液、歷史報告），這裡只做當下這一筆。 */
+const PASTE_LABS = [
+  ['WBC', ['WBC'], 4, 10], ['Hb', ['Hb', 'HGB', 'Hgb', 'Hemoglobin'], 12, 17.5], ['Plt', ['Plt', 'PLT', 'Platelet'], 150, 400],
+  ['Na', ['Na', 'Sodium'], 135, 145], ['K', ['K', 'Potassium'], 3.5, 5.0], ['Cl', ['Cl', 'Chloride'], 98, 107],
+  ['HCO3', ['HCO3-', 'HCO3', 'Bicarbonate', 'TCO2'], 22, 26], ['BUN', ['BUN', 'Urea'], 7, 20], ['Cr', ['Creatinine', 'Crea', 'CRE', 'Cr'], 0.6, 1.3],
+  ['eGFR', ['eGFR', 'GFR'], 60, null], ['Ca', ['Calcium', 'Ca'], 8.6, 10.4], ['Mg', ['Magnesium', 'Mg'], 1.7, 2.4], ['P', ['Phosphate', 'Phosphorus', 'IP', 'P'], 2.5, 4.5],
+  ['Glu', ['Glucose AC', 'Glucose PC', 'Glucose', 'GLU-AC', 'Glu AC', 'Glu'], 70, 180],
+  ['AST', ['AST', 'GOT'], null, 40], ['ALT', ['ALT', 'GPT'], null, 40], ['ALP', ['ALK-P', 'Alk-P', 'ALP'], 40, 130],
+  ['T-bil', ['Total bilirubin', 'T-bil', 'T-Bil', 'T.Bil', 'TBIL', 'Bil-T'], null, 1.2], ['Alb', ['Albumin', 'Alb'], 3.5, 5.0],
+  ['CRP', ['hs-CRP', 'CRP'], null, 0.5], ['PCT', ['Procalcitonin', 'PCT'], null, 0.5], ['Lactate', ['Lactic acid', 'Lactate', 'Lac'], null, 2.0],
+  ['INR', ['PT-INR', 'INR'], 0.8, 1.2], ['aPTT', ['aPTT', 'APTT'], null, 40], ['D-dimer', ['D-dimer', 'D-Dimer'], null, 0.5],
+  ['pH', ['pH'], 7.35, 7.45], ['PaCO2', ['PaCO2', 'pCO2', 'PCO2'], 35, 45], ['PaO2', ['PaO2', 'pO2', 'PO2'], 80, null],
+  ['Troponin', ['hs-Troponin I', 'hs-Troponin T', 'Troponin-I', 'Troponin I', 'Troponin T', 'hs-TnI', 'hs-TnT', 'TnI', 'Troponin'], null, null],
+  ['CK', ['CPK', 'CK'], null, 200], ['Lipase', ['Lipase'], null, 60], ['Ammonia', ['Ammonia', 'NH3'], null, 80],
+  ['NT-proBNP', ['NT-proBNP', 'NT-pro BNP', 'NTproBNP'], null, 300], ['BNP', ['BNP'], null, 100],
+].map(([id, al, lo, hi]) => ({ id, al, lo, hi }));
+const PASTE_LAB = Object.fromEntries(PASTE_LABS.map(l => [l.id, l]));
+const pasteFlag = (id, v) => { const l = PASTE_LAB[id]; return !l ? '' : l.lo != null && v < l.lo ? 'L' : l.hi != null && v > l.hi ? 'H' : ''; };
+const PASTE_ALIASES = PASTE_LABS.flatMap(l => l.al.map(a => [a, l.id])).sort((a, b) => b[0].length - a[0].length);
+const pasteEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/* 合理範圍：超出就不當成這個項目 */
+const PASTE_OK = { P: [0.1, 15], K: [1, 10], Na: [90, 200], Cl: [50, 150], pH: [6.5, 8], Ca: [2, 20], Mg: [0.2, 10], Hb: [1, 25], INR: [0.5, 20], Alb: [0.5, 7] };
+const PASTE_NUM = '(-?\\d+(?:[.,]\\d+)?)';
+const pasteN = s => parseFloat(String(s).replace(',', '.'));
+
+function pasteVitals(text) {
+  const src = ' ' + String(text).replace(/[：﹕]/g, ':').replace(/／/g, '/').replace(/％/g, '%').replace(/ |　/g, ' ') + ' ';
+  const v = {}, used = [];
+  // 名稱前面不能緊貼英文字母或數字；回傳數值並記下用掉的範圍，避免同一段被兩個項目抓到
+  const grab = (names, lo, hi, tail) => {
+    const re = new RegExp('(^|[^A-Za-z0-9])(?:' + names + ')\\s*[:=]?\\s*' + PASTE_NUM + (tail || ''), 'gi');
+    let m;
+    while ((m = re.exec(src))) {
+      const x = pasteN(m[2]), s = m.index + m[1].length, e = m.index + m[0].length;
+      if (x >= lo && x <= hi && !used.some(([a, b]) => s < b && e > a)) { used.push([s, e]); return x; }
+    }
+    return null;
+  };
+  const set = (k, x) => { if (x != null && v[k] == null) v[k] = String(x); };
+  // TPR 36.8/88/18（護理紀錄常見的寫法）
+  let m = /(^|[^A-Za-z])TPR\s*[:=]?\s*(\d{2}(?:[.,]\d)?)\s*\/\s*(\d{2,3})\s*\/\s*(\d{1,2})/i.exec(src);
+  if (m) { set('bt', pasteN(m[2])); set('pr', +m[3]); set('rr', +m[4]); used.push([m.index, m.index + m[0].length]); }
+  // 血壓：BP 92/58、血壓 92／58、NBP: 92/58 mmHg；沒有標名稱但長得像血壓的「120/80」也收
+  m = /(^|[^A-Za-z0-9])(?:N?I?BP|ABP|血壓|blood pressure)\s*[:=]?\s*(\d{2,3})\s*\/\s*(\d{2,3})/i.exec(src) || /(^|[^0-9./])(\d{2,3})\s*\/\s*(\d{2,3})\s*mmHg/i.exec(src);
+  if (m && +m[2] >= 40 && +m[2] <= 300 && +m[3] >= 20 && +m[3] <= 200) { set('sbp', +m[2]); set('dbp', +m[3]); used.push([m.index, m.index + m[0].length]); }
+  set('sbp', grab('SBP|收縮壓', 40, 300)); set('dbp', grab('DBP|舒張壓', 20, 200));
+  set('spo2', grab('SpO2|SPO2|SaO2|O2\\s*sat(?:uration)?|血氧(?:飽和度)?', 50, 100));
+  set('bt', grab('BT|Temp(?:erature)?|體溫|耳溫|額溫|腋溫|肛溫', 30, 43));
+  set('pr', grab('HR|PR|Pulse(?:\\s*rate)?|Heart\\s*rate|心跳|脈搏|心率', 20, 250));
+  set('rr', grab('RR|Resp(?:iratory)?(?:\\s*rate)?|呼吸(?:次數|速率)?', 4, 70));
+  set('sugar', grab('finger\\s*sugar|F\\/S|FS|one\\s*touch|sugar|血糖|BS', 20, 1500));
+  // 單一字母的 T、P、R 只在後面有冒號或等號時才認（T:36.8 P:88 R:18）
+  set('bt', grab('T\\s*[:=]', 30, 43)); set('pr', grab('P\\s*[:=]', 20, 250)); set('rr', grab('R\\s*[:=]', 4, 70));
+  // GCS：E4V5M6、E4VTM6（插管）、GCS 15
+  m = /E\s*([1-4])\s*,?\s*V\s*([1-5]|T|E|A)\s*,?\s*M\s*([1-6])/i.exec(src);
+  if (m) v.gcs = `E${m[1]}V${m[2].toUpperCase()}M${m[3]}`;
+  else { const g = grab('GCS', 3, 15); if (g != null) v.gcs = String(g); }
+  return v;
+}
+
+function pasteLabs(text) {
+  // 尿液段落不收（同名的 Na、K、Cr 會混在一起）：遇到尿液標題就跳過，直到下一個血液標題
+  const lines = String(text).replace(/[：﹕]/g, ':').replace(/，/g, ', ').replace(/ |　/g, ' ').split(/\n/);
+  let skip = false; const keep = [];
+  lines.forEach(l => {
+    if (/^\s*[【\[(（]?\s*(?:urine|urinalysis|u\/a|ua\b|尿液?|尿沉渣|sediment)/i.test(l)) skip = true;
+    else if (/^\s*[【\[(（]?\s*(?:blood|serum|plasma|cbc|biochem|chemistry|生化|血液|血清|全血|abg|血液氣體)/i.test(l)) skip = false;
+    if (!skip) keep.push(l);
+  });
+  const src = ' ' + keep.join('\n ') + ' ';
+  // 長的別名先比對並佔位（NT-proBNP 先於 BNP）；同一項目有好幾個別名都出現時，取文字裡最前面的那一個
+  const out = {}, at = {}, taken = [];
+  for (const [a, id] of PASTE_ALIASES) {
+    const re = new RegExp('(^|[^A-Za-z0-9-])' + pasteEsc(a) + '(?![A-Za-z0-9])[\\s:=*#<>]*(?:[(（][^)）\\n]{0,15}[)）])?[\\s:=*#<>]*(?:[\\u4e00-\\u9fff]{1,6}[\\s:=*#<>]*)?' + PASTE_NUM, a.length <= 2 ? 'g' : 'gi');
+    let m;
+    while ((m = re.exec(src))) {
+      const s = m.index + m[1].length, e = s + a.length;
+      if (taken.some(([x, y]) => s < y && e > x)) continue;
+      const x = pasteN(m[2]), lim = PASTE_OK[id];
+      if (isNaN(x) || (lim && (x < lim[0] || x > lim[1]))) continue;   // 不合理的數字（例如把脈搏 P:110 當成磷）跳過
+      taken.push([s, e]);
+      if (at[id] == null || s < at[id]) { at[id] = s; out[id] = x; }
+    }
+  }
+  return PASTE_LABS.filter(l => out[l.id] != null).map(l => [l.id, out[l.id], pasteFlag(l.id, out[l.id])]);
+}
+
+function pasteParse(text) {
+  const v = pasteVitals(text);
+  const labs = pasteLabs(text);
+  return { v, labs };
+}
+const PASTE_VNAME = { bt: 'BT', sbp: 'SBP', dbp: 'DBP', pr: 'HR', rr: 'RR', spo2: 'SpO2', sugar: 'Sugar', gcs: 'GCS' };
+function pasteVitalsText(v) {
+  const a = [];
+  if (v.bt) a.push('BT ' + v.bt);
+  if (v.sbp || v.dbp) a.push('BP ' + (v.sbp || '?') + '/' + (v.dbp || '?'));
+  ['pr', 'rr', 'spo2', 'sugar', 'gcs'].forEach(k => { if (v[k]) a.push(PASTE_VNAME[k] + ' ' + v[k] + (k === 'spo2' ? '%' : '')); });
+  return a.join('、');
+}
+/* labs → "Na 128 (L), K 5.9 (H)"；onlyAbn 只列異常的 */
+function pasteLabText(labs, onlyAbn) {
+  return labs.filter(l => !onlyAbn || l[2]).map(l => `${l[0]} ${l[1]}${l[2] ? ' (' + l[2] + ')' : ''}`).join(', ');
+}
+/*hub-paste:end*/</script>
 <script id="hub-rx">/*hub-rx:start*/
 /* 臨床輔助決策工具 · 共用醫囑庫（正本：shared/rx.js，由 scripts/sync_shared.py 寫進主訴處理、用藥速查、ACLS，不要直接改 HTML 裡這一段）
    一筆 = 一張可以直接開的醫囑：藥名、劑量、途徑、頻次／時間都寫在 o（英文醫囑文字）。
@@ -932,13 +1058,13 @@ rx('mgso4_tdp', 'lyte', 'MgSO4（Torsades de pointes／嚴重低血鎂）', 'MgS
 rx('mgo_po', 'lyte', 'MgO 口服', 'Magnesium oxide 250 mg PO TID',
   '輕度低血鎂（1.5–1.8）且無症狀。會腹瀉，腹瀉本身又會流失鎂。',
   { cc: 'hypomgp', adj: { r30: '✕ 排不掉，會高血鎂', hd: '✕ 排不掉，會高血鎂', r: '減為 QD–BID，追 Mg' } });
-rx('ca_hyperk', 'lyte', 'Calcium gluconate（高血鉀穩定心肌）', '10% calcium gluconate 10 mL (1 g) IV slow push over 3–5 min with ECG monitoring; repeat in 5 min if ECG changes persist',
-  'K ≥6.5 或 ECG 有變化（peaked T、QRS 變寬、PR 延長）。只穩定心肌，不降血鉀；效果 30–60 分鐘。',
+rx('ca_hyperk', 'lyte', 'Calcium gluconate（高血鉀穩定心肌）', '10% calcium gluconate 30 mL (3 g) IV slow push over 10 min with ECG monitoring; repeat in 5–10 min if ECG changes persist',
+  'K ≥6.5 或 ECG 有變化（peaked T、QRS 變寬、PR 延長）。只穩定心肌，不降血鉀；效果 30–60 分鐘。10 mL/支，給 3 支；院內習慣一次 1 支的話，ECG 沒改善就接著給到 3 支。',
   { cc: 'hyperk', mon: '連續 ECG', ci: '使用 digoxin 者改成 100 mL D5W 滴 20–30 分鐘', adj: { r30: '不需調整', hd: '不需調整' } });
 rx('ri_hyperk', 'lyte', 'Regular insulin＋葡萄糖（把鉀趕進細胞）', 'Regular insulin 10 U IV push + 50% glucose 50 mL IV push; finger sugar q1h x 6 h',
-  '15 分鐘起效、維持 4–6 小時、降 0.6–1.2 mEq/L。血糖 >250 可以不給葡萄糖。',
+  '15 分鐘起效、維持 4–6 小時、降 0.6–1.2 mEq/L。血糖 >250 可以不給葡萄糖；治療前血糖 <126 mg/dL 的人，之後接 10% glucose 50 mL/h 滴 5 小時。',
   { cc: 'hyperk', mon: '血糖 q1h ×6 小時（低血糖常在 1–3 小時出現）；1–2 小時複驗 K',
-    adj: { r: '低血糖風險高，考慮 5 U', r30: '用 5 U，血糖追滿 6 小時', hd: '用 5 U，血糖追滿 6 小時', elderly: '體重輕或給藥前血糖 <140 用 5 U' },
+    adj: { r: '低血糖風險高，考慮 5 U', r30: '低血糖風險高：這裡換成 5 U（觀察性研究；UKKA 2023 仍用 10 U 並加強補糖），血糖追滿 6 小時', hd: '低血糖風險高：這裡換成 5 U（觀察性研究；UKKA 2023 仍用 10 U 並加強補糖），血糖追滿 6 小時', elderly: '體重輕或給藥前血糖 <140 用 5 U' },
     alt: { r30: 'Regular insulin 5 U IV push + 50% glucose 50 mL IV push; finger sugar q1h x 6 h', hd: 'Regular insulin 5 U IV push + 50% glucose 50 mL IV push; finger sugar q1h x 6 h' } });
 rx('salb_hyperk', 'lyte', 'Salbutamol 吸入（高血鉀）', 'Salbutamol 10 mg nebulization over 10 min',
   '30 分鐘起效、降 0.5–1 mEq/L；是氣喘劑量的 4 倍。約三成病人沒反應，不要單獨使用。',
@@ -950,12 +1076,12 @@ rx('kalimate', 'lyte', 'Kalimate（calcium polystyrene sulfonate）', 'Calcium p
   '把鉀排出體外，數小時到一天才有效，不是急救藥。意識不清、腸阻塞、術後腸道未通不要給。',
   { cc: 'hyperk', mon: '排便、腹脹', ci: '腸阻塞、腸缺血、術後 ileus' });
 rx('lokelma', 'lyte', 'Lokelma（sodium zirconium cyclosilicate）', 'Sodium zirconium cyclosilicate (Lokelma) 10 g PO TID for up to 48 h, then 5 g QD',
-  '1 小時起效，比 Kalimate 快。每 5 g 含鈉 400 mg。',
+  '1 小時起效，比 Kalimate 快。每 5 g 含鈉 400 mg。仿單急性期最多 48 小時（UKKA 2023 用到 72 小時）。',
   { cc: 'hyperk', mon: '水腫、K（低血鉀）', adj: { hf: '含鈉，注意水腫' } });
 rx('nacl3', 'lyte', '3% NaCl bolus', '3% NaCl 150 mL IVD over 20 min; recheck Na immediately after; may repeat up to 2 more times until Na rises 5 mEq/L or symptoms improve',
   '低血鈉合併抽搐、昏迷、嘔吐加意識變差。目標先升 4–6 mEq/L 就停，不是矯正到正常。',
-  { cc: 'hypona', mon: '每劑後驗 Na，之後 q2–4h；尿量（突然大量排尿＝矯正過快的前兆）', max: '24 小時上升 ≤8 mEq/L（酗酒、營養不良、低血鉀、肝病者 ≤6）',
-    adj: { hf: '容積負荷：可改 100 mL，給完聽肺', hepatic: 'ODS 高風險，24 小時 ≤6 mEq/L' } });
+  { cc: 'hypona', mon: '每劑後驗 Na，之後 q2–4h；尿量（突然大量排尿＝矯正過快的前兆）', max: '第一個 24 小時上升 ≤10 mEq/L（歐洲 2014）；ODS 高風險（酗酒、營養不良、低血鉀、肝病）抓 ≤8',
+    adj: { hf: '容積負荷：可改 100 mL，給完聽肺', hepatic: 'ODS 高風險，24 小時 ≤8 mEq/L' } });
 rx('ddavp_rescue', 'lyte', 'Desmopressin（低血鈉矯正過快）', 'Desmopressin 2 mcg IV q8h + D5W 3 mL/kg IVD over 1 h; recheck Na q2h',
   '矯正超過上限或尿量突然 >100 mL/h 且尿稀時，把血鈉拉回來。先與學長姊、腎臟科確認。',
   { cc: 'hypona', mon: 'Na q2h、尿量', kg: { lo: 3, hi: 3, u: 'mL', t: 'D5W' } });
@@ -988,7 +1114,7 @@ rx('calcitonin', 'lyte', 'Calcitonin', 'Calcitonin 4 IU/kg SC q12h for 48 h',
 rx('zoledronate', 'lyte', 'Zoledronic acid', 'Zoledronic acid 4 mg in N/S 100 mL IVD over 15 min once',
   '2–4 天才見效，維持數週。先把水補起來再給。',
   { cc: 'hyperca', mon: 'Cr、Ca、P、Mg', ci: '近期要做侵入性牙科處置者小心（顎骨壞死）',
-    adj: { r: '減量（CrCl 50–60：3.5 mg；40–49：3.3 mg；30–39：3 mg），滴注時間拉長', r30: '✕ CrCl <30 避免，與腎臟科討論 Denosumab 120 mg SC', hd: '✕ 與腎臟科討論 Denosumab 或透析' } });
+    adj: { r: '高血鈣這個適應症在 Cr <4.5 mg/dL 時仿單不要求減量（依 CrCl 減量的表是給骨轉移用的）；先把水補起來、給藥前後追 Cr', r30: '✕ 嚴重腎功能不全不建議，與腎臟科討論 Denosumab 120 mg SC', hd: '✕ 與腎臟科討論 Denosumab 或透析' } });
 rx('kphos_iv', 'lyte', 'Potassium phosphate 靜脈', 'Potassium phosphate 15 mmol in N/S 250 mL IVD over 4–6 h; recheck P, K, Ca after infusion',
   'P <1.0 mg/dL，或 <2.0 合併肌肉無力、呼吸肌無力、脫離呼吸器困難。每 3 mmol 磷帶 4.4 mEq 鉀；K >4 改用 sodium phosphate。',
   { cc: 'hypomgp', mon: '滴完驗 P、K、Ca（會低血鈣）', max: '≤7.5 mmol/h',
@@ -1110,7 +1236,7 @@ rx('flumazenil', 'resp', 'Flumazenil', 'Flumazenil 0.2 mg IV over 30 s; repeat 0
 rx('txa_iv', 'resp', 'Tranexamic acid（Transamin）IV', 'Tranexamic acid 500 mg IV slow push over 10 min q8h',
   '咳血、黏膜出血的輔助止血。',
   { cc: 'hemoptysis', mon: '出血量、抽搐', ci: '活動性血栓、肉眼血尿（會形成血塊阻塞）',
-    adj: { r: '500 mg q12h', r30: '500 mg q24h（蓄積會抽搐）', hd: '500 mg q48h 或透析後給' },
+    adj: { r: '仿單以 Cr 分級：1.36–2.83 mg/dL 每次 10 mg/kg BID（約 500 mg q12h）', r30: 'Cr 2.83–5.66 mg/dL：10 mg/kg QD（約 500 mg q24h）；蓄積會抽搐', hd: 'Cr >5.66 mg/dL：10 mg/kg q48h 或 5 mg/kg q24h' },
     alt: { r: 'Tranexamic acid 500 mg IV slow push over 10 min q12h', r30: 'Tranexamic acid 500 mg IV slow push over 10 min q24h', hd: 'Tranexamic acid 500 mg IV slow push over 10 min q48h (after dialysis)' } });
 rx('txa_neb', 'resp', 'Tranexamic acid 吸入', 'Tranexamic acid 500 mg (5 mL) nebulization TID for up to 5 days',
   '非大量咳血。全身吸收少，腎功能差也可以用。',
@@ -1184,9 +1310,9 @@ rx('sed_midazolam', 'sed', 'Midazolam（Dormicum）（程序鎮靜）', 'Midazol
 rx('sed_propofol', 'sed', 'Propofol（程序鎮靜）', 'Propofol 0.5 mg/kg IV slow push, then 0.25 mg/kg q1–3min PRN',
   '起效與恢復都最快。會掉血壓、抑制呼吸：已經低血壓的不穩定病人不要用。',
   { kg: { lo: 0.5, hi: 1, u: 'mg' }, mon: 'SpO2、ETCO2、血壓', ci: '低血壓、嚴重左心功能不全', adj: { elderly: '劑量減半、推慢', hf: '✕ 血壓不穩時避免，改 Etomidate' } });
-rx('sed_ketamine', 'sed', 'Ketamine（程序鎮靜）', 'Ketamine 0.5–1 mg/kg IV slow push over 1 min',
+rx('sed_ketamine', 'sed', 'Ketamine（程序鎮靜）', 'Ketamine 1 mg/kg IV slow push over 1 min; may repeat 0.5 mg/kg q5–10min PRN',
   '保留呼吸與氣道反射、兼有止痛，適合經皮節律器（TCP）。會讓心跳和血壓上升：心搏過速、缺血性胸痛的病人不是首選。',
-  { kg: { lo: 0.5, hi: 1, u: 'mg' }, mon: 'SpO2、血壓、甦醒期躁動（可給 Midazolam 1 mg）', ci: '缺血性心臟病發作中、嚴重高血壓', adj: { elderly: '用下限劑量' } });
+  { kg: { lo: 1, hi: 1, u: 'mg', t: '首劑' }, mon: 'SpO2、血壓、甦醒期躁動（可給 Midazolam 1 mg）', ci: '缺血性心臟病發作中、嚴重高血壓', adj: { elderly: '首劑 0.5 mg/kg' } });
 rx('sed_fentanyl', 'sed', 'Fentanyl（止痛）', 'Fentanyl 0.5–1 mcg/kg (25–50 mcg) IV slow push; may repeat q5min',
   '整流和 TCP 會痛：鎮靜藥大多不止痛，加一劑短效鴉片類。對血壓影響小。',
   { kg: { lo: 0.5, hi: 1, u: 'mcg' }, mon: '呼吸（與 BZD 併用加成）；備 Naloxone', adj: { elderly: '25 mcg 起', r30: '不需調整，腎差的鴉片類首選', hepatic: '重複給會蓄積' } });
@@ -1336,10 +1462,10 @@ rx('ri_sc_corr', 'endo', 'Regular insulin 校正劑量', 'Regular insulin SC wit
     adj: { r: '每一階減 2 U', r30: '每一階減半（胰島素清除變慢）', hd: '每一階減半', elderly: '每一階減 2 U，寧高勿低' },
     alt: { r30: 'Regular insulin SC with each finger sugar check (QID AC and HS, or q6h if NPO) per reduced sliding scale: 250–299: 2 U, 300–349: 3 U, 350–399: 4 U, ≥400: 5 U and notify', hd: 'Regular insulin SC with each finger sugar check (QID AC and HS, or q6h if NPO) per reduced sliding scale: 250–299: 2 U, 300–349: 3 U, 350–399: 4 U, ≥400: 5 U and notify' } });
 rx('ri_drip_dka', 'endo', 'Regular insulin 滴注（DKA／HHS）', 'Regular insulin 50 U in N/S 50 mL (1 U/mL), 0.1 U/kg/h IVD; finger sugar q1h; when glucose <250 mg/dL, add D5W and reduce to 0.02–0.05 U/kg/h',
-  '先確認 K ≥3.3 才開始胰島素（<3.3 先補鉀）。目標每小時降 50–70 mg/dL。',
+  '先確認 K ≥3.5 才開始胰島素（<3.5 先以 10 mEq/h 補鉀）。目標每小時降 50–70 mg/dL。HHS 從 0.05 U/kg/h 起。',
   { cc: 'hyperglycemia', kg: { lo: 0.1, hi: 0.1, u: 'U/h' }, mon: '血糖 q1h；K、HCO3、anion gap q2–4h', adj: { r30: '速率減半起（0.05 U/kg/h）', hd: '速率減半起；輸液量要保守' } });
 rx('ns_dka', 'endo', 'N/S 補液（DKA／HHS）', 'N/S 1000 mL IVD over the first hour, then 250–500 mL/h according to hemodynamics and corrected Na',
-  'DKA／HHS 第一步是補水。校正鈉正常或偏高後改 0.45% NaCl。K <5.3 且有尿就在每升輸液加 KCl 20–30 mEq。',
+  'DKA／HHS 第一步是補水。校正鈉正常或偏高後改 0.45% NaCl。K <5.0 且有尿就在每升輸液加 KCl 20–30 mEq，目標 4–5。',
   { cc: 'hyperglycemia', mon: 'I/O、K q2–4h、肺部聽診', adj: { hf: '250–500 mL 分次給、頻繁評估', r30: '速率減半、頻繁評估', hd: '無尿者只需少量輸液，以胰島素為主' },
     alt: { hf: 'N/S 500 mL IVD over the first hour, then reassess volume status before further fluids', hd: 'N/S 250 mL IVD over the first hour, then reassess volume status before further fluids' } });
 
@@ -1355,7 +1481,7 @@ rx('methylpred_allergy', 'allergy', 'Methylprednisolone', 'Methylprednisolone 40
   { cc: 'allergy', mon: '血糖' });
 rx('famotidine_iv', 'allergy', 'Famotidine IV', 'Famotidine 20 mg IV once',
   '過敏性休克的輔助（H2 blocker）。',
-  { cc: 'allergy', adj: { r30: '10 mg', hd: '10 mg', elderly: '注意譫妄' }, alt: { r30: 'Famotidine 10 mg IV once', hd: 'Famotidine 10 mg IV once' } });
+  { cc: 'allergy', adj: { r: 'CrCl <50 劑量減半', r30: '10 mg', hd: '10 mg', elderly: '注意譫妄' }, alt: { r30: 'Famotidine 10 mg IV once', hd: 'Famotidine 10 mg IV once' } });
 rx('furosemide_taco', 'allergy', 'Furosemide（輸血造成的容積過多）', 'Furosemide 20–40 mg IV push once',
   'TACO：輸血中或輸完 6 小時內喘、血壓高、頸靜脈怒張。先停輸血、坐起、給氧。',
   { cc: 'txrxn', mon: '尿量、SpO2', adj: { r30: '40–80 mg', hd: '無尿者安排透析 UF' } });
@@ -1421,7 +1547,7 @@ rx('augmentin_iv', 'abx', 'Amoxicillin-clavulanate（Augmentin）IV', 'Amoxicill
     alt: { r30: 'Amoxicillin-clavulanate 1.2 g IV once, then 600 mg IV q12h', hd: 'Amoxicillin-clavulanate 1.2 g IV once, then 600 mg IV q24h (extra 600 mg after dialysis)' } });
 rx('unasyn', 'abx', 'Ampicillin-sulbactam（Unasyn）', 'Ampicillin-sulbactam 3 g IV q6h',
   '吸入性肺炎、頭頸部感染、糖尿病足。',
-  { cc: 'fever', adj: { r: 'CrCl 15–29：3 g q12h', r30: 'CrCl 15–29：3 g q12h；<15：3 g q24h', hd: '3 g q24h，透析日透析後給' },
+  { cc: 'fever', adj: { r: 'CrCl ≥30 不需調整', r30: 'CrCl 15–29：3 g q12h；5–14：3 g q24h', hd: '3 g q24h，透析日透析後給' },
     alt: { r30: 'Ampicillin-sulbactam 3 g IV q12h', hd: 'Ampicillin-sulbactam 3 g IV q24h (after dialysis on dialysis days)' } });
 rx('cefazolin', 'abx', 'Cefazolin', 'Cefazolin 2 g IV q8h',
   'MSSA 菌血症、蜂窩性組織炎。',
@@ -1447,7 +1573,7 @@ function rxStates(st) {
 }
 function rxNum(v) { return v >= 100 ? String(Math.round(v / 5) * 5) : v >= 10 ? String(Math.round(v)) : String(Math.round(v * 10) / 10); }
 function rxKg(x, wt) {
-  const w = parseFloat(wt), k = x.kg;
+  const w = parseFloat(String(wt == null ? '' : wt).replace(',', '.')), k = x.kg;   // 有些 Android 鍵盤的小數點是逗號
   if (!k || !isFinite(w) || w < 20 || w > 250) return '';
   const cap = v => k.max ? Math.min(v, k.max) : v;
   const lo = cap(k.lo * w), hi = cap(k.hi * w);
@@ -1901,7 +2027,7 @@ const PROTOS_RAW = [
   ['lab','Serum osmolality（疑 HHS）','Serum osmolality'],
   ['rx','ri_sc_corr','沒有 DKA／HHS'],
   ['rx','ns_dka','疑 DKA／HHS：先補水'],
-  ['rx','ri_drip_dka','DKA／HHS：K ≥3.3 後開始'],
+  ['rx','ri_drip_dka','DKA／HHS：K ≥3.5 後開始'],
   ['nurse','血糖 AC＋HS（或 q4h）','Finger sugar AC and HS']],
  pearl:[
   '單次高血糖先問「有沒有症狀、有沒有 ketone」，比數字本身重要。',
@@ -2995,7 +3121,7 @@ PROTOS_RAW.push(
   '先補鎂再補鉀：低血鎂會讓腎臟一直漏鉀。',
   '不要把 KCl 加在含糖輸液裡，胰島素分泌會讓血鉀再往下掉。',
   '腎功能差或尿少的病人，補鉀每一劑都要先看上一次的數字。',
-  'DKA 的病人血鉀正常其實是缺鉀：K <3.3 先補鉀再給胰島素。']},
+  'DKA 的病人血鉀正常其實是缺鉀：K <3.5 先補鉀再給胰島素。']},
 
 {id:'hyperna', zh:'高血鈉', en:'Hypernatremia', alias:'hypernatremia 高血鈉 鈉高 na high 高鈉 脫水 dehydration',
  call:[
@@ -4157,6 +4283,7 @@ const SRC = {
   McGee99:'McGee S et al. JAMA 1999 — 低血容（RCE）',
   Wong10:'Wong CL et al. JAMA 2010 — 譫妄（RCE）',
   Goldstein05:'Goldstein LB, Simel DL. JAMA 2005 — 中風（RCE）',
+  Kattah09:'Kattah JC et al. Stroke 2009 — 急性前庭症候群的 HINTS',
   Wells:'Wells score 各項目（PE／DVT）',
   def:'定義性檢查',
 };
@@ -4745,6 +4872,428 @@ BAYES.insomnia = {d:'del wd hyp sym env drug mood rls', p:[.1,.05,.05,.4,.5,.2,.
 /* ===== LQQOPERA 選項 =====
    每個選項 '中文|PI 用英文'，逗號分隔。N = 'nrs'（0–10）或 '標題:選項…'
    tq = 性質（Q）在 PI 裡的句型，{Q} 代入，{S} 代入 He/She */
+/* ===== v1.5 新主訴的貝氏資料：驗前機率與 LR 幾乎都是專家估計（est），只有標文獻的有出處；宣告死亡不做機率推論 ===== */
+BAYES.hypok = {d:'arr mg gi renal shift intake', p:[.05,.3,.3,.35,.15,.2], f:[
+ ['weak','肌肉無力或抽筋','muscle weakness or cramps','h',0,{arr:[3,.6]},'est'],
+ ['palp','心悸、胸悶','palpitations','h',1,{arr:[3,.7]},'est'],
+ ['gil','嘔吐、腹瀉或引流量大','vomiting, diarrhea or high GI drainage','h',2,{gi:[5,.3]},'est'],
+ ['diur','利尿劑、類固醇或瀉劑','diuretic, steroid or laxative use','h',3,{renal:[4,.4],mg:[1.8,.8]},'est'],
+ ['npo','進食少或只打不含鉀的輸液','poor intake or potassium-free IV fluids','h',4,{intake:[4,.4]},'est'],
+ ['ins','剛開始胰島素、TPN 或恢復進食','recent insulin, TPN or refeeding','h',5,{shift:[5,.5],mg:[1.5,.9]},'est'],
+ ['poly','多尿','polyuria','h',7,{renal:[2,.8]},'est'],
+ ['pw','下肢近端無力','proximal leg weakness','p',0,{arr:[4,.7]},'est'],
+ ['irr','脈搏不規則','irregular pulse','p',1,{arr:[5,.6]},'est'],
+ ['ileus','腸音減少、腹脹','hypoactive bowel sounds with distension','p',3,{arr:[2,.9]},'est'],
+ ['ecg','ECG：U wave、ST 下降或 QT 延長','U waves, ST depression or QT prolongation on ECG','t',0,{arr:[10,.3]},'est'],
+ ['k25','K <2.5','K < 2.5 mEq/L','t',0,{arr:[6,.6]},'est'],
+ ['mglo','Mg <1.8','Mg < 1.8 mg/dL','t',0,{mg:[50,.02]},'def'],
+ ['uk','Spot urine K/Cr >13 mEq/g','spot urine K/Cr > 13 mEq/g','t',0,{renal:[6,.2],gi:[.3,2.5],intake:[.3,2]},'est'],
+ ['alk','代謝性鹼中毒','metabolic alkalosis','t',0,{renal:[2,.7],gi:[1.8,.7],shift:[2,.8]},'est'],
+ ['fail','補鉀兩輪仍上不來','refractory to two rounds of replacement','t',0,{mg:[5,.6],renal:[2,.8]},'est'],
+]};
+
+BAYES.hyperna = {d:'di shock intake loss osm iat', p:[.03,.08,.5,.3,.15,.08], f:[
+ ['dry','喝水少或管灌沒加水','poor water intake or tube feeding without free water','h',0,{intake:[5,.3]},'est'],
+ ['poly','多尿、口渴','polyuria and thirst','h',1,{di:[8,.2],osm:[3,.6],intake:[.4,1.3]},'est'],
+ ['gil','腹瀉、嘔吐、發燒或大量流汗','diarrhea, vomiting, fever or sweating','h',2,{loss:[5,.4]},'est'],
+ ['drug','利尿劑、mannitol 或 lithium','diuretic, mannitol or lithium use','h',3,{osm:[2.5,.8],di:[2,.9]},'est'],
+ ['glu','高血糖或高蛋白管灌','hyperglycemia or high-protein tube feeding','h',4,{osm:[6,.5]},'est'],
+ ['iat','給過高張鹽水、bicarbonate 或大量 N/S','hypertonic saline, bicarbonate or large-volume saline given','h',5,{iat:[12,.3]},'est'],
+ ['cns','腦部手術、外傷或腫瘤','neurosurgery, head trauma or brain tumor','h',7,{di:[10,.5]},'est'],
+ ['hypov','黏膜乾、皮膚彈性差或姿勢性低血壓','dry mucosa, poor skin turgor or orthostatic hypotension','p',1,{shock:[3,.4],loss:[3,.5],intake:[2,.6],iat:[.3,1.3]},'est'],
+ ['uohi','尿量大（>250 mL/h）','urine output > 250 mL/h','p',3,{di:[10,.1],osm:[4,.6],intake:[.1,1.5]},'est'],
+ ['sbp90','SBP <90','SBP < 90 mmHg','v','sbp90',{shock:[15,.3]},'est'],
+ ['uosmlo','尿液滲透壓 <300','urine osmolality < 300 mOsm/kg','t',0,{di:[20,.05],intake:[.05,1.5]},'est'],
+ ['uosmhi','尿液滲透壓 >600','urine osmolality > 600 mOsm/kg','t',0,{intake:[5,.3],loss:[3,.5],di:[.02,1.5]},'est'],
+ ['sug','血糖 >300','glucose > 300 mg/dL','t',0,{osm:[8,.4]},'est'],
+ ['ddavp','給 desmopressin 後尿量減少、尿變濃','urine concentrates after desmopressin','t',0,{di:[15,.3]},'est'],
+]};
+
+BAYES.hypoca = {d:'sym hpt alb mg ckd crit', p:[.1,.05,.45,.2,.2,.2], f:[
+ ['numb','嘴唇周圍或手腳麻','perioral or acral numbness','h',0,{sym:[6,.3],alb:[.2,1.4]},'est'],
+ ['cramp','手腳抽筋或僵硬','muscle cramps or carpopedal spasm','h',1,{sym:[5,.4],alb:[.3,1.3]},'est'],
+ ['neck','頸部手術','neck surgery','h',2,{hpt:[40,.05]},'est'],
+ ['ckd','慢性腎臟病或洗腎','CKD or dialysis','h',3,{ckd:[8,.3]},'est'],
+ ['tx','大量輸血','massive transfusion','h',4,{crit:[5,.8]},'est'],
+ ['panc','胰臟炎、敗血症或橫紋肌溶解','pancreatitis, sepsis or rhabdomyolysis','h',5,{crit:[6,.4]},'est'],
+ ['drug','Bisphosphonate、denosumab 或 foscarnet','bisphosphonate, denosumab or foscarnet use','h',6,{crit:[4,.8]},'est'],
+ ['alc','酗酒、營養不良或吸收不良','alcohol use, malnutrition or malabsorption','h',7,{mg:[4,.6],alb:[1.5,.9]},'est'],
+ ['chv','Chvostek sign 陽性','positive Chvostek sign','p',0,{sym:[2,.8]},'est'],
+ ['trs','Trousseau sign 陽性','positive Trousseau sign','p',1,{sym:[20,.1]},'est'],
+ ['strid','喘鳴','stridor','p',2,{sym:[10,.9]},'est'],
+ ['ica','Ionized Ca 偏低','low ionized calcium','t',0,{alb:[.02,20],sym:[3,.05]},'def'],
+ ['albl','Albumin <3，校正後正常','albumin < 3 g/dL with normal corrected calcium','t',0,{alb:[30,.05]},'def'],
+ ['qt','QTc 延長','prolonged QTc','t',0,{sym:[5,.5]},'est'],
+ ['mglo','Mg <1.5','Mg < 1.5 mg/dL','t',0,{mg:[30,.05]},'def'],
+ ['phi','P 偏高','high phosphate','t',0,{ckd:[4,.4],hpt:[3,.5],crit:[1.5,.9]},'est'],
+ ['pthlo','iPTH 偏低或不該正常的正常','low or inappropriately normal iPTH','t',0,{hpt:[15,.1],mg:[2,.8],ckd:[.1,1.5]},'est'],
+]};
+
+BAYES.hyperca = {d:'crisis mal pth drug gran', p:[.1,.5,.25,.15,.08], f:[
+ ['poly','多尿、口渴','polyuria and polydipsia','h',0,{crisis:[2,.6]},'est'],
+ ['gi','噁心、嘔吐、便秘或腹痛','nausea, vomiting, constipation or abdominal pain','h',1,{crisis:[2,.6]},'est'],
+ ['leth','嗜睡、混亂或無力','lethargy, confusion or weakness','h',2,{crisis:[5,.3]},'est'],
+ ['ca','惡性腫瘤病史','history of malignancy','h',3,{mal:[6,.2],pth:[.4,1.5]},'est'],
+ ['bone','骨頭痛','bone pain','h',4,{mal:[3,.7]},'est'],
+ ['drug','鈣片、維生素 D、thiazide 或 lithium','calcium, vitamin D, thiazide or lithium use','h',5,{drug:[8,.2]},'est'],
+ ['stone','腎結石病史','nephrolithiasis','h',6,{pth:[4,.8]},'est'],
+ ['immob','長期臥床','prolonged immobilization','h',7,{gran:[3,.8]},'est'],
+ ['ams','意識改變','altered mental status','p',0,{crisis:[6,.4]},'est'],
+ ['dehyd','明顯脫水','marked dehydration','p',1,{crisis:[3,.4]},'est'],
+ ['ln','淋巴結腫、乳房腫塊或骨頭壓痛','lymphadenopathy, breast mass or bone tenderness','p',5,{mal:[5,.7]},'est'],
+ ['ca14','校正鈣 >14','corrected calcium > 14 mg/dL','t',0,{crisis:[20,.1],mal:[3,.6],pth:[.3,1.3]},'est'],
+ ['pthlo','iPTH 被抑制（<20）','suppressed iPTH (< 20 pg/mL)','t',0,{mal:[5,.1],pth:[.02,8],gran:[3,.5],drug:[2,.7]},'est'],
+ ['pthhi','iPTH 高或正常偏高','high or high-normal iPTH','t',0,{pth:[30,.05],mal:[.1,2]},'est'],
+ ['fast','幾週內快速上升','rapid rise over weeks','t',0,{mal:[4,.4],pth:[.3,1.5]},'est'],
+ ['d125','1,25-(OH)2 vitamin D 偏高','elevated 1,25-dihydroxyvitamin D','t',0,{gran:[15,.3]},'est'],
+]};
+
+BAYES.hypomgp = {d:'tdp refeed alc gi renal shift', p:[.03,.15,.3,.25,.3,.15], f:[
+ ['alc','酗酒、營養不良或長期進食差','alcohol use, malnutrition or chronic poor intake','h',0,{alc:[6,.3],refeed:[3,.5]},'est'],
+ ['feed','最近開始管灌、TPN 或恢復進食','recent start of enteral or parenteral nutrition','h',1,{refeed:[10,.1]},'est'],
+ ['gil','腹瀉、瘻管或引流量大','diarrhea, fistula or high GI drainage','h',2,{gi:[6,.3]},'est'],
+ ['drug','利尿劑、PPI、aminoglycoside、cisplatin 或 amphotericin','diuretic, PPI, aminoglycoside, cisplatin or amphotericin use','h',3,{renal:[5,.3]},'est'],
+ ['dka','DKA 治療中或使用胰島素','DKA on insulin therapy','h',4,{shift:[8,.5]},'est'],
+ ['weak','肌肉無力、抽筋或手抖','weakness, cramps or tremor','h',5,{tdp:[1.5,.8]},'est'],
+ ['palp','心悸','palpitations','h',6,{tdp:[3,.6]},'est'],
+ ['resp','呼吸費力或肌力下降','respiratory muscle weakness','p',0,{refeed:[2,.9]},'est'],
+ ['irr','脈搏不規則','irregular pulse','p',1,{tdp:[4,.6]},'est'],
+ ['qt','QTc >500 ms','QTc > 500 ms','t',0,{tdp:[10,.2]},'est'],
+ ['vt','Monitor 上多形性 VT','polymorphic VT on monitor','t',0,{tdp:[100,.3]},'def'],
+ ['pdrop','恢復進食後 P 下降 >30%','phosphate fall > 30% after refeeding','t',0,{refeed:[20,.1]},'est'],
+ ['kca','合併低血鉀或低血鈣','concurrent hypokalemia or hypocalcemia','t',0,{alc:[1.5,.8],renal:[1.5,.8],refeed:[2,.7]},'est'],
+ ['femg','FEMg >2%','fractional excretion of Mg > 2%','t',0,{renal:[8,.2],gi:[.2,3],alc:[.5,1.5]},'est'],
+]};
+
+BAYES.anemia = {d:'gib retro hemol dil chronic def marrow', p:[.2,.05,.03,.2,.35,.15,.1], f:[
+ ['mel','黑便、血便或吐血','melena, hematochezia or hematemesis','h',0,{gib:[20,.3]},'est'],
+ ['sx','頭暈、心悸、喘或胸痛','dizziness, palpitations, dyspnea or chest pain','h',1,{gib:[1.8,.7],retro:[1.8,.7],chronic:[.6,1.2]},'est'],
+ ['proc','最近手術、穿刺或導管處置','recent surgery, puncture or catheterization','h',2,{retro:[6,.3]},'est'],
+ ['ac','抗凝血劑、抗血小板或 NSAID','anticoagulant, antiplatelet or NSAID use','h',3,{gib:[2,.7],retro:[3,.5]},'est'],
+ ['flank','腰痛、腹痛或大腿腫','flank, abdominal or thigh pain','h',4,{retro:[8,.4]},'est'],
+ ['dark','茶色尿、黃疸或剛輸過血','dark urine, jaundice or recent transfusion','h',6,{hemol:[10,.3]},'est'],
+ ['chr','慢性病、腎臟病或化療','chronic disease, CKD or chemotherapy','h',7,{chronic:[3,.3],marrow:[3,.5]},'est'],
+ ['ict','黃疸','icterus','p',0,{hemol:[6,.5]},'est'],
+ ['orth','姿勢性低血壓或心跳加快 >30','orthostatic hypotension or pulse rise > 30/min','p',1,{gib:[3,.6],retro:[3,.6],dil:[.2,1.3],chronic:[.3,1.2]},'McGee99'],
+ ['ecch','腰側瘀青或腹部壓痛','flank ecchymosis or abdominal tenderness','p',2,{retro:[8,.7]},'est'],
+ ['dre','肛診黑便或血便','melena or blood on rectal exam','p',3,{gib:[25,.4]},'Srygley12'],
+ ['ooze','傷口、引流管或穿刺部位出血','bleeding from wound, drain or puncture site','p',4,{retro:[4,.7]},'est'],
+ ['sbp90','SBP <90','SBP < 90 mmHg','v','sbp90',{gib:[3,.8],retro:[4,.7],dil:[.2,1.1],chronic:[.2,1.1]},'est'],
+ ['hr100','心跳 >100','heart rate > 100/min','v','hr100',{gib:[1.8,.7],retro:[2,.7]},'est'],
+ ['bun','BUN/Cr >30','BUN/Cr ratio > 30','t',0,{gib:[7.5,.5]},'Srygley12'],
+ ['all3','三系一起掉、剛給大量輸液','all cell lines fell after large-volume fluid','t',0,{dil:[8,.3]},'est'],
+ ['ldh','LDH 高、haptoglobin 低','high LDH with low haptoglobin','t',0,{hemol:[30,.05]},'est'],
+ ['mcv','MCV <80 或 >100','MCV < 80 or > 100 fL','t',0,{def:[5,.4],gib:[.7,1.1]},'est'],
+ ['retlo','Reticulocyte 偏低','low reticulocyte count','t',0,{marrow:[4,.3],chronic:[2,.5],hemol:[.1,2],gib:[.3,1.5]},'est'],
+ ['ct','CT 看到血腫或顯影劑外滲','hematoma or contrast extravasation on CT','t',0,{retro:[50,.05]},'def'],
+]};
+
+BAYES.txrxn = {d:'ahtr ana trali septic taco fnhtr allergic', p:[.02,.03,.02,.02,.1,.4,.35], f:[
+ ['early','開始輸血 15 分鐘內發生','onset within 15 minutes of starting transfusion','h',0,{ahtr:[4,.4],ana:[6,.2],fnhtr:[.5,1.3],taco:[.3,1.3]},'est'],
+ ['dysp','喘、胸悶','dyspnea or chest tightness','h',1,{taco:[6,.1],trali:[8,.05],ana:[4,.3],fnhtr:[.2,1.4],allergic:[.2,1.4]},'est'],
+ ['flank','腰背痛、胸痛或注射部位痛','flank, back, chest or infusion-site pain','h',2,{ahtr:[10,.5]},'est'],
+ ['itch','皮膚癢、紅疹或臉腫','pruritus, urticaria or facial swelling','h',3,{allergic:[10,.05],ana:[4,.3],fnhtr:[.1,1.5],ahtr:[.3,1.2],taco:[.2,1.2]},'est'],
+ ['chill','寒顫、發燒','chills or fever','h',4,{fnhtr:[5,.05],septic:[4,.1],ahtr:[3,.4],allergic:[.1,1.5],taco:[.3,1.3]},'est'],
+ ['urine','茶色或紅色尿','dark or red urine','h',5,{ahtr:[30,.4]},'est'],
+ ['hf','心衰竭、腎衰竭或輸得又快又多','heart or renal failure, or rapid large-volume transfusion','h',7,{taco:[4,.4]},'est'],
+ ['wheeze','喘鳴或 wheezing','stridor or wheezing','p',1,{ana:[8,.4],taco:[1.5,.9]},'est'],
+ ['crk','雙側囉音','bilateral crackles','p',1,{taco:[5,.3],trali:[5,.3]},'est'],
+ ['hives','蕁麻疹','urticaria','p',2,{allergic:[12,.05],ana:[4,.3]},'est'],
+ ['jvd','頸靜脈怒張或下肢水腫','jugular venous distension or leg edema','p',3,{taco:[8,.4],trali:[.2,1.3]},'est'],
+ ['sbp90','SBP <90','SBP < 90 mmHg','v','sbp90',{ana:[8,.2],septic:[6,.3],ahtr:[5,.5],trali:[3,.6],taco:[.2,1.2],fnhtr:[.1,1.3],allergic:[.05,1.3]},'est'],
+ ['bt39','體溫 ≥39.5℃','body temperature ≥ 39.5°C','v','bt39',{septic:[8,.4],ahtr:[2,.8],fnhtr:[.5,1.2]},'est'],
+ ['spo2','SpO2 <90%','SpO2 < 90%','v','spo2',{trali:[10,.1],taco:[5,.4],ana:[3,.6],fnhtr:[.1,1.3],allergic:[.1,1.3]},'est'],
+ ['dat','DAT 陽性或血型不符','positive DAT or ABO mismatch on recheck','t',0,{ahtr:[50,.05]},'def'],
+ ['hgb','血漿或尿液游離血紅素','free hemoglobin in plasma or urine','t',0,{ahtr:[30,.1]},'est'],
+ ['bnp','BNP 明顯上升','markedly elevated BNP','t',0,{taco:[6,.3],trali:[.3,2]},'est'],
+ ['cxr','CXR 雙側浸潤','bilateral infiltrates on CXR','t',0,{trali:[8,.05],taco:[5,.2]},'est'],
+ ['bag','血袋 Gram stain 或 culture 陽性','positive Gram stain or culture from the blood bag','t',0,{septic:[100,.1]},'def'],
+]};
+
+BAYES.allergy = {d:'ana angio sjs dress urt morb non', p:[.05,.03,.01,.02,.35,.35,.2], f:[
+ ['fast','接觸後 1 小時內發作','onset within 1 hour of exposure','h',0,{ana:[8,.1],urt:[4,.4],morb:[.1,2],sjs:[.05,1.2],dress:[.05,1.2]},'est'],
+ ['dysp','呼吸困難、喉嚨緊或聲音改變','dyspnea, throat tightness or voice change','h',1,{ana:[10,.2],angio:[8,.3],urt:[.3,1.3],morb:[.1,1.3]},'est'],
+ ['pres','頭暈、快昏倒','dizziness or presyncope','h',2,{ana:[6,.4]},'est'],
+ ['gi','腹痛、嘔吐或腹瀉','abdominal pain, vomiting or diarrhea','h',3,{ana:[3,.7]},'est'],
+ ['oral','口腔或眼睛痛、吞嚥痛','oral or ocular pain, odynophagia','h',5,{sjs:[20,.1]},'est'],
+ ['fev','發燒、疲倦','fever and malaise','h',6,{sjs:[4,.3],dress:[6,.2],urt:[.4,1.2]},'est'],
+ ['strid','喘鳴或舌頭、懸壅垂腫','stridor or tongue or uvular swelling','p',0,{angio:[20,.2],ana:[6,.5]},'est'],
+ ['whz','Wheezing','wheezing','p',1,{ana:[6,.5]},'est'],
+ ['wheal','會移動的膨疹','migratory wheals','p',3,{urt:[10,.1],ana:[2,.6],morb:[.1,2],sjs:[.1,1.2]},'est'],
+ ['macp','軀幹對稱性紅色丘疹','symmetric maculopapular rash on the trunk','p',3,{morb:[8,.1],dress:[3,.4],urt:[.1,2]},'est'],
+ ['blis','水泡、靶形病灶或 Nikolsky sign 陽性','blisters, target lesions or positive Nikolsky sign','p',3,{sjs:[40,.1]},'est'],
+ ['muc','黏膜破皮（口腔、結膜、生殖器）','mucosal erosions','p',4,{sjs:[30,.05],dress:[2,.8],morb:[.05,1.3]},'est'],
+ ['face','臉腫或淋巴結腫','facial edema or lymphadenopathy','p',5,{dress:[8,.3],angio:[3,.6]},'est'],
+ ['sbp90','SBP <90','SBP < 90 mmHg','v','sbp90',{ana:[15,.3]},'est'],
+ ['spo2','SpO2 <90%','SpO2 < 90%','v','spo2',{ana:[6,.6],angio:[4,.7]},'est'],
+ ['eos','嗜酸性球增加','eosinophilia','t',0,{dress:[8,.2],morb:[1.5,.9]},'est'],
+ ['lft','肝指數或 Cr 上升','elevated liver enzymes or creatinine','t',0,{dress:[8,.2]},'est'],
+ ['acei','正在使用 ACEI、不癢','on an ACE inhibitor, without pruritus','x',0,{angio:[10,.5]},'est'],
+ ['vanco','Vancomycin 快速滴注中','during rapid vancomycin infusion','x',0,{non:[15,.7]},'est'],
+]};
+
+BAYES.constipation = {d:'obs pseudo cord drug imp immob met', p:[.05,.03,.01,.5,.2,.5,.1], f:[
+ ['noflat','沒有排氣','no passage of flatus','h',0,{obs:[5,.3],pseudo:[2,.7]},'est'],
+ ['vom','噁心、嘔吐','nausea and vomiting','h',1,{obs:[4,.3],pseudo:[2,.7],drug:[.6,1.1]},'est'],
+ ['pain','腹痛','abdominal pain','h',2,{obs:[3,.4]},'est'],
+ ['opi','鴉片類、抗膽鹼藥、鐵劑或鈣片','opioid, anticholinergic, iron or calcium use','h',3,{drug:[5,.2],pseudo:[2,.7]},'est'],
+ ['bed','喝水少、活動少','low fluid intake and immobility','h',5,{immob:[3,.3]},'est'],
+ ['op','腹部手術史','previous abdominal surgery','h',6,{obs:[3,.5]},'est'],
+ ['legs','下肢無力或解尿困難','leg weakness or urinary retention','h',7,{cord:[25,.2]},'est'],
+ ['dist','明顯腹脹、鼓音','marked distension with tympany','p',0,{obs:[4,.3],pseudo:[6,.1]},'est'],
+ ['bs','腸音高亢或消失','high-pitched or absent bowel sounds','p',1,{obs:[5,.5]},'est'],
+ ['tend','壓痛或反彈痛','tenderness or rebound','p',2,{obs:[3,.6]},'est'],
+ ['stool','直腸內有硬便','hard stool in the rectum','p',3,{imp:[15,.1]},'est'],
+ ['tone','肛門張力差或鞍區感覺異常','reduced anal tone or saddle anesthesia','p',3,{cord:[20,.4]},'est'],
+ ['kub','KUB：小腸擴張、氣液面','dilated small bowel with air-fluid levels on KUB','t',0,{obs:[10,.2]},'est'],
+ ['colon','KUB：大腸明顯擴張','markedly dilated colon on KUB','t',0,{pseudo:[15,.1]},'est'],
+ ['lyte','低血鉀或高血鈣','hypokalemia or hypercalcemia','t',0,{met:[20,.1],pseudo:[2,.8]},'est'],
+]};
+
+BAYES.retention = {d:'cauda obsinf bph drug postop const clot uti', p:[.01,.05,.35,.35,.2,.15,.05,.15], f:[
+ ['pain','下腹脹痛','suprapubic pain','h',1,{bph:[1.5,.7],clot:[2,.6]},'est'],
+ ['luts','平常就尿柱細、夜尿、滴尿','baseline weak stream, nocturia or dribbling','h',2,{bph:[5,.3]},'est'],
+ ['drug','新加抗膽鹼藥、鴉片類或抗組織胺','new anticholinergic, opioid or antihistamine','h',3,{drug:[6,.2]},'est'],
+ ['cons','便秘','constipation','h',4,{const:[6,.2]},'est'],
+ ['legs','下肢無力、麻或背痛','leg weakness, numbness or back pain','h',5,{cauda:[25,.1]},'est'],
+ ['hem','血尿、血塊','hematuria with clots','h',6,{clot:[20,.1]},'est'],
+ ['op','剛手術、麻醉或拔尿管','recent surgery, anesthesia or catheter removal','h',7,{postop:[8,.1]},'est'],
+ ['fev','發燒、解尿痛','fever or dysuria','h',8,{uti:[5,.4],obsinf:[4,.4]},'est'],
+ ['pros','前列腺腫大','enlarged prostate','p',1,{bph:[4,.4]},'est'],
+ ['ptend','前列腺壓痛','prostate tenderness','p',1,{uti:[8,.7]},'est'],
+ ['imp','直腸內糞石','fecal impaction','p',1,{const:[15,.3]},'est'],
+ ['sad','鞍區感覺異常或肛門張力差','saddle anesthesia or reduced anal tone','p',2,{cauda:[30,.2]},'est'],
+ ['cva','腰部叩擊痛','CVA tenderness','p',4,{obsinf:[5,.6]},'est'],
+ ['bt38','體溫 ≥38℃','body temperature ≥ 38°C','v','bt38',{obsinf:[5,.4],uti:[3,.6]},'est'],
+ ['ua','膿尿或 nitrite(+)','pyuria or positive nitrite','t',0,{uti:[5,.2],obsinf:[3,.4]},'est'],
+ ['hydro','超音波水腎或 Cr 上升','hydronephrosis on ultrasound or rising creatinine','t',0,{obsinf:[10,.2]},'est'],
+]};
+
+BAYES.hemoptysis = {d:'massive pe tb ca bronch bx edema coag pseudo', p:[.05,.05,.05,.15,.35,.08,.08,.1,.1], f:[
+ ['amt','一次 >100 mL 或一天 >500 mL','more than 100 mL at once or 500 mL per day','h',0,{massive:[50,.02],bronch:[.2,1.2],pseudo:[.3,1.1]},'def'],
+ ['notc','其實是吐出來的或有鼻血','vomited rather than coughed, or epistaxis','h',1,{pseudo:[15,.1]},'est'],
+ ['cp','喘、胸痛','dyspnea or pleuritic chest pain','h',2,{pe:[3,.4],massive:[2,.6],edema:[3,.4]},'est'],
+ ['ac','抗凝血劑或抗血小板','anticoagulant or antiplatelet use','h',3,{coag:[6,.2]},'est'],
+ ['fev','發燒、膿痰','fever and purulent sputum','h',4,{bronch:[3,.4],bx:[3,.5],tb:[1.5,.8]},'est'],
+ ['tbsx','體重減輕、夜間盜汗或結核接觸史','weight loss, night sweats or TB exposure','h',5,{tb:[6,.3],ca:[2.5,.6]},'est'],
+ ['smoke','抽菸或肺癌病史','smoking or lung cancer history','h',6,{ca:[4,.3]},'est'],
+ ['calf','單側小腿腫或近期臥床','unilateral calf swelling or recent immobilization','h',7,{pe:[4,.6]},'Wells'],
+ ['iatro','剛做過支氣管鏡或肺切片','recent bronchoscopy or lung biopsy','h',8,{massive:[3,.9]},'est'],
+ ['nose','鼻腔或口咽有出血點','bleeding source in the nose or oropharynx','p',1,{pseudo:[20,.3]},'est'],
+ ['crk','局部 crackles','focal crackles','p',2,{bronch:[2.5,.6],bx:[3,.5]},'est'],
+ ['mur','心雜音或心衰竭徵象','murmur or signs of heart failure','p',3,{edema:[6,.4]},'est'],
+ ['pet','皮膚瘀斑、出血點','petechiae or ecchymosis','p',5,{coag:[5,.6]},'est'],
+ ['spo2','SpO2 <90%','SpO2 < 90%','v','spo2',{massive:[4,.5],pe:[2.5,.7],edema:[3,.6]},'est'],
+ ['cxrm','CXR 腫塊或空洞','mass or cavity on CXR','t',0,{ca:[8,.4],tb:[6,.4]},'est'],
+ ['cxrn','CXR 正常','normal CXR','t',0,{bronch:[2,.6],pe:[1.5,.9],ca:[.3,1.3],tb:[.2,1.3]},'est'],
+ ['inr','INR >1.5 或血小板 <50k','INR > 1.5 or platelets < 50k','t',0,{coag:[15,.2]},'est'],
+ ['afb','Sputum AFB 或 TB PCR 陽性','positive sputum AFB or TB PCR','t',0,{tb:[50,.3]},'est'],
+ ['ctpa','CTPA 充填缺損','filling defect on CTPA','t',0,{pe:[50,.05]},'def'],
+]};
+
+BAYES.stroke = {d:'isch ich hypog tia todd enceph periph', p:[.4,.08,.05,.1,.05,.25,.07], f:[
+ ['sudden','突然發生（幾秒到幾分鐘）','sudden onset over seconds to minutes','h',1,{isch:[3,.3],ich:[3,.3],enceph:[.2,2.5],periph:[.5,1.3]},'est'],
+ ['ha','頭痛、嘔吐或意識變差','headache, vomiting or decreased consciousness','h',2,{ich:[5,.3],isch:[.7,1.2]},'est'],
+ ['ac','使用抗凝血劑','anticoagulant use','h',3,{ich:[3,.8]},'est'],
+ ['sz','發作時有抽搐','seizure at onset','h',4,{todd:[20,.1],isch:[.3,1.1]},'est'],
+ ['af','心房顫動、近期心肌梗塞或心臟手術','atrial fibrillation, recent MI or cardiac surgery','h',5,{isch:[2.5,.7],tia:[2,.8]},'est'],
+ ['dm','糖尿病用藥、進食少','on glucose-lowering drugs with poor intake','h',7,{hypog:[5,.3]},'est'],
+ ['gcs','意識下降','decreased level of consciousness','p',0,{ich:[3,.5],enceph:[3,.5],isch:[.6,1.2]},'est'],
+ ['face','顏面不對稱（額頭正常）','facial droop sparing the forehead','p',1,{isch:[5.5,.4],ich:[3,.6],periph:[.2,1.2]},'Goldstein05','fast'],
+ ['drift','單側手臂下垂（arm drift）','unilateral arm drift','p',2,{isch:[5.5,.4],ich:[4,.5],enceph:[.3,1.5]},'Goldstein05','fast'],
+ ['speech','構音障礙或失語','dysarthria or aphasia','p',3,{isch:[5.5,.4],ich:[3,.6]},'Goldstein05','fast'],
+ ['gaze','眼球偏向或瞳孔不等大','gaze deviation or anisocoria','p',4,{ich:[4,.7],isch:[3,.8]},'est'],
+ ['fore','額頭也動不了','forehead also paralyzed','p',1,{periph:[20,.1],isch:[.1,1.2]},'est'],
+ ['sug70','血糖 <70','glucose < 70 mg/dL','v','sug70',{hypog:[100,.01]},'def'],
+ ['bt38','體溫 ≥38℃','body temperature ≥ 38°C','v','bt38',{enceph:[3,.6]},'est'],
+ ['res','症狀在 1 小時內完全恢復','complete resolution within 1 hour','x',0,{tia:[20,.05],isch:[.1,1.5],todd:[2,.9]},'est'],
+ ['old','有舊中風，這次是同一側變差','previous stroke with worsening of the same deficit','x',0,{enceph:[4,.6]},'est'],
+ ['cth','CT 顱內出血','intracranial hemorrhage on CT','t',0,{ich:[500,.02],isch:[.01,1.2]},'def'],
+ ['dwi','MRI DWI 急性梗塞','acute infarct on MRI DWI','t',0,{isch:[100,.1],tia:[.2,1.5]},'def'],
+]};
+
+BAYES.withdrawal = {d:'dt sz wern ich unc he inf', p:[.08,.05,.03,.03,.6,.1,.15], f:[
+ ['t48','最後一杯酒已超過 48 小時','more than 48 hours since last drink','h',0,{dt:[4,.2],unc:[.5,1.5]},'est'],
+ ['heavy','每天大量飲酒多年','heavy daily drinking for years','h',1,{dt:[2,.4],unc:[1.5,.3]},'est'],
+ ['prev','以前有戒斷抽搐或 DT','previous withdrawal seizure or DT','h',2,{dt:[5,.6],sz:[5,.6]},'est'],
+ ['hall','幻覺','hallucinations','h',3,{dt:[5,.3]},'est'],
+ ['auto','噁心、冒汗、焦慮、失眠','nausea, sweating, anxiety or insomnia','h',4,{unc:[3,.2],dt:[1.5,.5]},'est'],
+ ['trauma','頭部外傷或跌倒','head trauma or fall','h',5,{ich:[8,.4]},'est'],
+ ['infx','發燒、咳嗽、腹痛或黑便','fever, cough, abdominal pain or melena','h',6,{inf:[5,.3]},'est'],
+ ['diso','定向感差','disorientation','p',0,{dt:[8,.1],wern:[4,.3],he:[4,.3],unc:[.1,3]},'est'],
+ ['trem','雙手顫抖','tremor of outstretched hands','p',1,{unc:[3,.2],dt:[2,.3],he:[.5,1.2]},'est'],
+ ['scalp','頭皮血腫或局部神經學缺損','scalp hematoma or focal deficit','p',4,{ich:[10,.4]},'est'],
+ ['ast','撲翼樣震顫或腹水','asterixis or ascites','p',5,{he:[10,.3]},'est'],
+ ['eye','眼球運動異常或步態不穩','ophthalmoplegia, nystagmus or ataxia','p',6,{wern:[15,.2]},'est'],
+ ['bt38','體溫 ≥38℃','body temperature ≥ 38°C','v','bt38',{dt:[3,.6],inf:[4,.4]},'est'],
+ ['hr100','心跳 >100','heart rate > 100/min','v','hr100',{dt:[2.5,.3],unc:[1.5,.6]},'est'],
+ ['fit','全身性抽搐','generalized seizure','x',0,{sz:[50,.02],ich:[2,.9]},'def'],
+ ['nh3','Ammonia 明顯上升','markedly elevated ammonia','t',0,{he:[6,.3]},'est'],
+ ['ct','Brain CT 出血','hemorrhage on brain CT','t',0,{ich:[200,.05]},'def'],
+]};
+
+BAYES.aki = {d:'life obs pre atn cin ain gn', p:[.08,.08,.45,.35,.08,.04,.03], f:[
+ ['olig','尿量明顯減少','markedly reduced urine output','h',0,{life:[2.5,.5],obs:[2,.7],atn:[1.5,.8]},'est'],
+ ['vol','進食喝水少、嘔吐、腹瀉或出血','poor intake, vomiting, diarrhea or bleeding','h',1,{pre:[4,.3]},'est'],
+ ['tox','NSAID、ACEI/ARB、利尿劑或腎毒性抗生素','NSAID, ACEI/ARB, diuretic or nephrotoxic antibiotic use','h',2,{atn:[2.5,.5],pre:[2,.6],ain:[2,.7]},'est'],
+ ['cm','48–72 小時內打過顯影劑','contrast exposure within 48–72 hours','h',3,{cin:[15,.05]},'est'],
+ ['hypo','最近低血壓、手術或敗血症','recent hypotension, surgery or sepsis','h',4,{atn:[4,.4]},'est'],
+ ['void','解尿困難、下腹脹','voiding difficulty or suprapubic fullness','h',5,{obs:[8,.3]},'est'],
+ ['rash','新的紅疹、發燒或關節痛','new rash, fever or arthralgia','h',6,{ain:[8,.5],gn:[3,.7]},'est'],
+ ['foam','泡泡尿、血尿或水腫','foamy urine, hematuria or edema','h',7,{gn:[8,.3]},'est'],
+ ['dry','黏膜乾、姿勢性低血壓','dry mucosa or orthostatic hypotension','p',0,{pre:[4,.4],life:[.5,1.1]},'McGee99'],
+ ['wet','水腫、頸靜脈怒張','edema or jugular venous distension','p',0,{life:[3,.6],pre:[.5,1.2]},'est'],
+ ['crk','雙側囉音','bilateral crackles','p',1,{life:[6,.5]},'est'],
+ ['blad','摸得到膀胱或餘尿 >300 mL','palpable bladder or residual > 300 mL','p',2,{obs:[20,.2]},'est'],
+ ['k6','K ≥6.0 或 pH <7.2','K ≥ 6.0 mEq/L or pH < 7.2','t',0,{life:[50,.2]},'def'],
+ ['fena','FENa <1%（未用利尿劑）','FENa < 1% without diuretics','t',0,{pre:[5,.2],atn:[.2,3]},'est'],
+ ['cast','Muddy brown casts','muddy brown granular casts','t',0,{atn:[10,.5],pre:[.1,1.5]},'est'],
+ ['wbcc','WBC casts 或嗜酸性球','WBC casts or eosinophils','t',0,{ain:[10,.5]},'est'],
+ ['rbcc','RBC casts 或大量蛋白尿','RBC casts or heavy proteinuria','t',0,{gn:[30,.2]},'est'],
+ ['hydro','超音波水腎','hydronephrosis on ultrasound','t',0,{obs:[30,.1]},'est'],
+ ['resp','補液後 Cr 下降','creatinine improves after fluids','t',0,{pre:[8,.2],atn:[.2,2]},'est'],
+]};
+
+BAYES.coag = {d:'bleed dic hit ttp warf vitk liver drug pseudo', p:[.1,.08,.03,.01,.25,.15,.2,.25,.05], f:[
+ ['bld','任何部位出血','bleeding from any site','h',0,{bleed:[20,.05],dic:[3,.5],pseudo:[.1,1.2]},'est'],
+ ['ha','頭痛或意識改變','headache or altered consciousness','h',1,{bleed:[3,.8],ttp:[4,.5]},'est'],
+ ['warf','Warfarin 劑量剛調整或新加交互作用藥物','recent warfarin dose change or new interacting drug','h',2,{warf:[10,.1]},'est'],
+ ['hep','Heparin 或 enoxaparin 已用 5–10 天','heparin or enoxaparin for 5–10 days','h',3,{hit:[10,.1]},'est'],
+ ['npo','進食差或長期抗生素','poor intake or prolonged antibiotics','h',4,{vitk:[6,.3]},'est'],
+ ['liv','肝病','liver disease','h',5,{liver:[10,.2]},'est'],
+ ['sep','敗血症、惡性腫瘤或產科併發症','sepsis, malignancy or obstetric complication','h',6,{dic:[6,.2],drug:[2,.7]},'est'],
+ ['newdrug','化療或新藥（linezolid、valproate、抗生素）','chemotherapy or a new drug such as linezolid or valproate','h',7,{drug:[5,.3]},'est'],
+ ['clot','新的肢體腫痛或喘','new limb swelling or dyspnea','h',8,{hit:[6,.6]},'est'],
+ ['pet','出血點、瘀斑','petechiae or ecchymosis','p',0,{bleed:[2,.7],dic:[3,.6],ttp:[3,.6],pseudo:[.1,1.2]},'est'],
+ ['neuro','局部神經學缺損','focal neurologic deficit','p',2,{bleed:[4,.8],ttp:[5,.6]},'est'],
+ ['ooze','傷口或穿刺部位滲血','oozing from wounds or puncture sites','p',3,{dic:[6,.5]},'est'],
+ ['spl','脾腫大或腹水','splenomegaly or ascites','p',4,{liver:[6,.5]},'est'],
+ ['fib','Fibrinogen 低、D-dimer 高','low fibrinogen with high D-dimer','t',0,{dic:[15,.1],liver:[1.5,.9]},'est'],
+ ['schis','抹片破碎紅血球','schistocytes on smear','t',0,{ttp:[20,.05],dic:[3,.6]},'est'],
+ ['t4','4T score ≥6','4T score ≥ 6','t',0,{hit:[20,.1]},'est'],
+ ['pf4','Anti-PF4 陽性','positive anti-PF4 antibody','t',0,{hit:[10,.02]},'est'],
+ ['vkr','給 vitamin K 後 INR 改善','INR corrects after vitamin K','t',0,{vitk:[10,.1],warf:[3,.5],liver:[.2,3]},'est'],
+ ['clump','抹片血小板凝集或 citrate 管重抽正常','platelet clumping on smear or normal count in citrate tube','t',0,{pseudo:[100,.02]},'def'],
+]};
+
+BAYES.wound = {d:'hem deh nsti pseudo ooze ssi seroma leak', p:[.1,.03,.01,.03,.4,.25,.15,.05], f:[
+ ['d1','術後 24 小時內','within 24 hours after surgery','h',0,{hem:[4,.3],ooze:[1.5,.7],ssi:[.1,1.5],deh:[.1,1.3]},'est'],
+ ['red','鮮血、量多','bright red blood in large amount','h',1,{hem:[8,.2],ooze:[.4,1.4],seroma:[.1,1.3]},'est'],
+ ['dizzy','頭暈、心悸、口渴','dizziness, palpitations or thirst','h',2,{hem:[5,.4],pseudo:[3,.7]},'est'],
+ ['ac','抗凝血劑或抗血小板','anticoagulant or antiplatelet use','h',3,{hem:[2,.7],ooze:[2,.7],pseudo:[2,.8]},'est'],
+ ['pain','傷口疼痛明顯加劇','markedly worsening wound pain','h',4,{nsti:[6,.1],hem:[2,.7],ssi:[2,.6]},'est'],
+ ['fev','發燒、寒顫','fever or chills','h',5,{ssi:[4,.4],nsti:[4,.4],leak:[3,.6]},'est'],
+ ['pop','咳嗽或用力後「啪」一聲','popping sensation after coughing or straining','h',6,{deh:[20,.5]},'est'],
+ ['numb','遠端肢體麻、冷或痛','distal numbness, coldness or pain','h',7,{pseudo:[5,.6]},'est'],
+ ['gap','傷口裂開、粉紅色漿液大量滲出','wound gaping with copious serosanguinous discharge','p',0,{deh:[25,.1]},'est'],
+ ['pus','膿或紅腫熱痛','pus, erythema, warmth and tenderness','p',0,{ssi:[10,.2]},'est'],
+ ['crep','捻髮音、水泡或皮膚發紫','crepitus, bullae or dusky skin','p',1,{nsti:[30,.3]},'est'],
+ ['hema','逐漸變大的血腫','expanding hematoma','p',1,{hem:[10,.4],pseudo:[5,.5]},'est'],
+ ['drain','引流管鮮血 >100 mL/h','bright red drain output > 100 mL/h','p',2,{hem:[25,.4]},'est'],
+ ['bile','引流液變成膽汁、腸液或混濁','drain fluid turning bilious, enteric or turbid','p',2,{leak:[30,.3]},'est'],
+ ['sbp90','SBP <90','SBP < 90 mmHg','v','sbp90',{hem:[6,.6],nsti:[4,.7],leak:[3,.8],ooze:[.1,1.2]},'est'],
+ ['hr100','心跳 >100','heart rate > 100/min','v','hr100',{hem:[3,.5],nsti:[2,.6],ooze:[.5,1.2]},'est'],
+ ['hb','Hb 掉 ≥2 g/dL','hemoglobin drop ≥ 2 g/dL','t',0,{hem:[10,.2],pseudo:[5,.5],ooze:[.2,1.3]},'est'],
+ ['bruit','穿刺部位搏動性腫塊或雜音','pulsatile mass or bruit at the puncture site','x',0,{pseudo:[30,.2]},'est'],
+]};
+
+BAYES.dizzy = {d:'stroke arr gib bppv vn ortho other', p:[.05,.05,.05,.15,.05,.35,.35], f:[
+ ['spin','天旋地轉','true spinning vertigo','h',0,{bppv:[4,.2],vn:[5,.1],stroke:[2,.7],ortho:[.3,1.5],arr:[.3,1.3]},'est'],
+ ['cont','持續好幾個小時到幾天','continuous for hours to days','h',1,{vn:[6,.1],stroke:[4,.3],bppv:[.1,2.5]},'est'],
+ ['pos','轉頭、翻身或起床時誘發','triggered by head movement or standing up','h',2,{bppv:[5,.1],ortho:[3,.3],arr:[.4,1.3]},'est'],
+ ['d5','複視、口齒不清、吞嚥困難或肢體麻無力','diplopia, dysarthria, dysphagia or limb weakness','h',3,{stroke:[12,.5]},'est'],
+ ['ha','頭痛或頸部痛','headache or neck pain','h',4,{stroke:[3,.7]},'est'],
+ ['ear','耳鳴或聽力下降','tinnitus or hearing loss','h',5,{other:[2,.9]},'est'],
+ ['card','胸痛、心悸或黑便','chest pain, palpitations or melena','h',6,{arr:[4,.5],gib:[4,.5]},'est'],
+ ['drug','新的降壓藥、利尿劑或鎮靜藥','new antihypertensive, diuretic or sedative','h',7,{ortho:[4,.4]},'est'],
+ ['orth','姿勢性低血壓','orthostatic hypotension','p',0,{ortho:[8,.2],gib:[3,.5],bppv:[.4,1.2]},'est'],
+ ['nysc','換向、垂直或旋轉性眼震','direction-changing, vertical or torsional nystagmus','p',1,{stroke:[10,.6]},'Kattah09','hints'],
+ ['hitn','Head impulse test 正常（持續眩暈時）','normal head impulse test during continuous vertigo','p',2,{stroke:[18,.1],vn:[.05,10]},'Kattah09','hints'],
+ ['skew','Skew deviation','skew deviation','p',3,{stroke:[10,.7]},'Kattah09','hints'],
+ ['gait','自己站不住、走不了','unable to stand or walk unassisted','p',4,{stroke:[8,.5],vn:[.5,1.2]},'est'],
+ ['dix','Dix-Hallpike 陽性','positive Dix-Hallpike test','p',6,{bppv:[20,.2]},'est'],
+ ['irr','脈搏不規則或很慢、很快','irregular, very slow or very fast pulse','p',7,{arr:[8,.5]},'est'],
+ ['sug70','血糖 <70','glucose < 70 mg/dL','v','sug70',{other:[5,.9]},'est'],
+ ['ecg','ECG 心律不整或傳導阻滯','arrhythmia or conduction block on ECG','t',0,{arr:[20,.3]},'est'],
+ ['hbd','Hb 下降','falling hemoglobin','t',0,{gib:[8,.3]},'est'],
+ ['dwi','MRI DWI 後循環梗塞','posterior circulation infarct on MRI DWI','t',0,{stroke:[80,.15]},'def'],
+]};
+
+BAYES.hiccup = {d:'mi bs abs gerd drug met postop', p:[.02,.01,.02,.5,.2,.1,.15], f:[
+ ['d48','持續超過 48 小時','lasting more than 48 hours','h',0,{bs:[3,.3],abs:[3,.3],met:[2,.5],gerd:[.6,1.5]},'est'],
+ ['bloat','腹脹、噁心或胃酸逆流','distension, nausea or reflux','h',1,{gerd:[4,.3],abs:[1.5,.8]},'est'],
+ ['cp','胸痛、喘','chest pain or dyspnea','h',2,{mi:[10,.3]},'est'],
+ ['bulb','吞嚥困難、聲音改變、眩暈或肢體麻','dysphagia, hoarseness, vertigo or numbness','h',3,{bs:[30,.1]},'est'],
+ ['dex','新加 dexamethasone、BZD、化療或鴉片類','new dexamethasone, benzodiazepine, chemotherapy or opioid','h',4,{drug:[8,.1]},'est'],
+ ['op','最近腹部或胸部手術','recent abdominal or thoracic surgery','h',5,{postop:[10,.05],abs:[3,.6]},'est'],
+ ['fev','發燒或右上腹痛','fever or right upper quadrant pain','h',6,{abs:[10,.2]},'est'],
+ ['ckd','腎臟病或酗酒','kidney disease or alcohol use','h',7,{met:[4,.5]},'est'],
+ ['dist','腹脹、壓痛','abdominal distension or tenderness','p',0,{abs:[3,.5],gerd:[1.5,.8]},'est'],
+ ['rub','心包膜摩擦音或單側呼吸音下降','pericardial rub or unilateral decreased breath sounds','p',1,{mi:[6,.8],abs:[3,.7]},'est'],
+ ['cn','顱神經異常或眼震','cranial nerve deficit or nystagmus','p',2,{bs:[30,.2]},'est'],
+ ['ecg','ECG ST-T 變化','ST-T changes on ECG','t',0,{mi:[15,.2]},'est'],
+ ['lyte','低血鈉、低血鉀、低血鈣或 BUN 很高','hyponatremia, hypokalemia, hypocalcemia or high BUN','t',0,{met:[10,.2]},'est'],
+ ['ct','CT 橫膈下積液','subphrenic collection on CT','t',0,{abs:[50,.05]},'def'],
+]};
+
+BAYES.aspiration = {d:'fb pneumonitis ards pna spasm simple', p:[.05,.25,.03,.15,.1,.5], f:[
+ ['solid','嗆到的是固體食物或藥丸','solid food or a pill was aspirated','h',0,{fb:[6,.3]},'est'],
+ ['gast','大量嘔吐物或胃內容物','large-volume vomitus or gastric contents','h',0,{pneumonitis:[5,.5],ards:[4,.5]},'est','what'],
+ ['mute','說不出話、咳不出聲','unable to speak or cough','h',1,{fb:[30,.5]},'est'],
+ ['after','事件後持續喘、喘鳴或咳嗽','persistent dyspnea, wheeze or cough afterward','h',2,{simple:[.1,3],fb:[3,.4],pneumonitis:[3,.3],spasm:[3,.4]},'est'],
+ ['dysph','平常就有吞嚥困難','baseline dysphagia','h',3,{pna:[2,.7]},'est'],
+ ['sed','意識不清或使用鎮靜藥','reduced consciousness or sedative use','h',4,{pneumonitis:[2.5,.6],pna:[2,.7]},'est'],
+ ['strid','喘鳴或口腔看得到異物','stridor or visible foreign body','p',0,{fb:[25,.5]},'est'],
+ ['uni','單側 wheeze 或單側呼吸音下降','unilateral wheeze or decreased breath sounds','p',2,{fb:[10,.4]},'est'],
+ ['biw','雙側 wheezing','bilateral wheezing','p',2,{spasm:[8,.2],pneumonitis:[2,.8]},'est'],
+ ['crk','新的囉音','new crackles','p',2,{pneumonitis:[4,.5],pna:[4,.5],simple:[.2,1.5]},'est'],
+ ['spo2','SpO2 <90%','SpO2 < 90%','v','spo2',{ards:[10,.1],pneumonitis:[4,.5],fb:[3,.6],simple:[.05,1.5]},'est'],
+ ['bt38','體溫 ≥38℃','body temperature ≥ 38°C','v','bt38',{pneumonitis:[3,.6],pna:[4,.4],simple:[.2,1.2]},'est'],
+ ['h48','48 小時後仍發燒、有膿痰','fever and purulent sputum persisting beyond 48 hours','x',0,{pna:[10,.2],pneumonitis:[.3,1.5]},'est'],
+ ['cxr','CXR 新浸潤','new infiltrate on CXR','t',0,{pneumonitis:[6,.2],pna:[6,.2],simple:[.05,1.5]},'est'],
+ ['bil','雙側瀰漫性浸潤、P/F <300','bilateral diffuse infiltrates with P/F < 300','t',0,{ards:[30,.05]},'def'],
+]};
+
+BAYES.cough = {d:'pna hf tb plug uri aecopd acei gerd', p:[.2,.1,.02,.08,.3,.1,.05,.1], f:[
+ ['chr','咳超過 2–3 週','cough for more than 2–3 weeks','h',0,{tb:[4,.3],acei:[3,.4],gerd:[3,.4],uri:[.3,1.5],pna:[.5,1.2]},'est'],
+ ['pur','膿痰','purulent sputum','h',1,{pna:[2.5,.5],aecopd:[2,.6],acei:[.1,1.3]},'Metlay97'],
+ ['fev','發燒、喘或胸痛','fever, dyspnea or chest pain','h',2,{pna:[3,.3],hf:[1.5,.8],uri:[.7,1.2]},'Metlay97'],
+ ['chok','吃東西或喝水時嗆咳','coughing when eating or drinking','h',3,{pna:[3,.7],plug:[2,.8]},'est'],
+ ['sup','躺下或夜裡加重','worse when supine or at night','h',4,{hf:[3,.5],gerd:[3,.5]},'Wang05'],
+ ['cold','鼻水、喉嚨痛或接觸史','rhinorrhea, sore throat or sick contact','h',5,{uri:[5,.3],pna:[.5,1.2]},'est'],
+ ['acei','正在使用 ACEI、乾咳','dry cough while on an ACE inhibitor','h',6,{acei:[20,.02]},'est'],
+ ['copd','抽菸、COPD 或氣喘','smoking, COPD or asthma','h',7,{aecopd:[5,.2]},'est'],
+ ['wt','體重減輕或夜間盜汗','weight loss or night sweats','h',8,{tb:[6,.4]},'est'],
+ ['crk','局部 crackles','focal crackles','p',1,{pna:[2,.8],hf:[1.5,.9]},'Metlay97','lung'],
+ ['whz','Wheezing','wheezing','p',1,{aecopd:[5,.3],hf:[1.5,.9]},'est','lung'],
+ ['rho','粗的 rhonchi、咳嗽無力','coarse rhonchi with weak cough','p',2,{plug:[8,.2]},'est'],
+ ['jvd','頸靜脈怒張或下肢水腫','jugular venous distension or leg edema','p',4,{hf:[5,.6]},'Wang05'],
+ ['bt38','體溫 ≥38℃','body temperature ≥ 38°C','v','bt38',{pna:[2.5,.6],uri:[1.2,.9],hf:[.4,1.1],acei:[.1,1.1]},'Metlay97'],
+ ['spo2','SpO2 <90%','SpO2 < 90%','v','spo2',{pna:[3,.7],hf:[3,.7],plug:[4,.6],uri:[.1,1.3]},'est'],
+ ['cxr','CXR 新浸潤','new infiltrate on CXR','t',0,{pna:[8,.2],tb:[2,.5]},'est'],
+ ['cong','CXR 肺鬱血','pulmonary venous congestion on CXR','t',0,{hf:[12,.5]},'Wang05'],
+ ['afb','Sputum AFB 或 TB PCR 陽性','positive sputum AFB or TB PCR','t',0,{tb:[50,.3]},'est'],
+ ['flu','流感或 COVID-19 快篩陽性','positive influenza or COVID-19 rapid test','t',0,{uri:[20,.4]},'est'],
+]};
+
+BAYES.extravasation = {d:'ves comp supp infil phleb dvt', p:[.1,.01,.03,.5,.35,.03], f:[
+ ['ves','外滲的是化療藥、升壓劑、高濃度鈣或鉀、顯影劑或 phenytoin','a vesicant: chemotherapy, vasopressor, concentrated calcium or potassium, contrast or phenytoin','h',0,{ves:[40,.02],infil:[.05,2]},'def'],
+ ['vol','量大（>50 mL）','large volume (> 50 mL)','h',1,{comp:[8,.3],ves:[1.5,.8]},'est'],
+ ['burn','疼痛或灼熱感','pain or burning','h',2,{ves:[3,.5],phleb:[3,.3],infil:[.4,1.5]},'est'],
+ ['numb','手指麻或動起來會痛','finger numbness or pain on movement','h',3,{comp:[15,.1]},'est'],
+ ['days','這條 IV 已放 3 天以上','catheter in place for 3 days or more','h',4,{phleb:[3,.6],supp:[3,.5]},'est'],
+ ['fev','發燒、寒顫','fever or chills','h',5,{supp:[8,.2]},'est'],
+ ['swell','腫、涼、範圍界線不清','cool diffuse swelling','p',0,{infil:[4,.3],phleb:[.3,1.5]},'est'],
+ ['blis','皮膚發白、發紫、起水泡或變黑','blanching, dusky skin, blister or necrosis','p',1,{ves:[15,.5],comp:[3,.8]},'est'],
+ ['pulse','遠端脈搏弱或微血管回填慢','weak distal pulse or delayed capillary refill','p',2,{comp:[10,.5]},'est'],
+ ['stretch','手指被動伸展劇痛、筋膜腔很緊','severe pain on passive stretch with a tense compartment','p',3,{comp:[30,.1]},'est'],
+ ['cord','沿靜脈紅、痛、摸得到條索','erythema and a palpable cord along the vein','p',4,{phleb:[10,.2],supp:[4,.4],infil:[.2,1.3]},'est'],
+ ['pus','針孔流膿','purulent discharge at the insertion site','p',4,{supp:[30,.4]},'est'],
+ ['bt38','體溫 ≥38℃','body temperature ≥ 38°C','v','bt38',{supp:[8,.3]},'est'],
+ ['arm','整隻手臂腫','swelling of the whole arm','x',0,{dvt:[10,.2],comp:[2,.8]},'est'],
+ ['us','超音波靜脈血栓','venous thrombosis on ultrasound','t',0,{dvt:[50,.05],supp:[3,.7]},'def'],
+]};
+
 const LQ_BASE = {
   on:'突然|suddenly,漸進|gradually',
   dur:'今天開始|since today,1–3 天|for 1-3 days,4–7 天|for 4-7 days,1–4 週|for 1-4 weeks,1–6 個月|for 1-6 months,>6 個月|for more than 6 months',
@@ -5733,6 +6282,40 @@ function vitalsHTML(c){
     <label class="vf ${f.sbp || ''}"><span>BP mmHg</span><span class="bp"><input id="v_sbp" data-in="v" data-k="sbp" inputmode="numeric" value="${esc(v.sbp || '')}" placeholder="—" aria-label="SBP"><em>/</em><input id="v_dbp" data-in="v" data-k="dbp" inputmode="numeric" value="${esc(v.dbp || '')}" placeholder="—" aria-label="DBP"></span></label>
     ${box('pr','PR /min','—')}${box('rr','RR /min','—')}${box('spo2','SpO2 %','—')}${box('sugar','Sugar','—')}${box('gcs','GCS','E4V5M6')}`;
 }
+/* ===== 貼上就抓：vital sign 與檢驗（解析在 shared/paste.js） =====
+   c.labs = [[id, 數值, 'H' | 'L' | '']]；UI.paste = {open, txt} 只在這個畫面用，不存檔 */
+function pasteHTML(c){
+  const P = UI.paste || {}, labs = c.labs || [];
+  const chips = labs.length ? `<div class="labrow" aria-label="貼上的檢驗">${labs.map(l => `<span class="labc ${l[2] ? 'abn' : ''}">${esc(l[0])} <b>${esc(l[1])}</b>${l[2] ? `<i>${l[2]}</i>` : ''}</span>`).join('')}<button class="mini" data-act="paste-clear">清除檢驗</button></div>` : '';
+  if (!P.open) return `<div class="pasterow"><button class="btn sm" data-act="paste-open">${ICON.copy}貼上 vital sign／檢驗</button><span class="muted small">從 HIS、護理紀錄貼一段文字，自動填進上面的格子</span></div>${chips}`;
+  return `<div class="pastebox"><label for="pasteTxt">貼上 vital sign 或檢驗報告（不要貼姓名、病歷號）</label>
+    <textarea class="inp mono" id="pasteTxt" data-in="paste" rows="4" placeholder="例：BT 38.6 BP 92/58 HR 118 RR 24 SpO2 91%&#10;WBC 15.2 Hb 8.9 Na 128 K 5.9 Cr 2.3">${esc(P.txt || '')}</textarea>
+    <div class="pasteprev" id="pastePrev" role="status">${pastePrevHTML(P.txt)}</div>
+    <div class="row"><button class="btn primary sm" data-act="paste-apply">帶入</button><button class="btn sm ghost" data-act="paste-close">取消</button></div></div>${chips}`;
+}
+function pastePrevHTML(txt){
+  if (!(txt || '').trim()) return '<span class="muted small">貼上後這裡會列出抓到的項目，確認沒錯再按「帶入」。</span>';
+  const r = pasteParse(txt), v = pasteVitalsText(r.v);
+  if (!v && !r.labs.length) return '<span class="muted small">沒有抓到 vital sign 或檢驗。請確認文字裡有項目名稱（例如 BP、HR、Na、K）。</span>';
+  return `${v ? `<div><b>Vital sign</b>　${esc(v)}</div>` : ''}${r.labs.length ? `<div><b>檢驗 ${r.labs.length} 項</b>　${r.labs.map(l => `<span class="${l[2] ? 'abn' : ''}">${esc(l[0])} ${esc(l[1])}${l[2] ? ' ' + l[2] : ''}</span>`).join('、')}</div>` : ''}`;
+}
+/* 把解析結果寫進這個 call。fillOnly：只填空的格子（從「護理師說」順手抓的時候用，不蓋掉已經手打的） */
+function pasteApply(c, txt, fillOnly){
+  const r = pasteParse(txt), got = [];
+  Object.entries(r.v).forEach(([k, x]) => { if (fillOnly && c.v[k]) return; c.v[k] = x; got.push(k); });
+  if (r.labs.length){
+    const m = new Map((c.labs || []).map(l => [l[0], l])); r.labs.forEach(l => m.set(l[0], l)); c.labs = [...m.values()];
+    const e = r.labs.find(l => l[0] === 'eGFR'), px = pxOf(c);
+    if (e && !px.rn && e[1] < 60){ px.rn = e[1] < 30 ? 'r30' : 'r'; toast(`eGFR ${e[1]}：醫囑步驟的腎功能已設為 ${e[1] < 30 ? '<30' : '30–59'}`); }
+  }
+  return {n:got.length, labs:r.labs.length};
+}
+function pasteRefresh(){
+  const c = cur(); if (!c) return;
+  $('#vitals').innerHTML = vitalsHTML(c); $('#pasteW').innerHTML = pasteHTML(c);
+  refreshVitals(); rerenderCall();
+}
+function labsLine(c){ return (c.labs || []).length ? 'Lab: ' + pasteLabText(c.labs) : ''; }
 function gcsTotal(s){
   s = String(s || '').toUpperCase().trim(); if (!s) return null;
   const m = s.match(/E(\d)\s*V(\d|T|E|A)\s*M(\d)/);
@@ -5781,6 +6364,7 @@ function vCall(){
   <div class="reason"><label for="reason">護理師說</label><input class="inp" id="reason" data-in="reason" value="${esc(c.reason)}" placeholder="例：BT 38.6, chills"></div>
   <div class="vitals" id="vitals">${vitalsHTML(c)}</div>
   <div class="vflags" id="vflags">${vflagsHTML(c)}</div>
+  <div id="pasteW">${pasteHTML(c)}</div>
   <nav class="rail" id="rail" aria-label="步驟">${railHTML(c)}</nav>
   <div id="impbarW">${impbarHTML(c, p)}</div>
   <div class="call-grid">
@@ -5940,6 +6524,7 @@ function callNote(c = cur()){
   if (c.hxNote.trim()) L.push('  ' + c.hxNote.trim().replace(/\n/g, '\n  '));
   L.push('', 'O:');
   const vs = vitalsLine(c); if (vs) L.push('  ' + vs);
+  const lb = labsLine(c); if (lb) L.push('  ' + lb);
   p.pe.forEach((x, i) => {
     if (c.pe[i] === 'n') L.push(`  ${x.en}: ${x.n}`);
     else if (c.pe[i] === 'a') L.push(`  ${x.en}: ${[chipsEn(c, p, i), (c.peNote[i] || '').trim()].filter(Boolean).join('; ') || 'abnormal'}`);
@@ -6881,6 +7466,18 @@ async function copyText(t, btn){
 }
 
 /* ===== events ===== */
+/* 把一整段 vital sign 直接貼進任何一格生命徵象：整段拆開填好，不會塞在那一格裡。
+   「護理師說」裡順手寫的數值（BT 38.6, HR 120）在離開欄位時帶進還空著的格子 */
+document.addEventListener('paste', e => {
+  const el = e.target, c = cur(); if (!c || UI.view !== 'call' || !el.dataset || el.dataset.in !== 'v') return;
+  const txt = (e.clipboardData || window.clipboardData).getData('text'), r = pasteParse(txt);
+  if (Object.keys(r.v).length + r.labs.length < 2) return;
+  e.preventDefault(); const k = pasteApply(c, txt); pasteRefresh(); toast(`已帶入${k.n ? ' vital sign ' + k.n + ' 項' : ''}${k.n && k.labs ? '、' : ''}${k.labs ? '檢驗 ' + k.labs + ' 項' : ''}`);
+});
+document.addEventListener('change', e => {
+  const c = cur(); if (!c || UI.view !== 'call' || e.target.id !== 'reason') return;
+  const k = pasteApply(c, e.target.value, true); if (k.n || k.labs) pasteRefresh();
+});
 /* 醫囑細節展開狀態（整頁重畫後還在） */
 document.addEventListener('toggle', e => { const t = e.target; if (t.classList && t.classList.contains('rxd')) (UI.rxOpen = UI.rxOpen || {})[t.dataset.rx] = t.open; }, true);
 /* 開另一個工具：在總站裡請總站切換，單獨開啟時直接連過去 */
@@ -6895,6 +7492,12 @@ document.addEventListener('click', e => {
   switch (a){
   case 'go': if (d.view === 'admit' && !UI.admit) newAdmit(); go(d.view); break;
   case 'start': startCall(d.id); break;
+  case 'paste-open': UI.paste = {open:true, txt:''}; $('#pasteW').innerHTML = pasteHTML(c); { const t = $('#pasteTxt'); if (t) t.focus(); } break;
+  case 'paste-close': UI.paste = null; $('#pasteW').innerHTML = pasteHTML(c); break;
+  case 'paste-clear': c.labs = []; $('#pasteW').innerHTML = pasteHTML(c); updateNote(); saveDraft(); break;
+  case 'paste-apply': { const r = pasteApply(c, (UI.paste || {}).txt || '');
+    if (!r.n && !r.labs){ toast('沒有抓到可以帶入的項目'); break; }
+    UI.paste = null; pasteRefresh(); toast(`已帶入${r.n ? ' vital sign ' + r.n + ' 項' : ''}${r.n && r.labs ? '、' : ''}${r.labs ? '檢驗 ' + r.labs + ' 項' : ''}`); break; }
   case 'px-rn': pxOf(c).rn = d.v; saveDraft(); rerenderCall(); break;
   case 'px-flag': { const x = pxOf(c); x[d.k] = !x[d.k]; if (d.k === 'preg' && x.preg) x.elderly = false; if (d.k === 'elderly' && x.elderly) x.preg = false; saveDraft(); rerenderCall(); break; }
   case 'rx-ref': openTool('meds', 'rx-' + d.g, 'meds.html#rx-' + d.g); break;
@@ -6953,6 +7556,7 @@ document.addEventListener('input', e => {
   case 'v': c.v[el.dataset.k] = el.value.trim(); refreshVitals(); updateNote(); break;
   case 'reason': c.reason = el.value; updateNote(); break;
   case 'hxNote': c.hxNote = el.value; updateNote(); break;
+  case 'paste': (UI.paste = UI.paste || {open:true}).txt = el.value; $('#pastePrev').innerHTML = pastePrevHTML(el.value); return;
   case 'pxWt': pxOf(c).wt = el.value.trim(); document.querySelectorAll('[data-rxk]').forEach(n => { n.textContent = rxEval(n.dataset.rxk, pxOf(c)).kg; }); saveDraft(); break;
   case 'peNote': c.peNote[el.dataset.i] = el.value; updateNote(); break;
   case 'ordExtra': c.ordExtra = el.value; updateNote(); break;
