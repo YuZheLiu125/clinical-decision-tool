@@ -68,7 +68,7 @@
 - **貼上解析正本是 `shared/paste.js`**（同一支 sync 腳本，寫進 copilot／consult 的 `/*hub-paste:start*/…`）。`pasteParse(text)` 回傳 `{v, labs}`；主訴處理的檢驗存在 `c.labs`。查房板有自己更完整的解析器（分血液／尿液、歷史報告），兩邊沒有合併
 - 新主訴的貝氏資料在 `BAYES.<id>`（v1.5 那一段）；`tests/test_rx.py::test_bayes_data_matches_each_protocol` 檢查題號與鑑別 id 對得上。改主訴的問診／PE 順序時，`h`／`p` 的題號要跟著改
 - 多裝置：`tests/test_devices.py`（各種寬度、觸控目標、WebKit）。conftest 的 `iphone` fixture 用 WebKit，沒裝會跳過
-- 已知不一致：DKA 血鉀門檻，醫囑庫用 3.5（ADA 2024），用藥速查 dka 主題與主訴處理高血糖的原有筆記仍是 3.3，等使用者決定
+- DKA 血鉀門檻：使用者決定全工具維持 3.3（開始補鉀 <5.3），不要改成 ADA 2024 的 3.5；醫囑庫的說明文字有註記 3.5 供參考
 
 ## v2 之後的做法（改之前先讀）
 

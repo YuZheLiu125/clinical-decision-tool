@@ -34,7 +34,7 @@
 
 ### 上網查證後修正的劑量（2026-11-17）
 - 高血鉀的 calcium gluconate：10 mL → **30 mL 10% 推 10 分鐘**（UK Kidney Association 2023 草案；先前的 10 mL 偏低）
-- DKA 開始胰島素前的血鉀門檻：3.3 → **3.5 mEq/L**，K <5.0 開始補鉀（ADA／EASD 2024 hyperglycemic crises consensus）。**用藥速查「DKA／HHS」與主訴處理「高血糖」的原有筆記仍寫 3.3，沒有動，請使用者決定要不要一起改**
+- DKA 開始胰島素前的血鉀門檻：**維持 3.3 mEq/L、K <5.3 開始補鉀**（使用者 2026-11-17 決定，全工具一致）。ADA／EASD 2024 consensus 把門檻訂在 3.5，醫囑庫的用法說明裡有註記
 - Zoledronate 用在高血鈣：Cr <4.5 mg/dL 不需減量（依 CrCl 減量的表是骨轉移適應症用的；Zometa 仿單）
 - 程序鎮靜的 Ketamine：0.5–1 → **1 mg/kg**，可追加 0.5 mg/kg
 - 低血鈉矯正上限：第一個 24 小時 ≤10 mEq/L（歐洲 2014），高風險 ≤8

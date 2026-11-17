@@ -995,10 +995,10 @@ rx('ri_sc_corr', 'endo', 'Regular insulin 校正劑量', 'Regular insulin SC wit
     adj: { r: '每一階減 2 U', r30: '每一階減半（胰島素清除變慢）', hd: '每一階減半', elderly: '每一階減 2 U，寧高勿低' },
     alt: { r30: 'Regular insulin SC with each finger sugar check (QID AC and HS, or q6h if NPO) per reduced sliding scale: 250–299: 2 U, 300–349: 3 U, 350–399: 4 U, ≥400: 5 U and notify', hd: 'Regular insulin SC with each finger sugar check (QID AC and HS, or q6h if NPO) per reduced sliding scale: 250–299: 2 U, 300–349: 3 U, 350–399: 4 U, ≥400: 5 U and notify' } });
 rx('ri_drip_dka', 'endo', 'Regular insulin 滴注（DKA／HHS）', 'Regular insulin 50 U in N/S 50 mL (1 U/mL), 0.1 U/kg/h IVD; finger sugar q1h; when glucose <250 mg/dL, add D5W and reduce to 0.02–0.05 U/kg/h',
-  '先確認 K ≥3.5 才開始胰島素（<3.5 先以 10 mEq/h 補鉀）。目標每小時降 50–70 mg/dL。HHS 從 0.05 U/kg/h 起。',
+  '先確認 K ≥3.3 才開始胰島素（<3.3 先以 10 mEq/h 補鉀；ADA／EASD 2024 把門檻訂在 3.5）。目標每小時降 50–70 mg/dL。HHS 從 0.05 U/kg/h 起。',
   { cc: 'hyperglycemia', kg: { lo: 0.1, hi: 0.1, u: 'U/h' }, mon: '血糖 q1h；K、HCO3、anion gap q2–4h', adj: { r30: '速率減半起（0.05 U/kg/h）', hd: '速率減半起；輸液量要保守' } });
 rx('ns_dka', 'endo', 'N/S 補液（DKA／HHS）', 'N/S 1000 mL IVD over the first hour, then 250–500 mL/h according to hemodynamics and corrected Na',
-  'DKA／HHS 第一步是補水。校正鈉正常或偏高後改 0.45% NaCl。K <5.0 且有尿就在每升輸液加 KCl 20–30 mEq，目標 4–5。',
+  'DKA／HHS 第一步是補水。校正鈉正常或偏高後改 0.45% NaCl。K <5.3 且有尿就在每升輸液加 KCl 20–30 mEq，目標 4–5。',
   { cc: 'hyperglycemia', mon: 'I/O、K q2–4h、肺部聽診', adj: { hf: '250–500 mL 分次給、頻繁評估', r30: '速率減半、頻繁評估', hd: '無尿者只需少量輸液，以胰島素為主' },
     alt: { hf: 'N/S 500 mL IVD over the first hour, then reassess volume status before further fluids', hd: 'N/S 250 mL IVD over the first hour, then reassess volume status before further fluids' } });
 
