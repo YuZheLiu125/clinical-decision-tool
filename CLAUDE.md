@@ -56,9 +56,11 @@
 3. 各工具內部還留著舊的膠囊形按鈕（999px 圓角），可以逐個工具收斂成 `--hub-r`
 4. 查房板加還原同步前版本的按鈕
 
-## 未發布：分支 `v1.5-orders`（2026-11-17）
+## v1.5.0（2026-11-17 發布）
 
-共用醫囑庫＋22 個新主訴（含貝氏資料）＋ACLS 鎮靜分頁＋用藥速查重組＋貼上就抓 vital sign／檢驗，152 項測試全過，**還沒合併、還沒發布**。發布用 `release.py minor`（→ v1.5.0）；使用手冊 `docs/guide/index.html` 已改文字（頁數不變，仍 15 頁），要跟工具一起發布。部分劑量已上網查證並修正（見 CHANGELOG），其餘仍待審。臨床內容（`shared/rx.js` 的劑量、稀釋、腎劑量；`copilot.html` 的 `PROTOS_RAW.push(` 第三段）是 Claude 起草，使用者還沒審閱，根據列在 CHANGELOG。
+**現況**：線上工具 artifact `1794878744-32fc` = repo v1.5.0；使用手冊 artifact `1794878764-fc2f` = `docs/guide/index.html`（15 頁不變）。152 項測試全過。上面「交班（v1.4.1）」一節的現況以這裡為準，其餘的等回饋與已知限制仍適用。
+
+這版：共用醫囑庫＋22 個新主訴（含貝氏資料）＋ACLS 鎮靜分頁＋用藥速查重組＋貼上就抓 vital sign／檢驗。**臨床內容是 Claude 起草**：12 項劑量上網查證過並修正（見 CHANGELOG），醫囑庫其餘約 120 筆與新主訴內容使用者還沒逐條審閱；使用者回報哪裡不對就改 `shared/rx.js`。貼上解析的格式是猜的，等使用者提供去識別化的實際 HIS 文字來調。Android、iPhone 只做過模擬測試。
 
 - **醫囑庫正本是 `shared/rx.js`**，`python3 scripts/sync_shared.py` 會寫進 copilot／meds／acls 的 `<script id="hub-rx">`（`/*hub-rx:start*/…/*hub-rx:end*/`，不要直接改 HTML 裡這段）。一筆 = `rx(id, 分組, 名稱, o 英文醫囑, 中文用法, {mon, max, ci, adj, alt, kg, cc})`；`adj` 以「✕」開頭＝禁用；`alt` 是該狀態下整張換掉的醫囑；`rxEval(id, {rn, hepatic, hf, elderly, preg, wt})` 回傳要顯示的醫囑
 - **主訴的用藥醫囑**寫成 `['rx', 醫囑庫 id, '什麼情況開']`；其他類別照舊 `[cat, 中文, English]`。加主訴＝在 `PROTOS_RAW` 加一筆，再把 id 放進 `CC_GROUPS`（首頁分組）與 meds.html 的 `CCN`（連結用的中文名）
